@@ -219,11 +219,37 @@ func (s *seeder) seedE2EAdmins() {
 	}
 	s.adminUser("e2e-maker@HPay.dev", "E2E Maker", "ops", hash)
 	s.adminUser("e2e-checker@HPay.dev", "E2E Checker", "superadmin", hash)
+	s.seedE2EReversible()
 	fmt.Println("─────────────────────────────────────────────────────────")
 	fmt.Println(" E2E admin fixtures OK — password for both: " + e2eAdminPassword)
 	fmt.Println("   e2e-maker@HPay.dev    role=ops")
 	fmt.Println("   e2e-checker@HPay.dev  role=superadmin")
 	fmt.Println("─────────────────────────────────────────────────────────")
+}
+
+// e2eReversiblePool is how many completed transactions the admin E2E suite gets to reverse.
+// A completed reversal is final (one reversal per transaction, ADR-0013), so every test that
+// approves a reversal consumes one of these for good; the suite uses a fresh one each time.
+const e2eReversiblePool = 40
+
+// seedE2EReversible creates completed p2p transactions dedicated to the E2E suite. They are
+// flagged only by their idempotency key prefix, belong to throwaway users, and are only created
+// with --e2e-admins, so the default demo data is unchanged.
+func (s *seeder) seedE2EReversible() {
+	cashIn := s.systemWallet("SYSTEM_CASH_IN")
+	hash, err := auth.HashPassword(demoPassword)
+	if err != nil {
+		fatal("e2e reversible hash: %v", err)
+	}
+	from := s.user("0900009001", "E2E Sender", "verified", "active", hash)
+	to := s.user("0900009002", "E2E Receiver", "verified", "active", hash)
+	wFrom := s.mainWallet(from, "e2e sender main")
+	wTo := s.mainWallet(to, "e2e receiver main")
+	s.txn("e2e-pool-topup", "topup", cashIn, wFrom, int64(e2eReversiblePool)*10_000, from, -1)
+	for i := 1; i <= e2eReversiblePool; i++ {
+		s.txn(fmt.Sprintf("e2e-reversible-%03d", i), "p2p", wFrom, wTo, 10_000, from, -1)
+	}
+	fmt.Printf("   E2E reversible pool: %d completed p2p transactions (key prefix e2e-reversible-)\n", e2eReversiblePool)
 }
 
 // adminUser upserts a single admin_users row by email (idempotent, safe to

@@ -15,10 +15,12 @@ import { test, expect, loginViaApi, seedSession, CHECKER } from './fixtures/auth
 test.describe.configure({ mode: 'serial' });
 
 test.describe('KYC queue', () => {
-  test('manual-review tab lists the seeded pending profile', async ({ asMaker }) => {
-    await asMaker.goto('/kyc?tab=manual');
-    await expect(asMaker.getByText('Trần Văn Ba')).toBeVisible();
-    await expect(asMaker.getByText('0900000003')).toBeVisible();
+  test('manual-review tab lists the seeded pending profile', async ({ asChecker }) => {
+    // kyc.review is a superadmin permission and the backend enforces it (ADR-0015), so the
+    // maker (role ops) gets 403 here and the checker is the right identity.
+    await asChecker.goto('/kyc?tab=manual');
+    await expect(asChecker.getByText('Trần Văn Ba')).toBeVisible();
+    await expect(asChecker.getByText('0900000003')).toBeVisible();
   });
 
   test('opening a row shows AI score, verdict and reasons', async ({ asChecker }) => {

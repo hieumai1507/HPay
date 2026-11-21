@@ -1,8 +1,8 @@
-import { test, expect, MAKER } from './fixtures/auth';
+import { test, expect, CHECKER } from './fixtures/auth';
 
 /** T9/T10 (P1/P2) — cross-cutting edge cases A03 and A07. */
 test.describe('Cross-cutting edge cases', () => {
-  test('A03 — re-login after a mid-session 401 returns to the original URL + filters', async ({ asMaker }) => {
+  test('A03 — re-login after a mid-session 401 returns to the original URL + filters', async ({ asChecker }) => {
     // Fixed bug (found while first writing this test, confirmed step-by-step
     // against a real login flow): src/features/auth/RequireAdmin.tsx
     // correctly redirects to /login with state:{from: pathname+search} on a
@@ -23,27 +23,28 @@ test.describe('Cross-cutting edge cases', () => {
     // rejected server-side" 401 (e.g. revoked/rotated secret) deterministically
     // (no race with an earlier, still-valid request) and exercises the exact
     // same clearSession() path api/client.ts uses for any genuine 401.
-    await asMaker.route('**/v1/admin/kyc**', async (route) => {
+    // The KYC queue needs kyc.review (superadmin, ADR-0015), so this test uses the checker.
+    await asChecker.route('**/v1/admin/kyc**', async (route) => {
       const headers = { ...route.request().headers(), authorization: 'Bearer corrupted.invalid.token' };
       await route.continue({ headers });
     });
 
-    await asMaker.goto('/kyc?tab=manual&q=Ba');
+    await asChecker.goto('/kyc?tab=manual&q=Ba');
 
     // api/client.ts clearSession()s on 401 -> RequireAdmin redirects to
     // /login, preserving pathname+search in location.state.from.
-    await expect(asMaker).toHaveURL(/\/login$/);
+    await expect(asChecker).toHaveURL(/\/login$/);
 
     // Stop corrupting requests (the token is gone now anyway; re-login and
     // the resulting real navigation back to /kyc must succeed normally).
-    await asMaker.unroute('**/v1/admin/kyc**');
+    await asChecker.unroute('**/v1/admin/kyc**');
 
     // Re-login through the real form.
-    await asMaker.getByLabel('Email').fill(MAKER.email);
-    await asMaker.getByLabel('Mật khẩu').fill(MAKER.password);
-    await asMaker.getByRole('button', { name: 'Đăng nhập' }).click();
+    await asChecker.getByLabel('Email').fill(CHECKER.email);
+    await asChecker.getByLabel('Mật khẩu').fill(CHECKER.password);
+    await asChecker.getByRole('button', { name: 'Đăng nhập' }).click();
 
-    await expect(asMaker).toHaveURL(/\/kyc\?tab=manual&q=Ba$/);
+    await expect(asChecker).toHaveURL(/\/kyc\?tab=manual&q=Ba$/);
   });
 
   test.skip(

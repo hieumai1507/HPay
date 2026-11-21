@@ -9,9 +9,10 @@ test.describe('Dashboard', () => {
     await expect(asMaker.getByText('Cần chú ý')).toBeVisible();
   });
 
-  test('clicking the KYC attention card navigates to /kyc', async ({ asMaker }) => {
-    await asMaker.goto('/dashboard');
-    await asMaker.getByText('KYC chờ duyệt').click();
-    await expect(asMaker).toHaveURL(/\/kyc$/);
+  test('clicking the KYC attention card navigates to /kyc', async ({ asChecker }) => {
+    // /kyc needs kyc.review (superadmin), see ADR-0015.
+    await asChecker.goto('/dashboard');
+    await asChecker.getByText('KYC chờ duyệt').click();
+    await expect(asChecker).toHaveURL(/\/kyc$/);
   });
 });
