@@ -20,6 +20,7 @@ One decision per file. Format: Status, Context, Decision, Consequences. Accepted
 | [0007](0007-kyc-limits-attached-to-offers.md) | KYC limits attached to offers | Accepted, not yet implemented |
 | [0008](0008-server-side-pin.md) | Server-side PIN | Accepted, not yet implemented |
 | [0009](0009-reversal-failure-needs-manual-and-fail-closed-fraud.md) | Reversal failure needs manual, fail-closed fraud | Accepted, not yet implemented |
+| [0010](0010-ledger-postings-guard.md) | Guard ledger postings with a unique (transaction, kind) record | **Proposed** (awaiting approval) |
 
 Template for a new ADR: `../_templates/adr.md` (front matter with status, supersedes, affects, constitution). Number it next in sequence and add it to this table.
 
