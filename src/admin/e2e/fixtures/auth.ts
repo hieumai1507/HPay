@@ -123,71 +123,60 @@ export async function apiAs(email: string, password: string): Promise<{ ctx: API
   return { ctx, session };
 }
 
-/** Recursively collects every string matching the backend's ref-code shape ("MP" + 12 hex chars, wallet.NewRefCode) out of an arbitrary JSON value. */
-function collectRefCodes(value: unknown, out: Set<string>): void {
-  if (typeof value === 'string') {
-    if (/^MP[0-9A-F]{12}$/.test(value)) out.add(value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const v of value) collectRefCodes(v, out);
-    return;
-  }
-  if (value && typeof value === 'object') {
-    for (const v of Object.values(value)) collectRefCodes(v, out);
-  }
-}
-
 /**
- * Files a fresh reversal request (POST /v1/admin/reversals) against a real
- * completed transaction and returns {id, refCode}.
+ * Files a fresh reversal request (POST /v1/admin/reversals) against a real completed
+ * transaction and returns {id, refCode}.
  *
- * Seed data (cmd/seed/main.go) only exposes a handful of completed
- * transactions through admin read endpoints: one org disbursement (GET
- * /v1/admin/workflows?status=completed) plus the p2p transfers backing the
- * two seeded fraud flags (GET /v1/admin/fraud-flags — used only for its
- * ref_code field here, unaffected by the base64 `reasons` bug documented in
- * fraud.spec.ts). GET /v1/admin/recon/runs/:date returns `items: null` for
- * reasons outside this suite's scope, so the seeded recon topups aren't
- * usable as extra candidates. Every caller across the suite shares this
- * small pool; a retry-with-backoff absorbs cross-file/cross-test contention
- * (a sibling spec briefly holding a pending reversal on the same txn), and
- * callers that don't need to keep the request pending are expected to
- * reject it when done (see `releaseReversal`) so the pool stays usable.
+ * A completed reversal is final: one reversal per transaction (ADR-0013), so a transaction that
+ * a test approved is gone for good. The seed (`go run ./cmd/seed --e2e-admins`) therefore creates
+ * a dedicated pool of completed p2p transactions (key prefix `e2e-reversible-`, each with a
+ * completed p2p_transfer workflow instance, which is how the admin API lists them). Every call
+ * takes the next transaction of that pool that has not been reversed yet. Two Playwright
+ * workers may race for the same one; the loser gets 409 and simply moves on to the next.
+ *
+ * A request that a test does not decide stays pending and keeps its transaction locked; tests
+ * that do not need that call `releaseReversal`, which rejects it and frees the transaction.
  */
 export async function createFreshReversal(
   api: APIRequestContext,
   label: string,
 ): Promise<{ id: string; refCode: string }> {
-  const refs = new Set<string>();
-
-  const wfList = await api.get('/v1/admin/workflows?status=completed&limit=20');
-  if (!wfList.ok()) throw new Error(`GET /v1/admin/workflows failed: ${await wfList.text()}`);
-  collectRefCodes(await wfList.json(), refs);
-
-  const flagsList = await api.get('/v1/admin/fraud-flags?status=all&limit=50');
-  if (flagsList.ok()) collectRefCodes(await flagsList.json(), refs);
-
-  const candidates = [...refs];
-  if (candidates.length === 0) throw new Error('no completed transaction available to reverse');
-
-  let lastErr = '';
-  for (let attempt = 0; attempt < 6; attempt++) {
-    for (const refCode of candidates) {
-      const res = await api.post('/v1/admin/reversals', {
-        data: { ref_code: refCode, reason: `${label} — automated E2E fixture (${attempt})` },
-      });
-      if (res.ok()) {
-        const body = (await res.json()) as { request_id: string };
-        return { id: body.request_id, refCode };
-      }
-      lastErr = `${refCode}: ${res.status()} ${await res.text()}`;
-    }
-    await new Promise((r) => setTimeout(r, 500)); // a sibling test is mid-use; wait for its cleanup reject
+  const candidates = await listReversiblePool(api);
+  if (candidates.length === 0) {
+    throw new Error('the E2E reversible pool is empty: run `go run ./cmd/seed --e2e-admins`');
   }
-  throw new Error(`no eligible completed transaction to reverse after retries — last attempt: ${lastErr}`);
+
+  // Start at a different offset per call so concurrent workers rarely pick the same one.
+  const start = Math.floor(Math.random() * candidates.length);
+  let lastErr = '';
+  for (let n = 0; n < candidates.length; n++) {
+    const refCode = candidates[(start + n) % candidates.length];
+    const res = await api.post('/v1/admin/reversals', {
+      data: { ref_code: refCode, reason: `${label} — automated E2E fixture` },
+    });
+    if (res.ok()) {
+      const body = (await res.json()) as { request_id: string };
+      return { id: body.request_id, refCode };
+    }
+    lastErr = `${refCode}: ${res.status()} ${await res.text()}`;
+    // 409 = already reversed or a sibling holds a pending request on it: try the next one.
+    if (res.status() !== 409) throw new Error(`reversal request failed: ${lastErr}`);
+  }
+  throw new Error(`the E2E reversible pool is used up (${candidates.length} transactions) — last attempt: ${lastErr}`);
 }
 
+/** Ref codes of the completed workflow instances of the E2E pool, newest listing first. */
+async function listReversiblePool(api: APIRequestContext): Promise<string[]> {
+  const refs = new Set<string>();
+  for (let page = 1; page <= 5; page++) {
+    const res = await api.get(`/v1/admin/workflows?status=completed&definition=p2p_transfer&limit=100&page=${page}`);
+    if (!res.ok()) throw new Error(`GET /v1/admin/workflows failed: ${res.status()} ${await res.text()}`);
+    const body = (await res.json()) as { workflows?: Array<{ txn_ref?: string }>; total_pages?: number };
+    for (const w of body.workflows ?? []) if (w.txn_ref) refs.add(w.txn_ref);
+    if (page >= (body.total_pages ?? 1)) break;
+  }
+  return [...refs];
+}
 /** Rejects a reversal request so its underlying transaction becomes reversible again for the next caller (see createFreshReversal). */
 export async function releaseReversal(checkerApi: APIRequestContext, id: string): Promise<void> {
   await checkerApi.post(`/v1/admin/approvals/${id}/decide`, {

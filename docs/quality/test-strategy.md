@@ -75,7 +75,7 @@ Legend: covered = a test with the ID in its name exists in `src/`; partial = rel
 | E10 | Expired approval fails clean | `TestEdge_E10_ExpiredApprovalFailsClean` (test/integration/approval_test.go) | covered |
 | E11 | OTP brute force | `TestEdge_E11_OTPBruteForce` (internal/auth/otp_test.go) | covered |
 | E12 | Locked user fails mid-workflow | `TestEdge_E12_LockedUserFailsMidWorkflow` (test/integration/transfer_test.go) | covered |
-| E13 | Limit by KYC tier | `TestEdge_E13_LimitByKycTier` (internal/wallet/service_test.go) | covered |
+| E13 | Limit by KYC tier | `TestEdge_E13_LimitByKycTier` (test/integration/offer_limits_test.go; since ADR-0007 the limit comes from the offer the KYC tier selects) | covered |
 | E14 | Self transfer rejected | `TestEdge_E14_SelfTransferRejected` (internal/ledger/ledger_test.go) | covered |
 | E15 | Duplicate bank callback | `TestEdge_E15_DuplicateBankCallback` (test/integration/wallet_test.go) | covered |
 | E16 | Recon cutoff, no false mismatch | `TestEdge_E16_ReconCutoffNoFalseMismatch` (test/integration/recon_test.go) | covered |

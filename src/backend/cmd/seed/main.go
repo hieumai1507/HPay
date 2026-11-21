@@ -247,7 +247,12 @@ func (s *seeder) seedE2EReversible() {
 	wTo := s.mainWallet(to, "e2e receiver main")
 	s.txn("e2e-pool-topup", "topup", cashIn, wFrom, int64(e2eReversiblePool)*10_000, from, -1)
 	for i := 1; i <= e2eReversiblePool; i++ {
-		s.txn(fmt.Sprintf("e2e-reversible-%03d", i), "p2p", wFrom, wTo, 10_000, from, -1)
+		key := fmt.Sprintf("e2e-reversible-%03d", i)
+		id := s.txn(key, "p2p", wFrom, wTo, 10_000, from, -1)
+		// A completed workflow instance makes the transaction discoverable through
+		// GET /v1/admin/workflows?definition=p2p_transfer, which is how the E2E fixture finds it.
+		s.instance("inst-"+key, "p2p_transfer", id, "completed", "", -1,
+			[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"MOVE_FUNDS", "completed"}, {"CONFIRM", "completed"}})
 	}
 	fmt.Printf("   E2E reversible pool: %d completed p2p transactions (key prefix e2e-reversible-)\n", e2eReversiblePool)
 }

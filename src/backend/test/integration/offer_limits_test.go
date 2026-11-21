@@ -45,7 +45,15 @@ func (e *env) guardCheck(userID uuid.UUID, amount int64) error {
 }
 
 // AC-1
-func TestOfferLimits_PerTxnCapsByTier(t *testing.T) {
+func TestOfferLimits_PerTxnCapsByTier(t *testing.T) { testLimitByKycTier(t) }
+
+// TestEdge_E13_LimitByKycTier is edge case E13 ("amount above the limit of the KYC tier"). Since
+// ADR-0007 the limit follows the offer the KYC tier selects, so the case is proven through the
+// offer guard: each tier accepts its cap and refuses one unit above it. Kept under this name
+// because scripts/check-edge-tests.sh requires one test per edge case id.
+func TestEdge_E13_LimitByKycTier(t *testing.T) { testLimitByKycTier(t) }
+
+func testLimitByKycTier(t *testing.T) {
 	e := newEnv(t, "")
 	u, _, _ := e.userWithMoney(t, 0)
 	cases := []struct {
