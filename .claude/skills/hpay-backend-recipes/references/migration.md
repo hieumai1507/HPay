@@ -6,8 +6,8 @@
 
 ## Conventions
 
-- Tool: **golang-migrate**, files in `db/migrations/`, named `NNNN_short_description.up.sql` / `.down.sql` (NNNN = next sequence number, zero-padded).
-- The canonical schema reference is docs `architecture/00-backend-design-v2-base.html` §3 and `04-feature-extensions.html` §2. If the requested change conflicts with docs, STOP and tell the user docs must be updated first (docs-first rule).
+- Tool: **golang-migrate**, files in `db/migrations/`, named `NNNNNN_short_description.up.sql` / `.down.sql` (six digits, e.g. `000013_policy_version_unique`; NNNNNN = next sequence number, zero-padded). The migrate CLI runs outside the server (Makefile and CI); the server never applies migrations.
+- The source of truth for the schema is the migrations themselves; `docs/reference/data-model.md` describes the final state and lists missing constraints. If the requested change conflicts with `docs/domain/*` or `docs/constitution.md`, STOP and tell the user the docs/decision must change first (docs-first rule). A new table owned by a different context, or a new constraint model (e.g. per-user idempotency keys), is an architecture change: it needs an ADR (`hpay-feature` stage 3 design gate).
 
 ## Hard rules for this codebase
 
@@ -22,14 +22,10 @@
 
 1. Determine next sequence number from `ls db/migrations/`.
 2. Write `.up.sql` and `.down.sql`.
-3. Verify locally against a scratch DB (docker-compose postgres):
-   ```
-   make migrate-up && make migrate-down && make migrate-up
-   ```
-   All three must succeed (up → down → up proves reversibility).
+3. Verify reversibility: `make migrate-verify` (up -> down -> up; note `make migrate-down` is `down -all`). The dev machine blocks the `migrate` executable path used by make on some setups; `scripts/test-backend.ps1` applies all migrations in Docker (`migrate/migrate`) before the tests, which also proves the up path. Run the down path in Docker the same way when you need it.
 4. Update/add queries in `internal/store/queries/*.sql` if the change affects them, then `make sqlc` and fix compile errors across the repo.
 5. If the change adds a status/state: update the transition map and its unit test in the owning module.
-6. Report: migration number, tables touched, whether openapi.yaml or docs need a follow-up change.
+6. Update `docs/reference/data-model.md` (and the "Constraints that are missing" section if you closed one) in the same change. Report: migration number, tables touched, whether openapi.yaml or other docs need a follow-up change.
 
 ## sqlc lessons learned (do not repeat)
 

@@ -1,289 +1,317 @@
-# HPay – Kế hoạch sửa lỗi và hợp nhất monorepo
+# HPay – Bug-fix and Monorepo Consolidation Plan
 
-Ngày: 2026-11-21. Căn cứ: `docs/audit/AUDIT-REPORT.md` (gồm phụ lục xác minh).
-Trạng thái: **đang thực hiện**. Đã xong: gộp monorepo (src/ + docs/), xóa lịch sử git cũ, gom skill về root, dựng workflow skill + subagent (.claude/). Chưa làm: Wave 1 trở đi (bị chặn vì không chạy được go test, xem handoff).
+Date: 2026-11-21. Basis: `docs/audit/AUDIT-REPORT.md` (including the verification appendix).
+Status: **in progress**. Completed so far: monorepo merge (src/ + docs/), git history reset, skills consolidated at `.claude/skills` with workflows `hpay-feature` / `hpay-bugfix` / `hpay-review`, subagents in `.claude/agents`, Docker-based backend test runner (`scripts/test-backend.ps1`; baseline in `docs/handoff/baseline.md`: 160 Go tests pass with `-race`, mobile jest 80 pass, eslint has pre-existing errors in admin (6) and mobile (3)). Docs conversion to English Markdown is in progress. Not started: Wave 1 onward.
 
-## 0. Quyết định cần bạn chốt trước khi chạy
+All documentation must be in English.
 
-Mỗi mục có mặc định tôi đề xuất. Nếu bạn không nói gì, kế hoạch dùng mặc định.
+## 0. Decisions to settle before running
 
-| # | Câu hỏi | Mặc định đề xuất |
-|---|---|---|
-| D1 | Cấu trúc monorepo | `D:\hpay` là một git repo duy nhất, giữ 3 thư mục `src/backend/`, `src/admin/`, `src/mobile/` và `docs/` (md). Không dùng submodule |
-| D2 | Lịch sử git cũ của 3-4 repo con | Không giữ. Khởi tạo repo mới, commit đầu là snapshot đã dọn secret. Nếu cần giữ lịch sử, dùng `git subtree add` (tốn công hơn) |
-| D3 | PIN giao dịch | Làm thật: PIN hash bcrypt/argon2 trên server, endpoint đặt/đổi PIN, khóa sau 5 lần sai |
-| D4 | Idempotency key | UNIQUE `(initiated_by, idempotency_key)` kèm `request_hash`, trùng key khác payload trả 409 |
-| D5 | Docs "tham khảo TMDS/DEH/MoMo" | Gom vào `docs/reference/` và gắn nhãn "tham khảo, không phải đặc tả HPay". Xóa tên repo nội bộ `tmds-wallet-backend` |
-| D6 | Mock data ở admin | Chỉ bật khi `import.meta.env.DEV`; production hiện lỗi thật |
-| D7 | Hạn mức KYC chuẩn | Bạn phải chọn một bảng số duy nhất (hiện 4 nguồn lệch nhau). Xem mục 5.2 |
-| D8 | Docs nói asynq nhưng code dùng goroutine | Mặc định: sửa docs theo code (goroutine + lease). Thêm asynq chỉ khi bạn muốn chạy nhiều replica |
-| D9 | `docs/reference/external/` (tài liệu TMDS, `.docx`) | Giữ ngoài repo (không commit), hoặc để `docs/reference/` nếu bạn có quyền chia sẻ |
+Each item has a default I propose. If you say nothing, the plan uses the default. User answers received so far are recorded in the "Decision / status" column.
 
----
-
-## 1. Nguyên tắc chạy
-
-1. **Mỗi agent sở hữu một tập file riêng** (bảng ở mục 4). Hai agent không bao giờ sửa cùng file trong cùng wave. Nếu cần sửa file người khác, ghi vào `docs/handoff/<wave>.md` để wave sau xử lý.
-2. **Mỗi agent làm trong git worktree riêng**, nhánh `fix/<id>`. Tôi hoặc bạn merge theo thứ tự wave.
-3. **Test trước, fix sau** (red → green) cho mọi lỗi tiền và bảo mật. Bằng chứng là output lệnh test, không phải lời khẳng định.
-4. **Mỗi PR phải qua cổng**: `go vet`, `golangci-lint`, `go test ./... -race`, `tsc --noEmit`, `eslint`, test frontend, và skill `fintech-review`.
-5. **CLAUDE.md của repo yêu cầu GitNexus**: trước khi sửa symbol phải chạy `impact`, trước khi commit phải chạy `detect_changes`. Sau khi hợp nhất monorepo, index cần chạy lại (`node .gitnexus/run.cjs analyze`).
-6. **Không agent nào được commit secret.** Quét bằng `gitleaks` trước mỗi merge.
-
----
-
-## 2. Wave 0 – Nền tảng (làm trước, tuần tự, do bạn hoặc 1 agent)
-
-| ID | Việc | Kiểm tra xong |
-|---|---|---|
-| W0-1 | **Xoay key** Neon, Cloudinary, JWT. Việc này chỉ bạn làm được (đăng nhập dashboard). Đặt `JWT_SECRET` ngẫu nhiên >= 32 byte | `.env` mới, key cũ bị vô hiệu |
-| W0-2 | Viết `.gitignore` ở root: `.env*` (trừ `.env.example`), `data/`, `e2e/.auth/`, `*.exe`, `tmp/`, `node_modules/`, `dist/`, `.expo/`, `playwright-report/`, `test-results/`, `__pycache__/`, `.gotmp/`, `bin/` | `git status` không liệt kê file nhạy cảm |
-| W0-3 | Dọn file thừa: `src/backend/*.exe`, `tmp/go-build*`, `scripts/__pycache__`, `e2e/.auth/sessions.json`, `docs/push-to-github.ps1` | Danh sách xóa được bạn duyệt trước |
-| W0-4 | `git init`, chạy `gitleaks detect`, commit baseline | gitleaks sạch |
-| W0-5 | Cài bộ skill mới (mục 3) vào `.claude/skills/` ở root | `/skills` liệt kê đủ |
-| W0-6 | Chạy baseline: `go test ./... -race`, test admin, test mobile, ghi lại số pass/fail **trước khi sửa** vào `docs/handoff/baseline.md` | Có số liệu để so sánh sau |
-
-Bạn xác nhận W0-3 vì đó là thao tác xóa.
-
----
-
-## 3. Bộ skill mới (đã clone tại `D:\hpay-skills-research`, tất cả MIT)
-
-Pipeline từ requirement mơ hồ đến test-fix loop, ghép từ nhiều nguồn vì không bộ nào đủ trọn chuỗi:
-
-| Bước | Skill | Nguồn | Ghi chú tích hợp |
+| # | Question | Proposed default | Decision / status |
 |---|---|---|---|
-| 1. Làm rõ requirement | `interview-me`, `idea-refine` | addyosmani/agent-skills | `interview-me` cần người dùng trả lời trực tiếp, **không chạy trong agent nền** |
-| 2. Spec và scope | `spec-driven-development` + mẫu `spec-template.md`, `/speckit.clarify` | agent-skills, spec-kit | Xuất ra **`.md`** trong `docs/specs/<slug>/spec.md` |
-| 3. Plan và task | `planning-and-task-breakdown`, `writing-plans`, `/speckit.analyze` | agent-skills, superpowers, spec-kit | Thay `gen-feature-plan` (đang ép xuất HTML) |
-| 4. Phản biện thiết kế | `doubt-driven-development` | agent-skills | Chạy với context mới cho thay đổi về tiền/bảo mật |
-| 5. Thực thi song song | `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees` | superpowers | Khớp với cách chia wave ở mục 4 |
-| 6. Cài đặt theo TDD | `test-driven-development`, `incremental-implementation` | superpowers, agent-skills | Test `TestEdge_<ID>_*` theo test case |
-| 7. Fix theo vòng lặp | `systematic-debugging`, `debugging-and-error-recovery` | superpowers, agent-skills | Quy tắc: không sửa khi chưa có root cause |
-| 8. Kiểm chứng | `verification-before-completion`, `/speckit.converge` | superpowers, spec-kit | Không được báo xong khi chưa dán output lệnh test |
-| 9. Review và bảo mật | `code-review-and-quality`, `security-and-hardening`, `fintech-review` (giữ, nâng cấp) | agent-skills, của bạn | |
-| 10. E2E | `browser-testing-with-devtools`, ý tưởng từ `bmad-qa-generate-e2e-tests` | agent-skills, BMAD | Không cài cả BMAD (cần `uv` và thư mục `_bmad/`, nặng) |
-
-**Skill của bạn giữ nguyên và nâng cấp:**
-- `fintech-review`: thêm check: idempotency theo user + request hash, ledger không post trùng, RBAC admin, không dùng `Number()` cho amount, secret mặc định theo env.
-- `gen-migration`, `gen-workflow-step`, `scaffold-module`, `gen-api-test`, `seed-demo-data`: giữ, cập nhật đường dẫn và bỏ nhắc "HTML plan".
-
-**Skill cần viết lại:**
-- `gen-feature-plan`: xuất `.md`, không còn "BOTH html" bắt buộc, trỏ tới `docs/`.
-- Gộp `docs/skills/` và `src/backend/.claude/skills/` thành một nguồn (hash 7/7 khác nhau, chưa so nội dung, cần diff trước).
-
-**Rủi ro tích hợp cần xử lý:**
-- Superpowers ép gọi skill trước mọi phản hồi (`using-superpowers`). Chỉ cài các skill cần, bỏ `using-superpowers` hoặc chỉnh để không xung đột với CLAUDE.md.
-- Có hai skill TDD (superpowers và agent-skills) và hai skill debug trùng nhau. Chỉ giữ một bản mỗi loại (đề xuất: superpowers cho TDD và debug).
-- Mỗi skill của bên thứ ba phải đọc nội dung trước khi bật (không cài mù), và ghi lại commit hash nguồn trong `.claude/skills/SOURCES.md`.
+| D1 | Monorepo structure | `D:\hpay` is a single git repo, keeping the 3 directories `src/backend/`, `src/admin/`, `src/mobile/` and `docs/` (md). No submodules | **Decided: monorepo (done)** |
+| D2 | Old git history of the 3-4 sub-repos | Not kept. Initialize a new repo, first commit is a snapshot with secrets cleaned up. If history must be kept, use `git subtree add` (more effort) | **Decided: history dropped entirely (user decision)** |
+| D3 | Transaction PIN | Implement for real: PIN hashed with bcrypt/argon2 on the server, set/change PIN endpoint, lock after 5 wrong attempts | **Decided: real server-side PIN** |
+| D4 | Idempotency key | UNIQUE `(initiated_by, idempotency_key)` plus `request_hash`; same key with a different payload returns 409 | Default |
+| D5 | "Reference TMDS/DEH/MoMo" docs | Move into `docs/reference/` and label "reference, not an HPay specification". Remove the internal repo name `tmds-wallet-backend` | Default |
+| D6 | Mock data in admin | Enabled only when `import.meta.env.DEV`; production shows real errors | Default |
+| D7 | Canonical KYC limits | You must pick a single table (currently 4 sources disagree). See section 5.2 | **Decided: take the seed values in code (L1 = 50M, L2 = 200M VND)** |
+| D8 | Docs say asynq but code uses goroutines | Default: fix the docs to match the code (goroutine + lease). Add asynq only if you want to run multiple replicas | Default |
+| D9 | `docs/reference/external/` (TMDS docs, `.docx`) | Keep out of the repo (not committed), or place in `docs/reference/` if you have the right to share | Default |
+| D10 | Reversal when the receiver has already spent the money (see Wave 2) | Create a debt (receivable), hold the balance, or allow refund only when funds suffice and report manually | **Decided: reversal failure -> `needs_manual` status + audit; no negative balances** |
+| D11 | Fraud/LLM failure | Block the transaction (fail-closed) or let it pass and flag it (fail-open) | **Decided: fail-closed (hold for review)** |
 
 ---
 
-## 4. Các wave sửa lỗi
+## 1. Operating principles
 
-Ký hiệu: **P0** = làm trước khi chạy thật. File thuộc sở hữu agent nào thì chỉ agent đó được sửa trong wave đó.
+1. **Each agent owns its own set of files** (table in section 4). Two agents never edit the same file in the same wave. If a file owned by another agent needs changes, write it into `docs/handoff/<wave>.md` for a later wave to handle.
+2. **Each agent works in its own git worktree**, branch `fix/<id>`. You or I merge in wave order.
+3. **Test first, fix second** (red -> green) for every money and security bug. Evidence is test command output, not an assertion.
+4. **Every PR must pass the gate**: `go vet`, `golangci-lint`, `go test ./... -race`, `tsc --noEmit`, `eslint`, frontend tests, and the `fintech-review` skill.
+5. **The repo's CLAUDE.md requires GitNexus**: run `impact` before editing a symbol, run `detect_changes` before committing. After the monorepo merge, the index must be re-run (`node .gitnexus/run.cjs analyze`).
+6. **No agent may commit secrets.** Scan with `gitleaks` before every merge.
 
-### Wave 1 – DB và nền tảng tiền (P0, song song 3 agent)
+---
 
-**Agent A1 – Migration 000014 (constraint)**
-- Sở hữu: `src/backend/db/migrations/000014_*`, `internal/store/queries/*.sql`, `internal/store/gen/` (sqlc generate).
-- Việc:
-  1. UNIQUE `(initiated_by, idempotency_key)`, thêm cột `request_hash`, bỏ UNIQUE toàn cục. Cần kiểm tra dữ liệu hiện có trước khi đổi.
-  2. `ledger_entries`: UNIQUE chống post lặp theo `(transaction_id, posting_kind, wallet_id/account_id, direction)`, CHECK `wallet_id IS NOT NULL OR account_id IS NOT NULL`. Thêm cột `posting_kind` (forward/compensate).
-  3. Constraint trigger DEFERRABLE kiểm tra tổng debit = credit theo `transaction_id`.
+## 2. Wave 0 – Foundation (do first, sequentially, by you or 1 agent)
+
+| ID | Task | Done when |
+|---|---|---|
+| W0-1 | **Rotate keys** for Neon, Cloudinary, JWT. Only you can do this (dashboard login). Set `JWT_SECRET` to a random value >= 32 bytes | New `.env`, old keys invalidated |
+| W0-2 | Write a root `.gitignore`: `.env*` (except `.env.example`), `data/`, `e2e/.auth/`, `*.exe`, `tmp/`, `node_modules/`, `dist/`, `.expo/`, `playwright-report/`, `test-results/`, `__pycache__/`, `.gotmp/`, `bin/` | `git status` lists no sensitive files |
+| W0-3 | Clean up stray files: `src/backend/*.exe`, `tmp/go-build*`, `scripts/__pycache__`, `e2e/.auth/sessions.json`, `docs/push-to-github.ps1` | Deletion list approved by you beforehand |
+| W0-4 | `git init`, run `gitleaks detect`, commit baseline | gitleaks clean |
+| W0-5 | Install the new skill set (section 3) into `.claude/skills/` at the root | `/skills` lists them all |
+| W0-6 | Run baseline: `go test ./... -race`, admin tests, mobile tests, record pass/fail counts **before fixing** in `docs/handoff/baseline.md` | Numbers available for later comparison |
+
+You confirm W0-3 because it is a deletion.
+
+---
+
+## 3. New skill set (cloned at `D:\hpay-skills-research`, all MIT)
+
+A pipeline from a vague requirement to a test-fix loop, assembled from several sources because no single set covers the whole chain:
+
+| Step | Skill | Source | Integration notes |
+|---|---|---|---|
+| 1. Clarify requirement | `interview-me`, `idea-refine` | addyosmani/agent-skills | `interview-me` needs the user to answer directly, **do not run in a background agent** |
+| 2. Spec and scope | `spec-driven-development` + `spec-template.md` template, `/speckit.clarify` | agent-skills, spec-kit | Output as **`.md`** in `docs/specs/<slug>/spec.md` |
+| 3. Plan and tasks | `planning-and-task-breakdown`, `writing-plans`, `/speckit.analyze` | agent-skills, superpowers, spec-kit | Replaces `gen-feature-plan` (which forces HTML output) |
+| 4. Design critique | `doubt-driven-development` | agent-skills | Run with fresh context for money/security changes |
+| 5. Parallel execution | `subagent-driven-development`, `dispatching-parallel-agents`, `using-git-worktrees` | superpowers | Matches the wave split in section 4 |
+| 6. TDD implementation | `test-driven-development`, `incremental-implementation` | superpowers, agent-skills | `TestEdge_<ID>_*` tests per test case |
+| 7. Fix loop | `systematic-debugging`, `debugging-and-error-recovery` | superpowers, agent-skills | Rule: no fix without a root cause |
+| 8. Verification | `verification-before-completion`, `/speckit.converge` | superpowers, spec-kit | Must not report done without pasting test command output |
+| 9. Review and security | `code-review-and-quality`, `security-and-hardening`, `fintech-review` (kept, upgraded) | agent-skills, yours | |
+| 10. E2E | `browser-testing-with-devtools`, ideas from `bmad-qa-generate-e2e-tests` | agent-skills, BMAD | Do not install all of BMAD (needs `uv` and a `_bmad/` directory, heavy) |
+
+**Your skills kept and upgraded:**
+- `fintech-review`: add checks: idempotency per user + request hash, ledger does not double-post, admin RBAC, no `Number()` for amounts, default secrets per env.
+- `gen-migration`, `gen-workflow-step`, `scaffold-module`, `gen-api-test`, `seed-demo-data`: keep, update paths and remove mentions of the "HTML plan".
+
+**Skills to rewrite:**
+- `gen-feature-plan`: output `.md`, no longer "BOTH html" mandatory, point to `docs/`.
+- Merge `docs/skills/` and `src/backend/.claude/skills/` into a single source (7/7 hashes differ, contents not yet compared, needs a diff first).
+
+**Integration risks to handle:**
+- Superpowers forces a skill call before every response (`using-superpowers`). Install only the skills needed, drop `using-superpowers` or adjust it so it does not conflict with CLAUDE.md.
+- There are two overlapping TDD skills (superpowers and agent-skills) and two debug skills. Keep only one of each (proposal: superpowers for TDD and debug).
+- Every third-party skill must have its content read before being enabled (no blind installs), and the source commit hash recorded in `.claude/skills/SOURCES.md`.
+
+---
+
+## 4. Bug-fix waves
+
+Notation: **P0** = do before going live. A file owned by an agent may only be edited by that agent in that wave.
+
+### Wave 1 – DB and money foundation (P0, 3 agents in parallel)
+
+**Agent A1 – Migration 000014 (constraints)**
+- Owns: `src/backend/db/migrations/000014_*`, `internal/store/queries/*.sql`, `internal/store/gen/` (sqlc generate).
+- Tasks:
+  1. UNIQUE `(initiated_by, idempotency_key)`, add a `request_hash` column, drop the global UNIQUE. Check existing data before the change.
+  2. `ledger_entries`: UNIQUE to prevent duplicate posting by `(transaction_id, posting_kind, wallet_id/account_id, direction)`, CHECK `wallet_id IS NOT NULL OR account_id IS NOT NULL`. Add a `posting_kind` column (forward/compensate).
+  3. DEFERRABLE constraint trigger checking total debit = total credit per `transaction_id`.
   4. Partial UNIQUE `transactions(reversal_of) WHERE reversal_of IS NOT NULL`; partial UNIQUE `approval_requests(subject_type, subject_id) WHERE status='pending'`.
-  5. `transactions`: CHECK `sender_wallet_id <> receiver_wallet_id`. `fee_policies`: CHECK (`fixed_fee>=0`, `percent_bp BETWEEN 0 AND 10000`, `min_fee<=max_fee`) và UNIQUE `(txn_type, kyc_status, version)`. `wallets.currency` CHECK.
-  6. `wf_status` thêm `compensation_failed`. Index offerguard `(initiated_by, type, created_at)`. `outbox` thêm `attempts`, `last_error`, `dead_at`, index theo `id`.
-  7. Chặn TRUNCATE trên `ledger_entries` và `REVOKE` quyền DB thừa cho role app.
-- Skill: `gen-migration`. Có file down. Chạy thử up/down/up trên DB sạch.
-- Xong khi: migration chạy sạch, `sqlc generate` biên dịch, test hiện có vẫn pass.
+  5. `transactions`: CHECK `sender_wallet_id <> receiver_wallet_id`. `fee_policies`: CHECK (`fixed_fee>=0`, `percent_bp BETWEEN 0 AND 10000`, `min_fee<=max_fee`) and UNIQUE `(txn_type, kyc_status, version)`. `wallets.currency` CHECK.
+  6. `wf_status` gains `compensation_failed`. Offerguard index `(initiated_by, type, created_at)`. `outbox` gains `attempts`, `last_error`, `dead_at`, and an index on `id`.
+  7. Block TRUNCATE on `ledger_entries` and `REVOKE` excess DB privileges from the app role.
+- Skill: `gen-migration`. Include a down file. Run up/down/up on a clean DB.
+- Done when: migration runs cleanly, `sqlc generate` compiles, existing tests still pass.
 
-**Agent A2 – Cấu hình và bảo mật nền**
-- Sở hữu: `internal/platform/config/`, `cmd/server/main.go`, `cmd/seed/main.go`, `internal/api/router.go` (phần mount), `docker-compose.yml`, `.env.example`.
-- Việc:
-  1. `APP_ENV` bắt buộc, whitelist `dev|ci|demo|production`, thống nhất mọi chỗ so sánh. Bắt buộc `JWT_SECRET >= 32` và `MOCK_BANK_SECRET` riêng khi không phải dev. `godotenv.Load()` chỉ ở dev.
-  2. Gateway: chọn HTTP thật hay Mock theo cấu hình rõ ràng, không theo chuỗi `"production"` mơ hồ.
-  3. Mock-bank callback chỉ mount khi không phải production. Thêm rate limit và IP allowlist tùy chọn.
-  4. Chỉ trả `otp_dev` khi `Env == "dev"`.
-  5. `SetTrustedProxies`, HTTP server thêm Read/Write/Idle timeout, `MaxHeaderBytes`, `healthz` không lộ lỗi chi tiết, thêm header bảo mật (nosniff, HSTS) và CORS có allowlist.
-  6. Seed: từ chối chạy nếu env không thuộc dev/ci/demo hoặc host DB không phải localhost (cần cờ ép buộc rõ ràng). Mật khẩu seed sinh ngẫu nhiên và in một lần, hoặc lấy từ env.
-  7. `docker-compose.yml`: Redis có mật khẩu, bind `127.0.0.1`.
-- Xong khi: test cấu hình cho từng env, server từ chối khởi động với cấu hình sai.
+**Agent A2 – Configuration and baseline security**
+- Owns: `internal/platform/config/`, `cmd/server/main.go`, `cmd/seed/main.go`, `internal/api/router.go` (mount section), `docker-compose.yml`, `.env.example`.
+- Tasks:
+  1. `APP_ENV` is mandatory, whitelist `dev|ci|demo|production`, unify every comparison. Require `JWT_SECRET >= 32` and a separate `MOCK_BANK_SECRET` when not dev. `godotenv.Load()` only in dev.
+  2. Gateway: choose real HTTP or Mock by explicit configuration, not by the ambiguous `"production"` string.
+  3. Mock-bank callback is mounted only when not production. Add rate limiting and an optional IP allowlist.
+  4. Return `otp_dev` only when `Env == "dev"`.
+  5. `SetTrustedProxies`, add Read/Write/Idle timeouts and `MaxHeaderBytes` to the HTTP server, `healthz` does not leak error details, add security headers (nosniff, HSTS) and a CORS allowlist.
+  6. Seed: refuse to run if env is not dev/ci/demo or the DB host is not localhost (needs an explicit force flag). Seed passwords are randomly generated and printed once, or taken from env.
+  7. `docker-compose.yml`: Redis has a password, bind to `127.0.0.1`.
+- Done when: config tests for each env, server refuses to start with a wrong config.
 
-**Agent A3 – Hợp nhất repo (monorepo)**
-- Sở hữu: root (`.gitignore`, `README.md`, `Makefile` tổng, `.github/`), không đụng code ứng dụng.
-- Việc: thực hiện W0-2 đến W0-5; CI duy nhất chạy backend, admin, mobile; `gitleaks` trong CI; cập nhật đường dẫn trong các workflow cũ; chạy lại GitNexus index.
-- Xong khi: CI xanh trên nhánh trống.
+**Agent A3 – Repo consolidation (monorepo)**
+- Owns: root (`.gitignore`, `README.md`, top-level `Makefile`, `.github/`), does not touch application code.
+- Tasks: carry out W0-2 to W0-5; a single CI that runs backend, admin, mobile; `gitleaks` in CI; update paths in the old workflows; re-run the GitNexus index.
+- Done when: CI is green on an empty branch.
 
-### Wave 2 – Sửa logic tiền (P0, tuần tự theo phụ thuộc, 2 agent)
+### Wave 2 – Fix money logic (P0, sequential by dependency, 2 agents)
 
-Chờ Wave 1 merge xong (A1 phải xong trước B1).
+Wait for Wave 1 to merge (A1 must finish before B1).
 
 **Agent B1 – Ledger, workflow, idempotency**
-- Sở hữu: `internal/ledger/`, `internal/workflow/` (engine, consumer, handlers, recovery), `internal/outbox/`, `internal/transfer/`, `internal/wallet/`, `internal/moneyrequest/`, `internal/api/middleware.go` (phần idempotency).
-- Việc theo thứ tự (mỗi việc: viết test fail trước):
-  1. **BE-C1**: ghi `step_executions` (claim `running`) và post ledger an toàn khi replay. Dùng `posting_kind` và UNIQUE của A1 để chống post lặp. Test: gọi `ledger.Post` 2 lần cùng `txnID`; mô phỏng crash giữa Commit và `recordAndEmit` rồi replay.
-  2. **BE-C2 (phần engine)**: `request` dừng ở bước AUTH, chỉ chạy tiếp sau confirm hợp lệ. Mô hình trạng thái `request → confirm → verify` có hạn dùng, confirm 2 lần an toàn, fee khóa ở `request`.
-  3. **BE-H1**: idempotency theo user + `request_hash`, 409 khi khác payload, bắt buộc key trên mọi endpoint ghi tiền (thêm `RequireIdempotencyKey` cho `/money-requests`, `/split`, `/vaults`, round-up). Bỏ tự sinh UUID khi thiếu key.
-  4. **BE-H5**: money request giữ `pending`/`paying` đến khi transaction `completed`, quay lại khi fail.
-  5. Compensation: dùng `compensation_failed`, gọi `FailTransactionGuarded`, cho recovery sweep quét `compensating`, hỗ trợ retry (bỏ Attempt cố định 101).
-  6. Outbox: dead-letter sau N lần, `PumpLocal` chặn ở production, consumer dùng `select ctx.Done()`.
-  7. Ledger: kiểm tra `status` và `currency` ví, chống overflow int64, trần amount ở mọi đầu vào.
-- Xong khi: toàn bộ test mới pass với `-race`, test hiện có không hỏng, `fintech-review` PASS.
+- Owns: `internal/ledger/`, `internal/workflow/` (engine, consumer, handlers, recovery), `internal/outbox/`, `internal/transfer/`, `internal/wallet/`, `internal/moneyrequest/`, `internal/api/middleware.go` (idempotency part).
+- Tasks in order (each: write a failing test first):
+  1. **BE-C1**: record `step_executions` (claim `running`) and post to the ledger safely on replay. Use A1's `posting_kind` and UNIQUE to prevent duplicate posting. Tests: call `ledger.Post` twice with the same `txnID`; simulate a crash between Commit and `recordAndEmit` and then replay.
+  2. **BE-C2 (engine part)**: `request` stops at the AUTH step and only continues after a valid confirm. State model `request → confirm → verify` with an expiry, confirming twice is safe, fee locked at `request`.
+  3. **BE-H1**: idempotency per user + `request_hash`, 409 on a different payload, mandatory key on every money-writing endpoint (add `RequireIdempotencyKey` for `/money-requests`, `/split`, `/vaults`, round-up). Remove the auto-generated UUID when the key is missing.
+  4. **BE-H5**: money request stays `pending`/`paying` until the transaction is `completed`, and reverts on failure.
+  5. Compensation: use `compensation_failed`, call `FailTransactionGuarded`, let the recovery sweep scan `compensating`, support retry (remove the fixed Attempt 101).
+  6. Outbox: dead-letter after N attempts, `PumpLocal` blocked in production, consumer uses `select ctx.Done()`.
+  7. Ledger: check wallet `status` and `currency`, guard against int64 overflow, cap amount at every input.
+- Done when: all new tests pass with `-race`, existing tests do not break, `fintech-review` PASS.
 
 **Agent B2 – Offerguard, fee, reversal, approval**
-- Sở hữu: `internal/offerguard/`, `internal/fee/`, `internal/reversal/`, `internal/approval/`, `internal/org/`, `internal/vault/`, `internal/qr/`, `internal/recon/`, `internal/fraud/`.
-- Việc:
-  1. **BE-H2**: `pg_advisory_xact_lock` trong cùng tx với INSERT; cố định múi giờ Asia/Ho_Chi_Minh.
-  2. **BE-H3, H4**: reversal khóa `FOR UPDATE` giao dịch gốc, bắt buộc `status='completed'`, kiểm tra số hàng, trạng thái `reversal_failed`/`needs_manual` khi receiver hết tiền. Cần quyết định nghiệp vụ (D10 bên dưới) trước khi viết.
-  3. Self-approval: thêm `checkerID != req.CreatedBy` vào `eligibility()`. Kiểm tra lại số dư và hạn mức tại bước MOVE_FUNDS sau khi duyệt.
-  4. Fee: chốt làm tròn, chặn `fee > amount`, không nuốt giá trị âm.
-  5. `vault`: cắt label theo rune, validate `target`. `qr`: token dùng một lần hoặc ghi rõ là cho phép dùng lại.
-  6. `recon`: kiểm tra `ErrAlreadyRan` trước khi chạy LLM; lease cho cron khi chạy nhiều replica.
-  7. `fraud`: giờ theo múi giờ cố định, tránh ghi đè `reasons`; chốt hành vi khi LLM lỗi (fail-open hay fail-closed, D11).
-- Xong khi: test race offerguard (N goroutine), reversal đồng thời, reversal khi receiver hết tiền.
+- Owns: `internal/offerguard/`, `internal/fee/`, `internal/reversal/`, `internal/approval/`, `internal/org/`, `internal/vault/`, `internal/qr/`, `internal/recon/`, `internal/fraud/`.
+- Tasks:
+  1. **BE-H2**: `pg_advisory_xact_lock` in the same tx as the INSERT; fix the timezone to Asia/Ho_Chi_Minh.
+  2. **BE-H3, H4**: reversal locks the original transaction `FOR UPDATE`, requires `status='completed'`, checks the row count, `reversal_failed`/`needs_manual` status when the receiver is out of funds. A business decision (D10 below) is needed before writing this.
+  3. Self-approval: add `checkerID != req.CreatedBy` to `eligibility()`. Re-check balance and limits at the MOVE_FUNDS step after approval.
+  4. Fee: settle rounding, block `fee > amount`, do not swallow negative values.
+  5. `vault`: truncate label by rune, validate `target`. `qr`: token is single-use or explicitly documented as reusable.
+  6. `recon`: check `ErrAlreadyRan` before running the LLM; lease for the cron when running multiple replicas.
+  7. `fraud`: time in a fixed timezone, avoid overwriting `reasons`; settle behavior on LLM failure (fail-open or fail-closed, D11).
+- Done when: offerguard race test (N goroutines), concurrent reversal, reversal when the receiver is out of funds.
 
-> **D10** (cần bạn quyết): reversal khi receiver đã tiêu hết tiền: tạo nợ (receivable), hold số dư, hay chỉ cho phép hoàn khi đủ tiền và báo thủ công? **D11**: fraud/LLM lỗi: chặn giao dịch (fail-closed) hay cho qua và gắn cờ (fail-open)?
+> **D10** (decided): when the receiver has already spent the money, the reversal fails into a `needs_manual` status with an audit record; balances never go negative. **D11** (decided): fraud/LLM failure is fail-closed (the transaction is held for review).
 
-### Wave 3 – Xác thực, phân quyền, KYC (P0, song song 2 agent)
+### Wave 3 – Authentication, authorization, KYC (P0, 2 agents in parallel)
 
 **Agent C1 – Auth, PIN, RBAC**
-- Sở hữu: `internal/auth/`, `internal/user/`, `internal/api/` (auth_handler, admin_handler, middleware auth, errmap), `internal/gateway/`.
-- Việc:
-  1. **BE-C2 (phần xác thực)**: PIN thật (D3): bảng/cột hash, endpoint đặt/đổi PIN, verify trong confirm, đếm lần sai và khóa, kiểm tra `initiated_by == user` (404 nếu khác). Bỏ các field PIN/OTP nhận vào mà không dùng. Thêm `ERR_*` vào `errmap.go`.
-  2. **BE-H6**: `RequireAuth` kiểm tra `users.status` (cache Redis ngắn hạn), `jti` hoặc token version để thu hồi. Admin có refresh, kiểm tra status mỗi request, RBAC theo `admin_role` cho từng route (đặc biệt `/ai/*`, `/reversals`, `/services`, `/orgs/:id/policies`, KYC review). Secret riêng cho admin.
-  3. **BE-H8**: khóa theo tài khoản (phone) và `(phone, IP)` với backoff; chạy bcrypt trên hash giả khi phone không tồn tại (chống timing enumeration); rate limit cho logout, files, admin; cap độ dài mật khẩu; refresh kiểm tra `users.status`; ràng buộc `device_id`.
-  4. SSRF: validate URL gateway (allowlist host/scheme `https`, chặn IP private/loopback/link-local/metadata, tắt hoặc giới hạn redirect, cố định method).
-  5. Admin AI: mã hóa `api_key` (AES-GCM, khóa từ env), audit mọi thao tác key/setting, dùng `errors.Is(pgx.ErrNoRows)`, sửa `is_active` mặc định, dùng `model_name` từ DB.
-  6. Admin decide: audit có IP, KYC review yêu cầu lý do khi reject.
-- Xong khi: test IDOR, test brute-force, test RBAC từng route, test SSRF với danh sách IP chặn.
+- Owns: `internal/auth/`, `internal/user/`, `internal/api/` (auth_handler, admin_handler, auth middleware, errmap), `internal/gateway/`.
+- Tasks:
+  1. **BE-C2 (authentication part)**: real PIN (D3): hash table/column, set/change PIN endpoint, verify in confirm, count wrong attempts and lock, check `initiated_by == user` (404 otherwise). Remove PIN/OTP fields that are accepted but unused. Add `ERR_*` to `errmap.go`.
+  2. **BE-H6**: `RequireAuth` checks `users.status` (short-lived Redis cache), `jti` or token version for revocation. Admin gets refresh, status check on every request, RBAC by `admin_role` for each route (especially `/ai/*`, `/reversals`, `/services`, `/orgs/:id/policies`, KYC review). Separate secret for admin.
+  3. **BE-H8**: lockout per account (phone) and `(phone, IP)` with backoff; run bcrypt on a dummy hash when the phone does not exist (prevent timing enumeration); rate limit for logout, files, admin; cap password length; refresh checks `users.status`; bind `device_id`.
+  4. SSRF: validate the gateway URL (allowlist host/scheme `https`, block private/loopback/link-local/metadata IPs, disable or limit redirects, fix the method).
+  5. Admin AI: encrypt `api_key` (AES-GCM, key from env), audit every key/setting operation, use `errors.Is(pgx.ErrNoRows)`, fix the `is_active` default, use `model_name` from the DB.
+  6. Admin decide: audit includes IP, KYC review requires a reason on reject.
+- Done when: IDOR tests, brute-force tests, per-route RBAC tests, SSRF tests with the blocked IP list.
 
-**Agent C2 – KYC và lưu trữ file**
-- Sở hữu: `internal/kyc/`, `internal/storage/`, `internal/ai/`.
-- Việc: **BE-H9**: `image.DecodeConfig` và giới hạn pixel, `http.MaxBytesReader`, ghi đúng phần mở rộng, Cloudinary upload `authenticated/private` với URL ký, khóa ký riêng (không dùng `JWT_SECRET`), `nosniff` và `Content-Disposition`, audit khi cấp link, dọn file mồ côi, lỗi mạng khi tải ảnh là retryable. Chốt chính sách gửi ảnh CCCD sang LLM bên thứ ba (D12: có đồng ý người dùng, hay chỉ gửi dữ liệu trích xuất).
-- Xong khi: test file giả mạo, polyglot, ảnh quá lớn, link hết hạn.
+**Agent C2 – KYC and file storage**
+- Owns: `internal/kyc/`, `internal/storage/`, `internal/ai/`.
+- Tasks: **BE-H9**: `image.DecodeConfig` and a pixel limit, `http.MaxBytesReader`, write the correct extension, Cloudinary upload as `authenticated/private` with signed URLs, a separate signing key (not `JWT_SECRET`), `nosniff` and `Content-Disposition`, audit when a link is issued, clean up orphan files, network errors when fetching images are retryable. Settle the policy for sending national ID (CCCD) images to a third-party LLM (D12: with user consent, or send only extracted data).
+- Done when: tests for forged files, polyglots, oversized images, expired links.
 
-### Wave 4 – Frontend (song song với Wave 3, sau Wave 2 về contract)
+### Wave 4 – Frontend (parallel with Wave 3, after Wave 2 for the contract)
 
-**Agent F1 – Contract và OpenAPI**
-- Sở hữu: `src/backend/api/openapi.yaml`, `src/admin/src/api/schema.d.ts` và `src/api/client.ts`, `src/mobile/src/api/`.
-- Việc: thống nhất endpoint (danh sách lệch ở phụ lục xác minh): quyết định mỗi endpoint là backend thêm hay frontend sửa; cập nhật enum `workflow status`; sinh lại `schema.d.ts`; thêm bước CI kiểm tra openapi khớp route thật; so enum status transaction/money-request/KYC với DB (chưa làm).
+**Agent F1 – Contract and OpenAPI**
+- Owns: `src/backend/api/openapi.yaml`, `src/admin/src/api/schema.d.ts` and `src/api/client.ts`, `src/mobile/src/api/`.
+- Tasks: unify endpoints (the mismatch list is in the verification appendix): decide for each endpoint whether the backend adds it or the frontend is fixed; update the `workflow status` enum; regenerate `schema.d.ts`; add a CI step checking that openapi matches the real routes; compare transaction/money-request/KYC status enums with the DB (not yet done).
 
 **Agent F2 – Mobile**
-- Sở hữu: `src/mobile/`.
-- Việc: bỏ PIN `'123456'` (màn nhập PIN thật nối với server, theo C1); khóa app dùng xác thực thật, giới hạn số lần thử; `useSubmitGuard` (cờ ref + disable nút) cho mọi thao tác tiền, lưu idempotency key theo transaction id; bỏ `Number()/parseInt()` trên amount (dùng bigint, thêm lint rule); refresh chỉ xóa phiên khi 401/403; `app.config.ts` đổi env `dev` về localhost, thêm `bundleIdentifier` và `package`; kiểm tra KYC draft trong SecureStore.
+- Owns: `src/mobile/`.
+- Tasks: remove the PIN `'123456'` (a real PIN entry screen connected to the server, per C1); app lock uses real authentication with a limit on attempts; `useSubmitGuard` (ref flag + disabled button) for every money action, store the idempotency key per transaction id; remove `Number()/parseInt()` on amounts (use bigint, add a lint rule); refresh clears the session only on 401/403; `app.config.ts` changes env `dev` to localhost, add `bundleIdentifier` and `package`; check the KYC draft in SecureStore.
 
 **Agent F3 – Admin**
-- Sở hữu: `src/admin/`.
-- Việc: `RequirePermission` cho route nhạy cảm và ẩn nút theo `can()`; tách mock khỏi production (D6) và hiện lỗi thật, thiếu số thì hiện "—"; Idempotency-Key và disable nút khi ghi; bỏ `Number()` cho amount; CSP trong `index.html`; xử lý response không phải JSON; xóa `Placeholder.tsx` nếu xác nhận không dùng; xóa mật khẩu e2e hard-code (đọc từ env).
+- Owns: `src/admin/`.
+- Tasks: `RequirePermission` for sensitive routes and hide buttons by `can()`; separate mock from production (D6) and show real errors, show "—" when a number is missing; Idempotency-Key and disabled button on writes; remove `Number()` for amounts; CSP in `index.html`; handle non-JSON responses; delete `Placeholder.tsx` if confirmed unused; remove the hard-coded e2e password (read from env).
 
-### Wave 5 – Docs chuyển sang Markdown (song song, độc lập code)
+### Wave 5 – Docs converted to Markdown (parallel, independent of code)
 
-**Agent D1 – Chuyển HTML → MD**
-- Sở hữu: `docs/` → `docs/` (root).
-- Cấu trúc đề xuất:
+**Agent D1 – Convert HTML → MD**
+- Owns: `docs/` → `docs/` (root).
+- Proposed structure:
   ```
   docs/
-    README.md                    (mục lục)
+    README.md                    (table of contents)
     architecture/00..07-*.md
     guide/{functional,technical}-overview.{vi,en}.md
     planning/{master-plan,session-prompt}.md
     design/ui-design-spec.md
-    design/mockups/              (giữ HTML mockup làm tài sản thiết kế; có README)
-    qa/{plan,test-cases}/        (xlsx giữ nguyên; script .py giữ)
-    specs/                       (spec và plan theo tính năng, từ skill mới)
-    handoff/                     (ghi chú giữa các agent)
-    reference/                   (TMDS/DEH, gắn nhãn tham khảo)
+    design/mockups/              (keep HTML mockups as design assets; has README)
+    qa/{plan,test-cases}/        (xlsx kept as is; .py scripts kept)
+    specs/                       (per-feature spec and plan, from the new skills)
+    handoff/                     (notes between agents)
+    reference/                   (TMDS/DEH, labeled as reference)
     adr/
   ```
-- Quy ước: diagram dùng ```mermaid trong md; mockup HTML (28KB+ mỗi file) **không** chuyển sang md vì là sản phẩm thiết kế, chỉ có README mô tả. Phải chạy mà không mất nội dung: dùng `pandoc` (hoặc script) rồi **người rà lại bảng, mermaid và liên kết**.
-- Xong khi: mọi liên kết nội bộ hoạt động (script kiểm tra), không còn file `.html` trong `docs/` ngoài `mockups/`.
+- Conventions: diagrams use ```mermaid in md; HTML mockups (28KB+ each) are **not** converted to md because they are design deliverables, only a README describing them. Must run without losing content: use `pandoc` (or a script) and then a **human reviews tables, mermaid and links**.
+- Done when: all internal links work (checked by script), no `.html` files remain in `docs/` outside `mockups/`.
 
-**Agent D2 – Sửa nội dung docs** (chạy sau D1 để tránh sửa hai lần)
-- Việc, theo phụ lục và mục 3-5 của `docs/audit/AUDIT-REPORT.md`:
-  1. Tách thông tin dự án khác (D5): README, doc 06 (đổi "TMDS Standard Platform" thành "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. Sửa comment "DEH" trong `approval/service.go:150` (đụng code, đưa cho agent sở hữu file).
-  2. Số liệu: số migration (13, sau A1 là 14), E01–E20 và "39 case", số mockup, F11 vào master-plan, bản EN "$200" → 5,000,000 VND, "ví Mỹ" → ghi rõ là phong cách UI.
-  3. Hạn mức KYC: một bảng duy nhất (D7), các nơi khác tham chiếu.
-  4. Enum: `processing_async`, `cancelled`, `reversal`, `compensation_failed`, role L1/L2 map vào `org_role`.
-  5. Sửa docs theo code: asynq → goroutine + lease (D8), storage Cloudinary, endpoint thêm `/v1`, quan hệ `verify` và `confirm`.
-  6. Viết mục "Bất biến và ngoại lệ": idempotency, reversal, hold số dư khi chờ duyệt, thứ tự lock, ví system được phép âm, job đối chiếu `wallets.balance = SUM(ledger_entries)`, fee (làm tròn, ai trả, hoàn fee), múi giờ cho hạn mức, hành vi LLM lỗi.
-- Xong khi: không còn mâu thuẫn trong danh sách mục 4 của báo cáo.
+**Agent D2 – Fix docs content** (runs after D1 to avoid editing twice)
+- Tasks, following the appendix and sections 3-5 of `docs/audit/AUDIT-REPORT.md`:
+  1. Separate information from other projects (D5): README, doc 06 (rename "TMDS Standard Platform" to "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. Fix the "DEH" comment in `approval/service.go:150` (touches code, hand to the agent that owns the file).
+  2. Figures: number of migrations (13, 14 after A1), E01–E20 and "39 cases", number of mockups, F11 into the master-plan, EN version "$200" → 5,000,000 VND, "US wallet" → state explicitly that it is a UI style.
+  3. KYC limits: a single table (D7), other places reference it.
+  4. Enums: `processing_async`, `cancelled`, `reversal`, `compensation_failed`, roles L1/L2 mapped to `org_role`.
+  5. Fix docs to match the code: asynq → goroutine + lease (D8), Cloudinary storage, add `/v1` to endpoints, relationship between `verify` and `confirm`.
+  6. Write an "Invariants and exceptions" section: idempotency, reversal, balance hold while awaiting approval, lock order, system wallet allowed to go negative, a reconciliation job `wallets.balance = SUM(ledger_entries)`, fee (rounding, who pays, fee refund), timezone for limits, behavior on LLM failure.
+- Done when: no contradictions remain in the section 4 list of the report.
 
-### Wave 6 – Test, kiểm thử theo test case, vòng lặp fix (sau Wave 2-4)
+### Wave 6 – Tests, test-case-driven verification, fix loop (after Waves 2-4)
 
-**Agent T1 – Test tích hợp backend**
-- Việc: ánh xạ test case (xlsx `qa/test-cases/*`) sang `TestEdge_<ID>_*`. Bổ sung các test còn thiếu: ledger post 2 lần, crash-recovery MOVE_FUNDS, race offerguard, idempotency chéo user và khác payload, reversal đồng thời và receiver hết tiền, confirm với user không sở hữu, signed URL giả mạo, path traversal, property-based `fee.Calc`. Test DB dùng Postgres + Redis thật qua docker compose (hiện repo không dùng testcontainers, không cần thêm).
-- Vòng lặp: chạy → thất bại → `systematic-debugging` tìm root cause → sửa → chạy lại, tối đa 3 vòng mỗi lỗi; quá 3 vòng thì dừng và báo cáo người dùng.
+**Agent T1 – Backend integration tests**
+- Tasks: map test cases (xlsx `qa/test-cases/*`) to `TestEdge_<ID>_*`. Add the missing tests: ledger post twice, crash-recovery MOVE_FUNDS, offerguard race, idempotency across users and with different payloads, concurrent reversal and receiver out of funds, confirm by a non-owning user, forged signed URL, path traversal, property-based `fee.Calc`. DB tests use real Postgres + Redis via docker compose (the repo currently does not use testcontainers, none needed).
+- Loop: run → fail → `systematic-debugging` finds the root cause → fix → rerun, at most 3 rounds per bug; beyond 3 rounds, stop and report to the user.
 
 **Agent T2 – E2E**
-- Việc: Playwright cho admin (đã có `e2e/`), thêm test cho mobile web hoặc Maestro nếu khả thi. Đối chiếu test case xlsx. Đăng nhập e2e dùng tài khoản riêng từ env.
+- Tasks: Playwright for admin (`e2e/` already exists), add tests for mobile web or Maestro if feasible. Cross-check against the xlsx test cases. E2E login uses a dedicated account from env.
 
-**Agent T3 – Quét tĩnh và hồi quy**
-- Việc: `govulncheck`, `gosec`, `gitleaks`, `npm audit`, `gitnexus analyze --pdg` rồi `explain` để rà taint, `detect_changes` so với baseline, báo cáo `docs/handoff/final-verification.md`.
+**Agent T3 – Static scanning and regression**
+- Tasks: `govulncheck`, `gosec`, `gitleaks`, `npm audit`, `gitnexus analyze --pdg` then `explain` to review taint, `detect_changes` against baseline, report in `docs/handoff/final-verification.md`.
 
 ---
 
-## 5. Việc cần bạn quyết hoặc cung cấp
+## 5. Items that need your decision or input
 
-### 5.1 Chỉ bạn làm được
-- Xoay key Neon, Cloudinary (W0-1).
-- Duyệt danh sách file xóa (W0-3).
-- Cung cấp hoặc xác nhận chính sách nghiệp vụ D3, D7, D10, D11, D12.
+### 5.1 Only you can do
+- Rotate Neon and Cloudinary keys (W0-1).
+- Approve the deletion file list (W0-3).
+- Provide or confirm business policy for D3, D7, D10, D11, D12 (D3, D7, D10, D11 are answered; D12 remains open).
 
-### 5.2 Hạn mức KYC (D7) – hiện 4 nguồn lệch nhau
-| Nguồn | Giá trị |
+### 5.2 KYC limits (D7) – currently 4 sources disagree
+Decision: take the seed values in code (`OFFER_CUST_L1` = 50M, `OFFER_CUST_L2` = 200M VND). The remaining sources below must be aligned to them.
+
+| Source | Value |
 |---|---|
-| Mockup `01-auth-kyc.html:118` | 100 triệu ₫/ngày |
-| Seed `OFFER_CUST_L1/L2` (`primary_pocket_max`) | 50 triệu / 200 triệu |
-| `offer_services` mặc định | 500 triệu/ngày, 2 tỷ/tháng |
-| Doc 05 | 100M/txn, 500M/ngày, 2 tỷ/tháng |
-| Bản vi functional overview | 5 triệu (ngưỡng tier) |
+| Mockup `01-auth-kyc.html:118` | 100 million VND/day |
+| Seed `OFFER_CUST_L1/L2` (`primary_pocket_max`) | 50 million / 200 million |
+| `offer_services` default | 500 million/day, 2 billion/month |
+| Doc 05 | 100M/txn, 500M/day, 2 billion/month |
+| Vietnamese functional overview | 5 million (tier threshold) |
 
-Cần bạn chọn bảng chuẩn theo tier KYC (L0/L1/L2): hạn mức mỗi giao dịch, mỗi ngày, mỗi tháng, tối đa số dư.
+You still need to choose the canonical table per KYC tier (L0/L1/L2) for the remaining fields: limit per transaction, per day, per month, maximum balance.
 
 ---
 
-## 6. Phần còn chưa kiểm chứng (ghi rõ để không bị bỏ sót)
+## 6. Parts still unverified (stated explicitly so they are not missed)
 
-Các mục dưới đây agent chưa đọc hoặc chưa chạy. Mỗi mục được giao cho agent nào xử lý.
+The items below have not been read or run by an agent. Each item is assigned to the agent that will handle it.
 
-| Mục | Giao cho |
+| Item | Assigned to |
 |---|---|
-| So enum status transaction/money-request/KYC với DB, so từng field response | F1 |
-| Hai file docs lớn nhất (`00-backend-design-v2-base.html`, `technical-overview.*`) chưa đọc kỹ từng dòng | D2 |
-| File xlsx test case, `docs/reference/external/*.docx` chưa mở | T1, D2 |
-| `workflow/engine.go` chỉ mới kiểm vùng compensation; `round_up.go`, `fraud/rules.go`, `fraud/admin.go`, `product` (phần ghi), `moneyrequest/sweeper.go`, `recon/cron.go` chưa đọc | B1, B2 |
-| Chữ ký callback bank (`wallet/callback.go`), `hmac.Equal` trong signer QR | B2, C2 |
-| `org_handler`: ai được tạo disbursement; role đổi sau khi tạo lệnh | B2 |
-| Recon cron khi nhiều replica | B2 |
-| `kyc-draft.ts` có lưu ảnh vào SecureStore không | F2 |
-| `ServicePipelineModal.tsx:66` URL mẫu có phải default gửi lên backend không | F3 |
-| `docs/skills` và `src/backend/.claude/skills`: khác nhau ở nội dung hay chỉ CRLF | W0-5 |
-| Mobile `LICENSE`, tên bundle | F2 |
-| Chưa chạy bất kỳ test hay ứng dụng nào để xác nhận lỗi bằng thực nghiệm | W0-6, T1 (đây là cách chắc chắn nhất) |
+| Compare transaction/money-request/KYC status enums with the DB, compare each response field | F1 |
+| The two largest docs files (`00-backend-design-v2-base.html`, `technical-overview.*`) have not been read line by line | D2 |
+| The xlsx test case files and `docs/reference/external/*.docx` have not been opened | T1, D2 |
+| `workflow/engine.go` only had the compensation area checked; `round_up.go`, `fraud/rules.go`, `fraud/admin.go`, `product` (write part), `moneyrequest/sweeper.go`, `recon/cron.go` have not been read | B1, B2 |
+| Bank callback signature (`wallet/callback.go`), `hmac.Equal` in the QR signer | B2, C2 |
+| `org_handler`: who may create a disbursement; role changes after the order was created | B2 |
+| Recon cron with multiple replicas | B2 |
+| Whether `kyc-draft.ts` stores images in SecureStore | F2 |
+| Whether the sample URL at `ServicePipelineModal.tsx:66` is a default sent to the backend | F3 |
+| `docs/skills` and `src/backend/.claude/skills`: differ in content or only in CRLF | W0-5 |
+| Mobile `LICENSE`, bundle name | F2 |
+| No test or application has been run to confirm bugs empirically | W0-6, T1 (this is the most reliable way) |
 
-**Đã bác bỏ:** mojibake. Các file là UTF-8 hợp lệ, chỉ là console hiển thị sai, nên không có việc sửa encoding.
+**Refuted:** mojibake. The files are valid UTF-8; only the console displayed them wrongly, so there is no encoding fix to make.
 
 ---
 
-## 7. Thứ tự và phụ thuộc (tóm tắt)
+## 7. Order and dependencies (summary)
 
 ```
-W0 (nền, tuần tự)
- └─ W1: A1 (migration) ─┐ A2 (config) ─┐ A3 (monorepo/CI)   [song song]
+W0 (foundation, sequential)
+ └─ W1: A1 (migration) ─┐ A2 (config) ─┐ A3 (monorepo/CI)   [parallel]
         └──────────────┴──────────────┘
  └─ W2: B1 (ledger/workflow/idempotency) → B2 (offerguard/reversal/approval)
- └─ W3: C1 (auth/PIN/RBAC) ‖ C2 (KYC/storage)      (sau W1; C1 trước F2)
- └─ W4: F1 (contract) → F2 mobile ‖ F3 admin       (sau W2/W3 về contract)
- └─ W5: D1 (HTML→MD) → D2 (sửa nội dung)           (độc lập, chạy được ngay sau W0)
- └─ W6: T1 ‖ T2 → T3 (xác nhận cuối, vòng lặp fix)
+ └─ W3: C1 (auth/PIN/RBAC) ‖ C2 (KYC/storage)      (after W1; C1 before F2)
+ └─ W4: F1 (contract) → F2 mobile ‖ F3 admin       (after W2/W3 for the contract)
+ └─ W5: D1 (HTML→MD) → D2 (fix content)            (independent, can run right after W0)
+ └─ W6: T1 ‖ T2 → T3 (final confirmation, fix loop)
 ```
 
-Wave 5 chỉ phụ thuộc W0 nên có thể chạy song song với W1 để tiết kiệm thời gian. Mỗi wave kết thúc bằng một lần merge và chạy lại baseline.
+Wave 5 depends only on W0, so it can run in parallel with W1 to save time. Each wave ends with a merge and a re-run of the baseline.
 
-## 8. Rủi ro chính của kế hoạch
+## 8. Main risks of the plan
 
-- **Migration 000014 đổi UNIQUE của idempotency key trên DB đã có dữ liệu.** Cần kiểm tra DB đang dùng (Neon) có dữ liệu thật không, và có bản sao lưu trước khi áp dụng.
-- **Thay đổi luồng `request → confirm`** ảnh hưởng cả mobile lẫn admin; F1 phải chốt contract trước khi F2/F3 làm.
-- **Agent nền không hỏi lại được.** Mọi quyết định D* phải chốt trước khi giao việc, nếu không agent sẽ tự đoán.
-- **Kết quả audit dựa trên đọc code**, chưa có test chạy thật. Bước W0-6 và T1 là nơi lỗi được chứng minh hoặc bác bỏ.
+- **Migration 000014 changes the UNIQUE of the idempotency key on a DB that already has data.** Check whether the DB in use (Neon) has real data, and that a backup exists before applying.
+- **Changing the `request → confirm` flow** affects both mobile and admin; F1 must settle the contract before F2/F3 start.
+- **Background agents cannot ask back.** Every D* decision must be settled before assigning work, otherwise the agent will guess.
+- **The audit results are based on reading code**, with no tests actually run. Step W0-6 and T1 are where bugs are proven or refuted.
+
+## Decision update 2026-11-21: KYC limits are attached to offers
+
+**Decision (user):** limits depend on the user's *offer* (`offers` + `offer_services` + `offer_auth_matrix`). A user's KYC tier selects the offer; the offer defines the limits. The hard-coded `wallet.TxnLimit` (2M / 5M / 100M by KYC status) is not the source of truth and will be removed once the offer path covers every money-moving flow.
+
+**What this means in code (not yet built, tracked as work for `hpay-feature`):**
+1. Define the tier -> offer mapping (which KYC status gets `OFFER_CUST_L1`, which gets `OFFER_CUST_L2`, what an unverified user gets). **Open question for the user:** the exact limit table below.
+2. CORRECTION (verified in migration 000006:106-112): `OFFER_CUST_L1` DOES have `offer_services` rows for every active service, but they carry placeholder limits identical to L2 (100,000,000 per transaction, 500,000,000 per day, 2,000,000,000 per month), plus the standard PIN/OTP/2FA matrix. So L1 and L2 differ today only in `primary_pocket_max` and bank-account count, and the final per-offer limits still have to be set. `OFFER_BIZ_ENT` has no `offer_services` rows in any migration, so assigning it would block every service.
+3. Assign the offer when KYC changes (`SetUserKycFromPending` / `SetUserKycFromManualReview` paths) in the same transaction, instead of backfilling everyone to `OFFER_CUST_L2`.
+4. Apply the offer guard on every money path (the engine path today skips `wallet.TxnLimit`; the legacy paths are dead code), then delete `TxnLimit`.
+5. Inactive offer must block, not fall back to the default offer.
+6. `primary_pocket_max` (50M / 200M) is a wallet balance ceiling, not a per-transaction limit; enforce it on credits or remove it from the offer model.
+
+**Limit table to be confirmed by the user (values to fill in; nothing below is decided):**
+
+| Offer | KYC tier | Per transaction | Per day | Per month | Wallet balance ceiling (`primary_pocket_max`) |
+|-------|----------|-----------------|---------|-----------|-----------------------------------------------|
+| (unverified) | none / rejected | ? | ? | ? | ? |
+| OFFER_CUST_L1 | tier 1 | 100,000,000 (placeholder, migration 000006) | 500,000,000 (placeholder) | 2,000,000,000 (placeholder) | 50,000,000 (seed) |
+| OFFER_CUST_L2 | tier 2 | 100,000,000 (seed) | 500,000,000 (seed) | 2,000,000,000 (seed) | 200,000,000 (seed) |
+
+Cells marked "seed" or "placeholder" exist in the migrations today; "placeholder" means a default inserted so the guard does not block demo flows, not a product decision. Every "?" is a product decision still to be made.

@@ -9,8 +9,8 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/approval"
 )
 
-// TestApprovalDetail_MakerCanView: maker xem được request của chính mình dù
-// không phải checker/org member nào khớp level hiện tại.
+// TestApprovalDetail_MakerCanView: maker can view their own request even though
+// they are not a checker/org member matching the current level.
 func TestApprovalDetail_MakerCanView(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -41,8 +41,8 @@ func TestApprovalDetail_MakerCanView(t *testing.T) {
 	}
 }
 
-// TestApprovalDetail_EligibleCheckerCanView: checker của org xem được, kể cả
-// khi level của họ không khớp current_level (xem khác duyệt).
+// TestApprovalDetail_EligibleCheckerCanView: an org checker can view it, even
+// when their level does not match current_level (viewing is not approving).
 func TestApprovalDetail_EligibleCheckerCanView(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -68,8 +68,8 @@ func TestApprovalDetail_EligibleCheckerCanView(t *testing.T) {
 	}
 }
 
-// TestApprovalDetail_UnrelatedUserGetsNotFound: người ngoài org nhận 404
-// (ErrNotFound), không phải 403 — không lộ sự tồn tại của request.
+// TestApprovalDetail_UnrelatedUserGetsNotFound: a user outside the org gets 404
+// (ErrNotFound), not 403 — does not leak the request's existence.
 func TestApprovalDetail_UnrelatedUserGetsNotFound(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -93,8 +93,8 @@ func TestApprovalDetail_UnrelatedUserGetsNotFound(t *testing.T) {
 	}
 }
 
-// TestApprovalDetail_SignatureHistoryOrdered: 2 checker ký ở 2 level khác
-// nhau — response trả đúng thứ tự, đúng tên, đúng hành động.
+// TestApprovalDetail_SignatureHistoryOrdered: 2 checkers sign at 2 different
+// levels — the response returns the correct order, names and actions.
 func TestApprovalDetail_SignatureHistoryOrdered(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()

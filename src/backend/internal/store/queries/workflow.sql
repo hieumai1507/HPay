@@ -52,8 +52,8 @@ SELECT id, step_name, attempt, status, input, output, error, started_at, finishe
 FROM step_executions WHERE instance_id = $1 ORDER BY id;
 
 -- name: ClaimStuckInstances :many
--- Lease pattern (E20, học TMDS pending->attempt): UPDATE là claim — sweeper
--- thứ hai chạy song song sẽ không match được hàng đã claim.
+-- Lease pattern (E20, borrowed from TMDS pending->attempt): the UPDATE is the claim — a second
+-- sweeper running in parallel cannot match an already-claimed row.
 UPDATE workflow_instances w
 SET status = 'recovering', updated_at = now()
 WHERE w.id IN (

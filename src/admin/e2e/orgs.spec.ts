@@ -10,7 +10,7 @@ import { test, expect } from './fixtures/auth';
  * clearSession() unconditionally before useOrgsQueries.ts's own
  * try/catch-and-fall-back-to-mock logic ever saw the error — RequireAdmin
  * redirected to /login before the mock-data fallback could even paint. Net
- * effect: any admin who opened "Tổ chức & Policy" was immediately logged
+ * effect: any admin who opened the Organizations page (UI label "Tổ chức & Policy") was immediately logged
  * out. Fix: a real admin-ops endpoint, GET /v1/admin/orgs (hpay-backend),
  * which useOrgs() now calls instead — not scoped to caller membership like
  * /v1/org, so it works under the admin audience and returns every org with
@@ -23,7 +23,7 @@ test.describe('Organizations & Policy', () => {
     // DEH Corp is seeded by cmd/seed (real org, real member/policy counts) —
     // proves the page rendered real data from GET /v1/admin/orgs, not just
     // that it didn't redirect. exact:true because "DEH Corp — Chính sách phê
-    // duyệt" (the detail-panel heading) also contains this text.
+    // duyệt" (the detail-panel heading, "DEH Corp - Approval Policy") also contains this text.
     await expect(asMaker.getByText('DEH Corp', { exact: true })).toBeVisible();
   });
 });

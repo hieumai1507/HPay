@@ -14,8 +14,8 @@ func newChallenge(code string) OTPChallenge {
 	}
 }
 
-// TestEdge_E11_OTPBruteForce: sai 3 lần thì challenge vô hiệu vĩnh viễn —
-// kể cả nhập ĐÚNG ở lần 4 cũng phải bị từ chối (docs 01 §4 E11).
+// TestEdge_E11_OTPBruteForce: 3 wrong attempts permanently invalidate the challenge —
+// even a CORRECT code on the 4th attempt must be rejected (docs 01 §4 E11).
 func TestEdge_E11_OTPBruteForce(t *testing.T) {
 	ch := newChallenge("123456")
 	now := time.Now()

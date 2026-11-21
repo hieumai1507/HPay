@@ -108,8 +108,8 @@ func (e *env) decide(t *testing.T, checkerID, reqID uuid.UUID, approve bool) (ap
 	return e.asvc.Decide(context.Background(), checkerID, reqID, approve, code)
 }
 
-// TestOrgDisbursementTwoTierEndToEnd: maker → WAIT_APPROVAL → L1 ký → L2 ký →
-// engine resume → tiền đi từ ví org → completed; timeline có WAIT_APPROVAL.
+// TestOrgDisbursementTwoTierEndToEnd: maker → WAIT_APPROVAL → L1 signs → L2 signs →
+// engine resume → money leaves the org wallet → completed; timeline contains WAIT_APPROVAL.
 func TestOrgDisbursementTwoTierEndToEnd(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -185,7 +185,7 @@ func TestOrgDisbursementTwoTierEndToEnd(t *testing.T) {
 	}
 }
 
-// TestOrgDisbursementRejectFailsClean: checker reject → txn failed, KHÔNG bút toán.
+// TestOrgDisbursementRejectFailsClean: checker reject → txn failed, NO ledger entries.
 func TestOrgDisbursementRejectFailsClean(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -218,9 +218,9 @@ func TestOrgDisbursementRejectFailsClean(t *testing.T) {
 	}
 }
 
-// TestEdge_E08_CheckerRaceSingleFinalize: 2 checker cùng level bấm approve đồng
-// thời trên tier cần 1 chữ ký → FOR UPDATE tuần tự hóa: đúng 1 người finalize,
-// người kia nhận ERR_ALREADY_FINALIZED; engine resume đúng 1 lần.
+// TestEdge_E08_CheckerRaceSingleFinalize: 2 checkers at the same level approve concurrently
+// on a tier needing 1 signature → FOR UPDATE serializes them: exactly one finalizes,
+// the other gets ERR_ALREADY_FINALIZED; the engine resumes exactly once.
 func TestEdge_E08_CheckerRaceSingleFinalize(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -288,9 +288,9 @@ func TestEdge_E08_CheckerRaceSingleFinalize(t *testing.T) {
 	}
 }
 
-// TestEdge_E09_PolicySnapshotSurvivesPolicyChange: lệnh tạo dưới policy v1
-// (1 chữ ký) vẫn duyệt theo v1 sau khi admin đổi sang v2 (2 tier);
-// lệnh MỚI tạo sau đó theo v2.
+// TestEdge_E09_PolicySnapshotSurvivesPolicyChange: a request created under policy v1
+// (1 signature) is still approved under v1 after the admin switches to v2 (2 tiers);
+// a NEW request created afterwards follows v2.
 func TestEdge_E09_PolicySnapshotSurvivesPolicyChange(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -342,8 +342,8 @@ func TestEdge_E09_PolicySnapshotSurvivesPolicyChange(t *testing.T) {
 	}
 }
 
-// TestEdge_E10_ExpiredApprovalFailsClean: request quá hạn → sweeper expire →
-// instance failed, txn failed, KHÔNG bút toán; 2 sweeper song song không double-fire.
+// TestEdge_E10_ExpiredApprovalFailsClean: expired request → sweeper expires it →
+// instance failed, txn failed, NO ledger entries; 2 parallel sweepers do not double-fire.
 func TestEdge_E10_ExpiredApprovalFailsClean(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -406,8 +406,8 @@ func TestEdge_E10_ExpiredApprovalFailsClean(t *testing.T) {
 	}
 }
 
-// TestApprovalEligibility: maker không tự duyệt được lệnh mình; người ngoài org
-// không thấy request tồn tại; checker sai level bị chặn.
+// TestApprovalEligibility: a maker cannot approve their own request; a user outside the org
+// cannot see that the request exists; a checker at the wrong level is blocked.
 func TestApprovalEligibility(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()

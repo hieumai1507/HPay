@@ -37,7 +37,7 @@ func TestValidateLegs(t *testing.T) {
 	}
 }
 
-// TestEdge_E14_SelfTransferRejected: tiền phải di chuyển giữa 2 ví khác nhau.
+// TestEdge_E14_SelfTransferRejected: money must move between two different wallets.
 func TestEdge_E14_SelfTransferRejected(t *testing.T) {
 	a := uuid.New()
 	err := ValidateLegs([]Leg{leg(a, store.EntryDirectionDebit, 100), leg(a, store.EntryDirectionCredit, 100)})

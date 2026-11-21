@@ -10,8 +10,8 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/testutil"
 )
 
-// TestEdge_E02_ConcurrentOverdraw: ví 100k, 2 goroutine cùng rút 70k —
-// đúng 1 thành công, số dư cuối 30k, không bao giờ âm.
+// TestEdge_E02_ConcurrentOverdraw: wallet of 100k, 2 goroutines both withdraw 70k —
+// exactly one succeeds, final balance 30k, never negative.
 func TestEdge_E02_ConcurrentOverdraw(t *testing.T) {
 	pool := testutil.PoolFromEnv(t)
 	ctx := context.Background()
@@ -53,8 +53,8 @@ func TestEdge_E02_ConcurrentOverdraw(t *testing.T) {
 	}
 }
 
-// TestEdge_E03_CrossTransferNoDeadlock: A→B và B→A đồng thời — lock ordering
-// đảm bảo cả 2 hoàn tất, không deadlock.
+// TestEdge_E03_CrossTransferNoDeadlock: A→B and B→A concurrently — lock ordering
+// ensures both complete, no deadlock.
 func TestEdge_E03_CrossTransferNoDeadlock(t *testing.T) {
 	pool := testutil.PoolFromEnv(t)
 	ctx := context.Background()

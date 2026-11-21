@@ -10,8 +10,8 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/testutil"
 )
 
-// TestApprovalCancel_MakerCancelsPending: maker hủy lệnh pending của mình →
-// txn failed, không bút toán — cùng hành vi với nhánh reject hiện có.
+// TestApprovalCancel_MakerCancelsPending: maker cancels their own pending request →
+// txn failed, no ledger entries — same behavior as the existing reject branch.
 func TestApprovalCancel_MakerCancelsPending(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()

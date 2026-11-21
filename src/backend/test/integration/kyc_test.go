@@ -134,8 +134,8 @@ func TestKYCSubmitGuards(t *testing.T) {
 	}
 }
 
-// TestKYCReviewRace: 2 admin review đồng thời cùng request → guarded UPDATE
-// cho đúng 1 người thắng (nền tảng cho admin edge A01).
+// TestKYCReviewRace: 2 admins review the same request concurrently → guarded UPDATE
+// lets exactly one win (basis for admin edge A01).
 func TestKYCReviewRace(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -178,8 +178,8 @@ func TestKYCReviewRace(t *testing.T) {
 	}
 }
 
-// TestKYCTierUnlocksTransferLimit: nối F8 vào F3 — auto_approved nâng
-// wallet.TxnLimit từ 2tr lên 100tr.
+// TestKYCTierUnlocksTransferLimit: connects F8 to F3 — auto_approved raises
+// wallet.TxnLimit from 2M to 100M.
 func TestKYCTierUnlocksTransferLimit(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()

@@ -13,8 +13,8 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/testutil"
 )
 
-// TestMoneyRequestPayEndToEnd: A xin B → B pay → P2P hoàn tất qua đúng engine
-// F5 → request status=paid + paid_txn_id đúng transaction.
+// TestMoneyRequestPayEndToEnd: A requests from B → B pays → P2P completes through the correct engine
+// F5 → request status=paid + paid_txn_id points to the right transaction.
 func TestMoneyRequestPayEndToEnd(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -64,8 +64,8 @@ func TestMoneyRequestPayEndToEnd(t *testing.T) {
 	}
 }
 
-// TestSplitBillThreeWay: 3 payer chia đều 300k → 2 người pay, 1 decline →
-// GET detail thấy đúng 3 trạng thái độc lập cho từng sibling.
+// TestSplitBillThreeWay: 3 payers split 300k evenly → 2 pay, 1 declines →
+// GET detail shows 3 independent states, one per sibling.
 func TestSplitBillThreeWay(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -122,8 +122,8 @@ func TestSplitBillThreeWay(t *testing.T) {
 	}
 }
 
-// TestMoneyRequestCancelAndActorGuards: cancel bởi đúng requester khi còn
-// pending; decline/cancel bởi sai actor phải bị chặn.
+// TestMoneyRequestCancelAndActorGuards: cancel by the right requester while still
+// pending; decline/cancel by the wrong actor must be blocked.
 func TestMoneyRequestCancelAndActorGuards(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -153,12 +153,12 @@ func TestMoneyRequestCancelAndActorGuards(t *testing.T) {
 	}
 }
 
-// TestEdge_E19_ExpiryRacePay: money request hết hạn đúng lúc trả.
-// (a) expires_at đã qua NGAY TRƯỚC khi Pay(), sweeper CHƯA chạy → Pay() tự
-// chặn bằng chính điều kiện expires_at trong transaction, không tạo giao dịch
-// nào. (b) 2 goroutine chạy đồng thời — Pay() và sweeper.ExpireDue() — FOR
-// UPDATE tuần tự hóa: đúng 1 trong 2 thắng, không bao giờ cả hai, không có
-// transaction "mồ côi" nếu expired thắng.
+// TestEdge_E19_ExpiryRacePay: money request expires right as it is being paid.
+// (a) expires_at passes JUST BEFORE Pay(), sweeper has NOT run → Pay() blocks itself
+// via the expires_at condition inside the transaction, creating no
+// transaction. (b) 2 goroutines run concurrently — Pay() and sweeper.ExpireDue() — FOR
+// UPDATE serializes them: exactly one of the two wins, never both, and no
+// orphaned transaction if expiry wins.
 func TestEdge_E19_ExpiryRacePay(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()

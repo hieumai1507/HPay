@@ -235,7 +235,7 @@ func (s *Service) Detail(ctx context.Context, userID uuid.UUID, refCode string) 
 		return TxnView{}, ErrTxnNotFound
 	}
 	if txn.SenderWalletID != w.ID && txn.ReceiverWalletID != w.ID {
-		return TxnView{}, ErrTxnNotFound // 404, không lộ tồn tại
+		return TxnView{}, ErrTxnNotFound // 404, does not leak existence
 	}
 	v := TxnView{
 		ID: txn.ID, RefCode: txn.RefCode, Type: string(txn.Type), Status: string(txn.Status),

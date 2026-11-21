@@ -61,7 +61,7 @@ func TestParseScoreJSON(t *testing.T) {
 	}
 }
 
-// TestClaudeScorerErrorClassification: mạng/5xx/parse lỗi → RetryableError
+// TestClaudeScorerErrorClassification: network error / 5xx / parse failure -> RetryableError
 // (engine retry); 4xx → terminal.
 func TestClaudeScorerErrorClassification(t *testing.T) {
 	newServer := func(status int, body string) *httptest.Server {

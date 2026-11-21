@@ -27,8 +27,8 @@ function hoursLeft(iso: string): number {
   return Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / (60 * 60 * 1000)));
 }
 
-// Mockup 03-business.html frame 19 "Maker — Trạng thái lệnh": created → mỗi
-// chữ ký đã ghi nhận → bước hiện tại (chờ) hoặc kết quả cuối → chuyển tiền.
+// Mockup 03-business.html frame 19 "Maker — Trạng thái lệnh" (order status): created -> each
+// recorded signature -> current step (pending) or final result -> transfer.
 export function buildTimeline(d: ApprovalDetail): TimelineStep[] {
   const steps: TimelineStep[] = [
     {

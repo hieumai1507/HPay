@@ -1,5 +1,5 @@
 -- Enforce the "ledger is append-only" invariant (docs index.html §8:
--- "Ledger chỉ INSERT — không UPDATE/DELETE — Trigger + quyền DB + review").
+-- "Ledger is INSERT-only - no UPDATE/DELETE - trigger + DB grants + review").
 --
 -- The trigger was documented and even had a CI step named after it, but it was
 -- never created: an UPDATE on ledger_entries succeeded silently. Corrections

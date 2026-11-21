@@ -1,4 +1,4 @@
-// Package vault manages savings pockets ("hũ tiết kiệm", docs 04 §2.2).
+// Package vault manages savings pockets (savings pots, docs 04 §2.2).
 //
 // A vault is not a separate balance store: it is a row in wallets with
 // purpose='vault', so every ledger invariant applies to it unchanged and money

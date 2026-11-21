@@ -43,7 +43,7 @@ var (
 )
 
 // Per-transaction cap for org topup/disbursement (no KYC tiers for orgs).
-const orgTxnLimit int64 = 1_000_000_000 // 1 tỷ VND
+const orgTxnLimit int64 = 1_000_000_000 // 1 billion VND
 
 const disbursementDefinition = "org_disbursement"
 

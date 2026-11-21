@@ -59,7 +59,7 @@ func (r *RoundUp) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 
 	// Round-up only applies to an actual spend (P2P_TRANSFER / MONEY_REQUEST).
 	// TOPUP_BANK (system sender) and VAULT_SAVINGS (vault_move) also run this
-	// workflow definition but are not "chi tiêu lẻ" — skip them.
+	// workflow definition but are not small-change spend — skip them.
 	if txn.Type != store.TxnTypeP2p {
 		return skipRoundUp("not_a_spend"), nil
 	}

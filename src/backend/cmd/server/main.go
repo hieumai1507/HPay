@@ -95,7 +95,7 @@ func run(role string) error {
 		handlers.RegisterAll(registry, pool)
 		engine := workflow.NewEngine(pool, log)
 
-		// F8: KYC steps — nạp cấu hình động từ database tại thời điểm chạy
+		// F8: KYC steps — load dynamic configuration from the database at runtime
 		var files storage.Store
 		var err error
 		if cfg.StorageProvider == "cloudinary" {

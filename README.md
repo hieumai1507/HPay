@@ -1,33 +1,37 @@
 # HPay
 
-Ví điện tử fintech: backend Go, admin React, mobile React Native (Expo). Một repo duy nhất.
+Fintech e-wallet: Go backend, React admin console, React Native (Expo) mobile app. One repository.
 
-## Cấu trúc
+## Layout
 
 ```
 hpay/
-├── src/                  # TOÀN BỘ CODE
+├── src/                  # ALL CODE
 │   ├── backend/          # Go + Gin + PostgreSQL + Redis (module github.com/hieumai1507/hpay-backend)
-│   ├── admin/            # React + Vite + TanStack (back-office)
-│   └── mobile/           # Expo / React Native (app người dùng)
-├── docs/                 # KNOWLEDGE-BASE cho người và agent (xem docs/README.md)
-├── .claude/skills/       # Skill dùng chung cho cả repo (nguồn duy nhất)
+│   ├── admin/            # React + Vite + TanStack (back office)
+│   └── mobile/           # Expo / React Native (end-user app)
+├── docs/                 # KNOWLEDGE BASE for people and agents (see docs/README.md)
+├── scripts/              # Dev helpers (Docker-based backend test runner)
+├── .claude/
+│   ├── skills/           # Shared skills (single source for the whole repo)
+│   └── agents/           # Subagents (implementer, verifier, reviewers)
 ├── .github/workflows/    # CI: backend-ci.yml, admin-ci.yml
-├── CLAUDE.md, AGENTS.md  # Chỉ dẫn cho agent (GitNexus, quy tắc làm việc)
+├── CLAUDE.md, AGENTS.md  # Instructions for agents (GitNexus, workflow rules)
 └── .gitignore, .gitattributes
 ```
 
-## Quy ước
+## Conventions
 
-- **Docs trước, code sau.** Thiết kế nằm trong `docs/`; đổi thiết kế thì sửa docs trước.
-- **Skill chỉ ở root** (`.claude/skills/`). Không đặt skill trong `src/*`.
-- Mỗi app giữ `CLAUDE.md`/`AGENTS.md` riêng cho quy tắc của app đó.
-- Không commit `.env`, `data/`, `e2e/.auth/`, file `.exe`. Xem `.gitignore`.
+- **Everything is written in English**: docs, code comments, commit messages, test cases.
+- **Docs first, code second.** Design lives in `docs/`; change the docs before changing the design in code. Where docs and code disagree, the code is the fact (see `docs/audit/AUDIT-REPORT.md`).
+- **Skills live only at the root** (`.claude/skills/`). Do not put skills under `src/*`.
+- Each app keeps its own `CLAUDE.md` / `AGENTS.md` for app-specific rules.
+- Never commit `.env`, `data/`, `e2e/.auth/` or `.exe` files. See `.gitignore`.
 
-## Chạy nhanh
+## Quick start
 
 ```bash
-# Backend (cần Docker cho Postgres + Redis)
+# Backend (needs Docker for Postgres + Redis)
 cd src/backend && cp .env.example .env && docker compose up -d && make migrate-up && go run ./cmd/server
 
 # Admin
@@ -37,6 +41,17 @@ cd src/admin && npm ci && npm run dev
 cd src/mobile && npm ci && npx expo start --web
 ```
 
-## Tài liệu
+## Running backend tests
 
-Bắt đầu từ [`docs/README.md`](docs/README.md). Kế hoạch sửa lỗi hiện tại: [`docs/planning/PLAN.md`](docs/planning/PLAN.md). Báo cáo audit: [`docs/audit/AUDIT-REPORT.md`](docs/audit/AUDIT-REPORT.md).
+On machines where Windows Application Control blocks Go-built executables, run the tests in Docker:
+
+```powershell
+.\scripts\test-backend.ps1                                   # all packages
+.\scripts\test-backend.ps1 -GoArgs "./internal/ledger -race -count=1 -v"
+```
+
+The script starts Postgres 16 and Redis 7, applies all migrations and runs `go test` inside `golang:1.25`.
+
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md). Current fix plan: [`docs/planning/PLAN.md`](docs/planning/PLAN.md). Audit report: [`docs/audit/AUDIT-REPORT.md`](docs/audit/AUDIT-REPORT.md). Baseline test results: [`docs/handoff/baseline.md`](docs/handoff/baseline.md).

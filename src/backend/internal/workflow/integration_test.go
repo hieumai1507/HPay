@@ -192,8 +192,8 @@ func TestWorkflowTerminalFailure(t *testing.T) {
 	}
 }
 
-// TestEdge_E04_RedeliveryNoDoubleSideEffect: cùng một start-message được xử lý
-// 2 lần (crash trước XACK) — side effect chạy đúng 1 lần, result vẫn phát lại.
+// TestEdge_E04_RedeliveryNoDoubleSideEffect: the same start-message is processed
+// twice (crash before XACK) — the side effect runs exactly once, the result is still re-emitted.
 func TestEdge_E04_RedeliveryNoDoubleSideEffect(t *testing.T) {
 	echo := &echoHandler{}
 	h := newHarness(t, echo)
@@ -216,7 +216,7 @@ func TestEdge_E04_RedeliveryNoDoubleSideEffect(t *testing.T) {
 	if echo.calls.Load() != 1 {
 		t.Fatalf("side effect ran %d times, want 1", echo.calls.Load())
 	}
-	// hai result event được emit (bản gốc + bản replay) — engine idempotent lo phần còn lại
+	// two result events are emitted (original + replay) — the idempotent engine handles the rest
 	var results int
 	if err := h.pool.QueryRow(context.Background(),
 		`SELECT count(*) FROM outbox WHERE event_type = $1 AND payload->>'instance_id' = $2 AND published_at IS NULL`,
@@ -228,8 +228,8 @@ func TestEdge_E04_RedeliveryNoDoubleSideEffect(t *testing.T) {
 	}
 }
 
-// TestEdge_E05_OutboxSurvivesBrokerOutage: Redis "sập" (relay không chạy) —
-// event nằm trong outbox sau commit; relay chạy lại là publish được.
+// TestEdge_E05_OutboxSurvivesBrokerOutage: Redis "down" (relay not running) —
+// the event stays in the outbox after commit; once the relay runs again it can be published.
 func TestEdge_E05_OutboxSurvivesBrokerOutage(t *testing.T) {
 	h := newHarness(t, &echoHandler{})
 	name := uniqueName("survive")
@@ -250,7 +250,7 @@ func TestEdge_E05_OutboxSurvivesBrokerOutage(t *testing.T) {
 		t.Fatalf("event must sit in outbox while broker is down; got %d", pending)
 	}
 
-	// Redis quay lại: publish thật qua relay nếu có TEST_REDIS_ADDR
+	// Redis is back: publish for real through the relay if TEST_REDIS_ADDR is set
 	addr := os.Getenv("TEST_REDIS_ADDR")
 	if addr == "" {
 		t.Log("TEST_REDIS_ADDR not set — outbox persistence verified, stream publish skipped")
@@ -259,7 +259,7 @@ func TestEdge_E05_OutboxSurvivesBrokerOutage(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{Addr: addr})
 	defer rdb.Close()
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	// mini-relay (bản test — logic giống outbox.Relay, tránh import cycle)
+	// mini-relay (test version — same logic as outbox.Relay, avoids an import cycle)
 	_ = log
 	tx, err := h.pool.Begin(context.Background())
 	if err != nil {
@@ -272,8 +272,8 @@ func TestEdge_E05_OutboxSurvivesBrokerOutage(t *testing.T) {
 	}
 	ids := make([]int64, 0, len(rows))
 	for _, row := range rows {
-		// parallel-safety: chỉ publish row của ĐÚNG instance test này;
-		// row của package test khác để nguyên cho pump của họ.
+		// parallel-safety: only publish rows of THIS test instance;
+		// rows of other test packages are left untouched for their own pump.
 		var ev StartEvent
 		if json.Unmarshal(row.Payload, &ev) != nil || ev.InstanceID != instID {
 			continue
@@ -301,8 +301,8 @@ func TestEdge_E05_OutboxSurvivesBrokerOutage(t *testing.T) {
 	}
 }
 
-// TestEdge_E06_DuplicateResultEventIdempotent: cùng result event vào engine 2
-// lần — instance chỉ advance 1 bước nhờ guard (status, current_step).
+// TestEdge_E06_DuplicateResultEventIdempotent: the same result event enters the engine twice —
+// the instance advances only one step thanks to the guard (status, current_step).
 func TestEdge_E06_DuplicateResultEventIdempotent(t *testing.T) {
 	h := newHarness(t, &echoHandler{})
 	name := uniqueName("dup")
@@ -321,7 +321,7 @@ func TestEdge_E06_DuplicateResultEventIdempotent(t *testing.T) {
 	if err := h.engine.OnResult(context.Background(), ev); err != nil { // duplicate
 		t.Fatal(err)
 	}
-	// đúng 1 event step.start cho S2 được sinh ra
+	// exactly one step.start event is produced for S2
 	var starts int
 	if err := h.pool.QueryRow(context.Background(),
 		`SELECT count(*) FROM outbox WHERE event_type = $1 AND payload->>'instance_id' = $2 AND payload->>'step' = 'S2'`,
@@ -333,8 +333,8 @@ func TestEdge_E06_DuplicateResultEventIdempotent(t *testing.T) {
 	}
 }
 
-// TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim: 2 sweeper song song trên cùng
-// instance kẹt — lease UPDATE đảm bảo chỉ 1 bên claim, chỉ 1 re-emit.
+// TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim: 2 sweepers in parallel on the same
+// stuck instance — the lease UPDATE guarantees only one claimer and only one re-emit.
 func TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim(t *testing.T) {
 	h := newHarness(t, &echoHandler{})
 	name := uniqueName("stuck")
@@ -345,7 +345,7 @@ func TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// làm instance "kẹt": lùi updated_at quá ngưỡng, xoá event start chưa publish (giả lập mất)
+	// make the instance "stuck": move updated_at back past the threshold, delete the unpublished start event (simulates loss)
 	if _, err := h.pool.Exec(context.Background(),
 		`UPDATE workflow_instances SET updated_at = now() - interval '10 minutes' WHERE id = $1`, instID); err != nil {
 		t.Fatal(err)

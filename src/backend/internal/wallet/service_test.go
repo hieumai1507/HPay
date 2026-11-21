@@ -7,7 +7,7 @@ import (
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 )
 
-// TestEdge_E13_LimitByKycTier: hạn mức per-txn theo tier KYC.
+// TestEdge_E13_LimitByKycTier: per-transaction limit by KYC tier.
 func TestEdge_E13_LimitByKycTier(t *testing.T) {
 	cases := []struct {
 		kyc   store.KycStatus

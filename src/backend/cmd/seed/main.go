@@ -123,7 +123,7 @@ func (s *seeder) run() {
 	s.txn("seed-u2-topup-1", "topup", cashIn, w2, 500_000, u2, -4)
 	s.txn("seed-u11-topup-1", "topup", cashIn, wOwner, 500_000, owner, -2)
 
-	// --- organization DEH Corp + policy "Chi lớn" v3 ---
+	// --- organization DEH Corp + policy "Chi lớn" (large spend) v3 ---
 	orgID := s.org("DEH Corp", owner)
 	orgWallet := s.orgWallet(orgID)
 	s.member(orgID, owner, "admin", 0)
@@ -459,7 +459,7 @@ func (s *seeder) member(orgID, userID uuid.UUID, role string, level int) {
 	}
 }
 
-// policy "Chi lớn" v3: >=10M needs 1 L1 signature; >=40M adds 1 L2 signature.
+// policy "Chi lớn" (large spend) v3: >=10M needs 1 L1 signature; >=40M adds 1 L2 signature.
 func (s *seeder) policy(orgID uuid.UUID, name string, version int, by uuid.UUID) uuid.UUID {
 	id := fixedUUID(fmt.Sprintf("policy:%s:%d", name, version))
 	if _, err := s.pool.Exec(s.ctx, `

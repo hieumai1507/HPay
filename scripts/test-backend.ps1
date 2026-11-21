@@ -1,5 +1,5 @@
 # Chay test backend trong Docker (Postgres + Redis + Go 1.25). Yeu cau: Docker Desktop dang chay.
-# Dung: .\scripts\test-backend.ps1 [-Args "./internal/ledger -race -count=1"]
+# Dung: .\scripts\test-backend.ps1 [-GoArgs "./internal/ledger -race -count=1"]
 param([string]$GoArgs = "./... -count=1")
 $ErrorActionPreference = "Continue"   # docker ghi trang thai ra stderr
 $root = Split-Path $PSScriptRoot -Parent

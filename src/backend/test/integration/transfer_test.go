@@ -64,8 +64,8 @@ func TestP2PTransferEndToEnd(t *testing.T) {
 	}
 }
 
-// TestEdge_E07_CompensationReversesMovedFunds: step terminal-fail SAU khi tiền
-// đã đi → engine bồi hoàn: số dư về nguyên trạng, ledger net 0, instance compensated.
+// TestEdge_E07_CompensationReversesMovedFunds: a step fails terminally AFTER the money
+// has moved → the engine compensates: balances restored, ledger net 0, instance compensated.
 func TestEdge_E07_CompensationReversesMovedFunds(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -118,13 +118,13 @@ func TestEdge_E07_CompensationReversesMovedFunds(t *testing.T) {
 		WHERE t.ref_code=$1`, res.RefCode).Scan(&entries); err != nil {
 		t.Fatal(err)
 	}
-	if entries != 6 { // 3 forward + 3 reverse (fee > 0 ở tier none)
+	if entries != 6 { // 3 forward + 3 reverse (fee > 0 at tier none)
 		t.Fatalf("want 6 ledger entries (forward+reverse), got %d", entries)
 	}
 }
 
-// TestEdge_E12_LockedUserFailsMidWorkflow: user bị khóa sau khi lệnh đã tạo,
-// trước khi tiền đi → workflow fail có kiểm soát, KHÔNG bút toán nào được ghi.
+// TestEdge_E12_LockedUserFailsMidWorkflow: user is locked after the request was created,
+// before the money moves → the workflow fails in a controlled way, NO ledger entries are written.
 func TestEdge_E12_LockedUserFailsMidWorkflow(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
@@ -135,7 +135,7 @@ func TestEdge_E12_LockedUserFailsMidWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// khóa receiver TRƯỚC khi worker chạy bước nào
+	// lock the receiver BEFORE the worker runs any step
 	if _, err := e.pool.Exec(ctx, `UPDATE users SET status='locked' WHERE id=$1`, receiverID); err != nil {
 		t.Fatal(err)
 	}

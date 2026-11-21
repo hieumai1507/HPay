@@ -10,8 +10,8 @@
  */
 
 export const color = {
-  // Rebrand M4: chủ đạo #1ECBE1 (accent 400) — bậc 600/700 đậm hơn cho nút/link
-  // để chữ trắng đạt contrast AA (#1ECBE1 nền trắng chỉ ~1.9:1, không dùng làm nền nút).
+  // Rebrand M4: primary #1ECBE1 (accent 400) - darker 600/700 shades for buttons/links
+  // so white text meets AA contrast (#1ECBE1 on white is only ~1.9:1; do not use as a button background).
   brand: {
     50: '#E6FAFD',
     100: '#C9F4FA',

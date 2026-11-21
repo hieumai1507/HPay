@@ -19,7 +19,7 @@ services:
       retries: 10
   app:
     build: .
-    profiles: ["app"]   # docker compose --profile app up — dev thường chạy go run
+    profiles: ["app"]   # docker compose --profile app up — in dev you usually run `go run` instead
     environment:
       DATABASE_URL: postgres://HPay:HPay@postgres:5432/HPay?sslmode=disable
       REDIS_ADDR: redis:6379

@@ -10,8 +10,8 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/wallet"
 )
 
-// TestEdge_E01_IdempotentTopup: 2 lần topup cùng Idempotency-Key —
-// 1 giao dịch duy nhất, tiền cộng đúng 1 lần.
+// TestEdge_E01_IdempotentTopup: two top-ups with the same Idempotency-Key —
+// exactly one transaction, funds credited exactly once.
 func TestEdge_E01_IdempotentTopup(t *testing.T) {
 	pool := testutil.PoolFromEnv(t)
 	ctx := context.Background()
