@@ -65,6 +65,7 @@ type engineConfirmReq struct {
 	TransactionID uuid.UUID `json:"transaction_id" binding:"required"`
 	PIN           string    `json:"pin"`
 	OTP           string    `json:"otp"`
+	TOTP          string    `json:"totp"` // 2fa band: an authenticator code or a recovery code (ADR-0017)
 }
 
 func (h *TransactionEngineHandler) ConfirmTransaction(c *gin.Context) {
@@ -81,6 +82,7 @@ func (h *TransactionEngineHandler) ConfirmTransaction(c *gin.Context) {
 		SenderUserID:  senderUserID,
 		PIN:           req.PIN,
 		OTP:           req.OTP,
+		TOTP:          req.TOTP,
 	})
 
 	if err != nil {

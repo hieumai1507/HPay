@@ -135,6 +135,7 @@ func NewEnv(t *testing.T, defName string) *Env {
 	// env=dev so Challenge returns the OTP code to the test.
 	authSvc := auth.NewService(pool,
 		auth.NewJWTIssuer("integration-test-secret-0123456789", "user"), log, "dev")
+	authSvc.SetTOTPKey([]byte("0123456789abcdef0123456789abcdef")) // ADR-0017: tests use a fixed key
 	asvc := approval.NewService(pool, authSvc, log)
 	engine.SetPauseHook(asvc)
 

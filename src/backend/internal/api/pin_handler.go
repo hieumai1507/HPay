@@ -101,3 +101,52 @@ func (h *PINHandler) ResetConfirm(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "pin_reset"})
 }
+
+type totpEnrollReq struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// TOTPEnroll starts enrolment of an authenticator app (ADR-0017). The secret and the otpauth URI
+// are returned once, here, and nowhere else.
+func (h *PINHandler) TOTPEnroll(c *gin.Context) {
+	var req totpEnrollReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "password is required")
+		return
+	}
+	out, err := h.svc.EnrollTOTP(c.Request.Context(), mustUserID(c), req.Password)
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "pending", "secret": out.Secret, "otpauth_uri": out.URI})
+}
+
+type totpConfirmReq struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// TOTPConfirm activates the authenticator with a first code and returns the recovery codes once.
+func (h *PINHandler) TOTPConfirm(c *gin.Context) {
+	var req totpConfirmReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "code is required")
+		return
+	}
+	out, err := h.svc.ConfirmTOTP(c.Request.Context(), mustUserID(c), req.Code)
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "totp_enabled", "recovery_codes": out.RecoveryCodes})
+}
+
+// TOTPStatus tells whether an authenticator is active. It never returns the secret.
+func (h *PINHandler) TOTPStatus(c *gin.Context) {
+	st, err := h.svc.TOTPStatus(c.Request.Context(), mustUserID(c))
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"enabled": st.Enabled, "recovery_codes_left": st.RecoveryCodesLeft})
+}

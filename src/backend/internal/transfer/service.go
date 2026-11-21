@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hieumai1507/hpay-backend/internal/auth"
 	"github.com/hieumai1507/hpay-backend/internal/fee"
 	"github.com/hieumai1507/hpay-backend/internal/ledger"
 	"github.com/hieumai1507/hpay-backend/internal/offerguard"
@@ -292,6 +293,7 @@ type EngineConfirmInput struct {
 	SenderUserID  uuid.UUID
 	PIN           string
 	OTP           string
+	TOTP          string // a TOTP code or a recovery code, for the 2fa band (ADR-0017)
 }
 
 func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestInput) (EngineRequestResult, error) {
@@ -344,7 +346,18 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 		authReq = decision.AuthMethod
 	}
 	if authReq == "2fa" {
-		return EngineRequestResult{}, ErrAuthMethodUnavailable // no 2fa provider yet: fail closed
+		// ADR-0017: the 2fa band needs an enrolled second factor. Without one the request is
+		// refused up front (nothing is held), with an error that tells the user to enrol.
+		if s.authn == nil {
+			return EngineRequestResult{}, ErrAuthNotConfigured
+		}
+		ok, terr := s.authn.HasActiveTOTP(ctx, input.SenderUserID)
+		if terr != nil {
+			return EngineRequestResult{}, terr
+		}
+		if !ok {
+			return EngineRequestResult{}, auth.ErrTOTPNotEnrolled
+		}
 	}
 	// ADR-0016: right after a PIN reset only small PIN transactions are allowed for a while,
 	// so someone who just took over the account cannot empty it at once.
@@ -601,7 +614,7 @@ func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmI
 		if !pre.AuthMethod.Valid || !needsAuth(method) {
 			return Result{}, ErrAuthMethodUnavailable
 		}
-		if err := s.confirmCredential(ctx, input.SenderUserID, pre.ID, method, input.PIN, input.OTP); err != nil {
+		if err := s.confirmCredential(ctx, input.SenderUserID, pre.ID, method, input.PIN, input.OTP, input.TOTP); err != nil {
 			return Result{}, err
 		}
 	}

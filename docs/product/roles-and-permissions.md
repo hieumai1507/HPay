@@ -57,6 +57,7 @@ Table `admin_users(email, password_hash, full_name, role, status)` with enum `ad
 | `GET /services`, `GET /services/:id`, `GET /offers`, `GET /offers/:id`, `GET /audit` | any permission (a `viewer` holds none and sees nothing) |
 | `PUT /services/:id` | `admins.manage` |
 | `POST /users/:id/pin/reset` | `pin.reset` (superadmin only; removes a user's PIN after out-of-band identity verification, reason required, audited) |
+| `POST /users/:id/totp/reset` | `totp.reset` (superadmin only; removes a user's authenticator and recovery codes after out-of-band identity verification, reason required, audited) |
 | `GET/POST/PUT /ai/keys`, `GET/PUT /ai/settings` | `ai.manage` |
 
 A denial is 403 `ERR_FORBIDDEN_PERMISSION` and does not name a permission. AI key create/update and AI setting update write audit rows (`ai.key.create`, `ai.key.update`, `ai.setting.update`) with the actor and client IP and no key material. Not covered: `GET /v1/files/*key` (signed link only, no identity; BE-H9), admin refresh tokens, a separate admin signing secret, MFA, and audit rows for every other admin write.
@@ -70,7 +71,7 @@ A denial is 403 `ERR_FORBIDDEN_PERMISSION` and does not name a permission. AI ke
 | `kyc_reviewer` | `kyc.review` |
 | `risk_officer` | `fraud.resolve`, `workflow.action` |
 | `ops` | `workflow.action`, `recon.run` |
-| `superadmin` | all: `kyc.review`, `fraud.resolve`, `workflow.action`, `recon.run`, `orgs.edit`, `ai.manage`, `admins.manage`, `pin.reset` |
+| `superadmin` | all: `kyc.review`, `fraud.resolve`, `workflow.action`, `recon.run`, `orgs.edit`, `ai.manage`, `admins.manage`, `pin.reset`, `totp.reset` |
 
 Consulted by the UI (fixed in working tree, 2026-11-21, not yet committed): `kyc.review` (KYC review buttons), `workflow.action` (My Tasks decide, workflow retry/compensate), `fraud.resolve` (fraud resolve buttons), `recon.run` (run reconciliation), `orgs.edit` (org policy editor), `ai.manage` (AI keys and routing), `admins.manage` (service status change; reused as the platform-configuration permission because services and offers have no dedicated permission, **product decision pending**). A `RequirePermission` wrapper (inside `RequireAdmin`) now guards the routes below and the sidebar hides the same links. Source: `src/admin/src/lib/access.ts` `ROUTE_ACCESS`.
 

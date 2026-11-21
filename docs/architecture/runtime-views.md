@@ -153,6 +153,35 @@ sequenceDiagram
 ```
 
 Operator fallback: `POST /v1/admin/users/:id/pin/reset` (permission `pin.reset`, reason required) removes the PIN, stamps `pin_reset_at`, writes audit `pin.clear` and notifies the user; the user then sets a new PIN with `PUT /v1/me/pin`.
+## 4c. Large transfer in the 2fa band (ADR-0017)
+Verified against `transfer/service.go`, `transfer/auth_gate.go` and `auth/totp.go`.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant API as api
+  participant T as transfer.Service
+  participant A as auth.Service
+  participant DB as Postgres
+  U->>API: POST /v1/transactions/request (60,000,000)
+  API->>T: ExecuteEngineRequest
+  T->>T: OfferGuard says auth method 2fa
+  T->>A: HasActiveTOTP
+  alt no authenticator
+    T-->>U: 403 ERR_TOTP_NOT_ENROLLED (nothing held)
+  else enrolled
+    T->>DB: hold transaction awaiting_auth, auth_method 2fa
+    T-->>U: 200 awaiting_auth
+    U->>API: POST /v1/transactions/confirm {pin, totp}
+    API->>T: ExecuteEngineConfirm
+    T->>A: VerifyPIN
+    T->>A: VerifyTOTP (decrypt secret, check window, ClaimTOTPStep, or burn a recovery code)
+    T->>DB: guarded awaiting_auth -> processing, start the workflow once
+    T-->>U: 200 processing
+  end
+```
+
+Enrolment: `POST /v1/me/totp/enroll` (password and a PIN) returns the secret and otpauth URI once; `POST /v1/me/totp/confirm` with a first code activates it and returns 10 recovery codes once. A lost authenticator is removed by an operator with `POST /v1/admin/users/:id/totp/reset` (permission `totp.reset`).
 ## 5. Nightly reconciliation
 
 ```mermaid

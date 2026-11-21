@@ -28,6 +28,9 @@ Workers (role worker/all): outbox relay, workflow worker, recovery, approval swe
 | Name | Default | Required | Secret | Meaning |
 |---|---|---|---|---|
 | APP_ENV | none | **yes** | no | One of `dev`, `ci`, `demo`, `production`. Missing or any other value stops startup with an error (ADR-0012). `dev` is the only environment that returns OTP codes in responses and loads `.env`; `production` uses the real outbound gateway, does not mount the mock bank route, adds HSTS and demands strong secrets |
+| TOTP_ENCRYPTION_KEY | dev/ci test key | yes outside dev and ci | **yes** | Base64 of 32 random bytes; AES-256-GCM key for TOTP secrets (ADR-0017). |
+| SENDER_PROVIDER | empty | no | no | `twilio` or empty. Empty: log-only outside production, refusing in production and demo (ADR-0016). |
+| TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_FROM | none | when `SENDER_PROVIDER=twilio` | API_SECRET: **yes** | Twilio Programmable Messaging account, API key and sender number (E.164) (ADR-0017). |
 | HTTP_PORT | 8080 | no | no | Listen port (invalid int silently falls back to default) |
 | DATABASE_URL | none | yes | yes (password) | Postgres connection string |
 | REDIS_ADDR | localhost:6379 | no | no | Redis address (no password support yet) |
@@ -61,6 +64,7 @@ Only `dev` is special-cased in most places. Values other than `dev` behave as pr
 | platform/logger | `dev` uses the dev logger format, others the production format |
 | auth/service.go:199 and api/approval_handler.go:48 | `dev` only: OTP value returned in the challenge response (`otp_dev`) |
 | auth/sender.go:NewSender | `production` and `demo` use the refusing sender (every OTP and notice send fails with `ERR_OTP_DELIVERY_UNAVAILABLE`); other values use the log-only sender. A real provider is configured by a later ADR. |
+| config.go:loadTOTPKey | `TOTP_ENCRYPTION_KEY` (base64, 32 bytes) is required unless `APP_ENV` is `dev` or `ci`; dev and ci get a fixed test key. Losing the key makes every stored TOTP secret unreadable. |
 | cmd/server/main.go:117 | Action pipeline outbound gateway is the Mock gateway unless `APP_ENV == "production"`; the real HTTP gateway is only used for the literal `production`, which config comments do not list (`dev|ci|demo`) |
 | cmd/seed | Refuses `production` |
 | Not env-gated | `/internal/mock-bank/callback` mounted in every env; `godotenv.Load()` in every env |

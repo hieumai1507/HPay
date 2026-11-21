@@ -44,6 +44,7 @@ func NewAdminRig(t *testing.T) *AdminRig {
 	cfg := config.Config{
 		Env: config.EnvCI, Role: config.RoleAll, JWTSecret: RBACSecret,
 		MockBankSecret: "x", StorageProvider: "local", KYCStorageDir: t.TempDir(),
+		TOTPKey: []byte("0123456789abcdef0123456789abcdef"),
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	r := api.NewRouter(api.Deps{Cfg: cfg, Log: log, Pool: pool, Redis: rdb})

@@ -65,6 +65,10 @@ func NewRouter(d Deps) *gin.Engine {
 	// issuer, engine, fee service and KYC storage (role=all runs them all).
 	issuer := auth.NewJWTIssuer(d.Cfg.JWTSecret, "user")
 	authSvc := auth.NewService(d.Pool, issuer, d.Log, d.Cfg.Env)
+	authSvc.Wire(d.Cfg.TOTPKey, auth.SenderConfig{
+		Env: d.Cfg.Env, Provider: d.Cfg.SenderProvider,
+		Twilio: auth.TwilioConfig{AccountSID: d.Cfg.TwilioAccountSID, APIKey: d.Cfg.TwilioAPIKey, APISecret: d.Cfg.TwilioAPISecret, From: d.Cfg.TwilioFrom},
+	})
 	engine := workflow.NewEngine(d.Pool, d.Log)
 	fees := fee.NewService(d.Pool)
 	walletSvc := wallet.NewService(d.Pool)
@@ -125,6 +129,10 @@ func NewRouter(d Deps) *gin.Engine {
 		// ADR-0016: forgotten PIN. Password, then a one-time code, then a new PIN.
 		me.POST("/me/pin/reset/request", RateLimitUser(d.Redis, 5, time.Minute), pinH.ResetRequest)
 		me.POST("/me/pin/reset/confirm", RateLimitUser(d.Redis, 10, time.Minute), pinH.ResetConfirm)
+		// ADR-0017: authenticator app (TOTP) for the 2fa band.
+		me.POST("/me/totp/enroll", RateLimitUser(d.Redis, 5, time.Minute), pinH.TOTPEnroll)
+		me.POST("/me/totp/confirm", RateLimitUser(d.Redis, 10, time.Minute), pinH.TOTPConfirm)
+		me.GET("/me/totp", pinH.TOTPStatus)
 		engineH := NewTransactionEngineHandler(transferSvc, d.Cfg)
 		me.POST("/transactions/request", RequireIdempotencyKey(), engineH.RequestTransaction)
 		me.POST("/transactions/confirm", RateLimitUser(d.Redis, 20, time.Minute), engineH.ConfirmTransaction)
@@ -210,6 +218,7 @@ func NewRouter(d Deps) *gin.Engine {
 			aiP       = RequirePermission(auth.PermAIManage)
 			catalogP  = RequirePermission(auth.PermAdminsManage)
 			pinResetP = RequirePermission(auth.PermPINReset)
+			totpRstP  = RequirePermission(auth.PermTOTPReset)
 			anyP      = RequirePermission() // any permission at all: a viewer sees nothing
 		)
 		adg.GET("/kyc", kycP, adminH.KYCQueue)
@@ -217,7 +226,8 @@ func NewRouter(d Deps) *gin.Engine {
 		adg.GET("/fraud-flags", fraudP, adminH.FraudFlags)
 		adg.POST("/fraud-flags/:id/resolve", fraudP, adminH.ResolveFraudFlag)
 		adg.POST("/reversals", workflowP, adminH.CreateReversal)
-		adg.POST("/users/:id/pin/reset", pinResetP, adminH.ClearUserPIN) // ADR-0016 operator fallback
+		adg.POST("/users/:id/pin/reset", pinResetP, adminH.ClearUserPIN)  // ADR-0016 operator fallback
+		adg.POST("/users/:id/totp/reset", totpRstP, adminH.ResetUserTOTP) // ADR-0017 operator fallback
 		adg.GET("/approvals", workflowP, adminH.AdminApprovals)
 		adg.POST("/approvals/:id/decide", workflowP, adminH.AdminDecide)
 		adg.POST("/recon/run", reconP, adminH.ReconRun)

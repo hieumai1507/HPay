@@ -470,7 +470,7 @@ paths:
   /v1/transactions/confirm:
     post:
       tags: [transactions]
-      summary: Unified engine step 2/3 — authenticate a transaction held in awaiting_auth with the server-verified PIN (and OTP for the otp band) and start its workflow once (ADR-0014). Calling it again returns the current state
+      summary: Unified engine step 2/3 — authenticate a transaction held in awaiting_auth with the server-verified PIN (plus OTP for the otp band, plus an authenticator code for the 2fa band) and start its workflow once (ADR-0014, ADR-0017). Calling it again returns the current state
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -483,6 +483,7 @@ paths:
                 transaction_id: { type: string, format: uuid }
                 pin: { type: string }
                 otp: { type: string }
+                totp: { type: string, description: "2fa band: a 6-digit authenticator code or a recovery code (ADR-0017); ignored in the pin and otp bands" }
       responses:
         "200":
           description: current transaction status — poll /timeline for settlement
@@ -579,6 +580,55 @@ paths:
         "200": { description: "{status: pin_reset}" }
         "400": { description: "ERR_PIN_WEAK (the code is not consumed) / ERR_OTP_INVALID / ERR_OTP_EXPIRED / ERR_OTP_MAX_ATTEMPTS / ERR_VALIDATION" }
         "429": { description: ERR_RATE_LIMITED }
+
+  /v1/me/totp/enroll:
+    post:
+      tags: [auth]
+      summary: Start enrolment of an authenticator app (ADR-0017). Needs the account password and an existing PIN. The secret and the otpauth URI are returned once, here and nowhere else; the secret is stored encrypted
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        "200": { description: "{status: pending, secret, otpauth_uri}" }
+        "400": { description: ERR_VALIDATION }
+        "401": { description: ERR_INVALID_CREDENTIALS }
+        "403": { description: ERR_PIN_NOT_SET }
+        "409": { description: ERR_TOTP_ALREADY_ENABLED }
+
+  /v1/me/totp/confirm:
+    post:
+      tags: [auth]
+      summary: Activate the authenticator with a first valid code; returns 10 single-use recovery codes once
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "6 digits from the authenticator app" }
+      responses:
+        "200": { description: "{status: totp_enabled, recovery_codes: [..10]}" }
+        "400": { description: "ERR_TOTP_INVALID / ERR_VALIDATION" }
+        "403": { description: ERR_TOTP_NOT_ENROLLED }
+        "429": { description: "ERR_TOTP_LOCKED (5 wrong codes lock TOTP use for 15 minutes)" }
+
+  /v1/me/totp:
+    get:
+      tags: [auth]
+      summary: Whether an authenticator is active and how many recovery codes are left. Never returns the secret
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: "{enabled, recovery_codes_left}" }
 
   /v1/transactions/verify:
     post:
@@ -943,6 +993,25 @@ paths:
         "200": { description: "{status: pin_cleared}" }
         "400": { description: ERR_VALIDATION }
         "403": { description: "ERR_FORBIDDEN_PERMISSION / ERR_PIN_NOT_SET (no PIN to clear)" }
+
+  /v1/admin/users/{id}/totp/reset:
+    post:
+      tags: [admin]
+      summary: Operator fallback for a user who lost the authenticator. Removes the user's TOTP and recovery codes (permission totp.reset, superadmin only). Never reads a secret
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 255, description: "who verified the identity and how; stored in the audit trail" }
+      responses:
+        "200": { description: "{status: totp_removed}" }
+        "400": { description: ERR_VALIDATION }
+        "403": { description: "ERR_FORBIDDEN_PERMISSION / ERR_TOTP_NOT_ENROLLED (nothing to remove)" }
 
   /v1/admin/kyc:
     get:

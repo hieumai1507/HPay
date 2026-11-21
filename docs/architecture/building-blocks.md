@@ -53,7 +53,7 @@ Dependencies below were derived from `import` statements in non-test files (2026
 | Domain | `product` | admin service catalog and offers | listing |
 | Domain | `fee` | fee policy lookup and calculation | - |
 | Domain | `offerguard` | per-offer service limits and auth method | - |
-| Domain | `auth` | register/login with per-account lockout, argon2id, JWT issuer, refresh rotation, OTP, server-side PIN and its reset, admin login, `Sender` port for one-time codes and security notices (mock outside production, refusing in production until a provider is chosen, ADR-0016) | - |
+| Domain | `auth` | register/login with per-account lockout, argon2id, JWT issuer, refresh rotation, OTP, server-side PIN and its reset, TOTP second factor with encrypted secrets and recovery codes (ADR-0017), admin login, `Sender` port for one-time codes and security notices (log-only outside production, refusing in production unless a provider is configured, Twilio adapter through the guarded gateway client; ADR-0016, ADR-0017) | gateway (outbound client) |
 | Core | `ledger` | atomic double-entry posting with lock ordering | - |
 | Support | `ai` | LLM advisor clients (Claude, OpenAI) | - |
 | Support | `gateway` | outbound HTTP gateway and mock | - |

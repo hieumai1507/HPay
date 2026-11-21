@@ -46,6 +46,8 @@ type Service struct {
 	env  string
 	// sender delivers one-time codes and security notices (ADR-0016).
 	sender Sender
+	// totpKey protects TOTP secrets at rest (ADR-0017); 32 bytes.
+	totpKey []byte
 }
 
 func NewService(pool *pgxpool.Pool, jwtIssuer *JWTIssuer, log *slog.Logger, env string) *Service {

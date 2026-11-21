@@ -194,7 +194,9 @@ func TestConfirm_LockoutRefusesCorrectPin(t *testing.T) {
 	}
 }
 
-// TC-AUT-007: the 2fa band has no provider, so it is refused (fail closed).
+// TC-AUT-007 (updated by ADR-0017): the 2fa band is no longer "unavailable", but it still fails
+// closed: without an enrolled second factor the request is refused and nothing is held. The
+// enrolled path is covered by totp_flow_test.go (TC-2FA-010 to 015).
 func TestRequest_TwoFactorBandIsRefused(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	// The 2fa band starts at 50,000,000. Fund through the ledger path in two steps.
@@ -212,8 +214,8 @@ func TestRequest_TwoFactorBandIsRefused(t *testing.T) {
 		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: rcvPhone,
 		Amount: 60_000_000, Idempotency: wallet.NewRefCode(),
 	})
-	if !errors.Is(err, transfer.ErrAuthMethodUnavailable) {
-		t.Fatalf("a request that needs 2fa must be refused with ErrAuthMethodUnavailable, got %v", err)
+	if !errors.Is(err, auth.ErrTOTPNotEnrolled) {
+		t.Fatalf("a request that needs 2fa without an enrolled factor must be refused with ErrTOTPNotEnrolled, got %v", err)
 	}
 }
 

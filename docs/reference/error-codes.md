@@ -130,6 +130,10 @@ Also unmapped: raw database errors (unique violation 23505 on `transactions.reve
 | ERR_PIN_COOLING | 403 | a PIN transaction above 2,500,000 VND within 24 hours of a PIN reset or operator clear | auth.ErrPINCooling |
 | ERR_PIN_RESET_RATE_LIMITED | 429 | more than 3 PIN reset codes requested in an hour | auth.ErrPINResetRateLimited |
 | ERR_OTP_DELIVERY_UNAVAILABLE | 503 | no real code delivery channel is configured (production and demo until a provider is chosen) | auth.ErrSenderUnavailable |
+| ERR_TOTP_NOT_ENROLLED | 403 | the 2fa band (or enrolment confirm) needs an authenticator that is not set up | auth.ErrTOTPNotEnrolled |
+| ERR_TOTP_INVALID | 400 | wrong, expired, replayed or already used authenticator or recovery code | auth.ErrTOTPInvalid |
+| ERR_TOTP_LOCKED | 429 | five wrong authenticator codes; TOTP use locked for 15 minutes | auth.ErrTOTPLocked |
+| ERR_TOTP_ALREADY_ENABLED | 409 | enrolment would overwrite an active authenticator | auth.ErrTOTPAlreadyEnabled |
 | ERR_AUTH_METHOD_UNAVAILABLE | 422 | the offer needs a method with no provider (2fa) | 	ransfer.ErrAuthMethodUnavailable |
 | ERR_AUTH_EXPIRED | 410 | not confirmed within 10 minutes | 	ransfer.ErrAuthExpired |
 | ERR_CREDENTIAL_REQUIRED | 400 | the method needs a credential the caller did not send | 	ransfer.ErrCredentialRequired |

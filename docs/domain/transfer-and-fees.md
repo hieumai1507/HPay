@@ -81,7 +81,7 @@ Turns a user request (P2P transfer, money-request payment, bank top-up, vault de
 | BR-TRF-32 | `confirm` finds the transaction with `WHERE id = $1 AND initiated_by = $2`; another user's id and an unknown id both return `ErrTxnNotFound`. | `queries/transactions.sql:GetOwnedTransactionForUpdate`; `service.go:ExecuteEngineConfirm` | `TestConfirm_OtherUsersTransactionIsNotFound` |
 | BR-TRF-33 | `confirm` verifies the credential for the recorded method (PIN; PIN and a transaction-bound OTP for the otp band) before anything starts; a wrong, missing or locked PIN starts nothing. | `auth_gate.go:confirmCredential`; `auth/pin.go` | `TestConfirm_WrongPinDoesNotStartWorkflow`, `TestConfirm_NoPinSet`, `TestConfirm_LockoutRefusesCorrectPin` |
 | BR-TRF-34 | `confirm` starts the recorded workflow once: guarded `awaiting_auth -> processing` in the same transaction as `engine.Start`; repeated or concurrent confirms return the current state. | `queries/transactions.sql:StartAwaitingAuthTransaction` | `TestConfirm_ConcurrentStartsWorkflowOnce` |
-| BR-TRF-35 | A request that needs the 2fa band is refused (`ErrAuthMethodUnavailable`), because no provider exists. | `service.go:ExecuteEngineRequest` | `TestRequest_TwoFactorBandIsRefused` |
+| BR-TRF-35 | A request in the 2fa band needs an enrolled authenticator (ADR-0017): without one it is refused with 403 `ERR_TOTP_NOT_ENROLLED` and nothing is held; with one it is held in `awaiting_auth` with `auth_method = 2fa`. Confirm needs the PIN AND a TOTP code or a recovery code (`totp` field); a missing code is `ERR_CREDENTIAL_REQUIRED`, a wrong one `ERR_TOTP_INVALID`; the PIN and otp bands ignore the `totp` field. | `transfer/service.go:ExecuteEngineRequest`, `transfer/auth_gate.go:confirmCredential` | `TestRequest_TwoFactorBandIsHeldWhenEnrolled`, `TestRequest_TwoFactorBandRefusedWithoutEnrolment`, `TestConfirm_TwoFactorStartsWorkflowWithPINAndTOTP`, `TestConfirm_TwoFactorWithoutValidTOTPDoesNotStart`, `TestConfirm_TwoFactorAcceptsRecoveryCodeOnce`, `TestConfirm_PINBandIgnoresTOTP` |
 | BR-TRF-36 | An unconfirmed `awaiting_auth` request fails with `auth_expired` after 10 minutes, moves no money, and never consumes the daily/monthly quota or the interval throttle. | `auth_gate.go:ExpireAwaitingAuth`; `queries/offer_guard.sql` | `TestAwaitingAuth_ExpiresWithoutMovingMoney`, `TestOfferGuard_AwaitingAuthDoesNotConsumeQuota` |
 | BR-TRF-30 | Vault moves require a vault the caller owns (`extra_params.vault_id`, `direction`). | `service.go:planWallets` (428-459) | `TestVault_ForeignVaultRejected`, `TestVault_DirectionMustBeValid` |
 | BR-TRF-31 | Failure code shown in timelines is an allowlist: insufficient balance, "blocked by fraud", "not active", else `ERR_TRANSFER_FAILED`. | `service.go:failureCode` (195-206) | `TestTimeline_FailureCode` |
@@ -147,7 +147,7 @@ sequenceDiagram
     Note over E: async: VALIDATE, FRAUD_CHECK, MOVE_FUNDS, CONFIRM, ROUND_UP
 ```
 
-A request whose offer needs the 2fa band is refused up front (`ErrAuthMethodUnavailable`, fail closed: no provider exists). An `awaiting_auth` request expires to `failed` (`auth_expired`) after 10 minutes without moving money.
+A request whose offer needs the 2fa band is refused up front unless the user has an active authenticator (`ErrTOTPNotEnrolled`, fail closed, ADR-0017). An `awaiting_auth` request expires to `failed` (`auth_expired`) after 10 minutes without moving money.
 
 Key point (ADR-0014): the request is a quote that parks the transaction in `awaiting_auth`; `confirm` is the authentication gate and the only thing that starts the workflow for pin and otp transactions. `verify` (the 2fa step) has no provider yet and refuses.
 
@@ -211,7 +211,7 @@ Error mapping: limits -> `ERR_LIMIT_PER_TXN|ERR_LIMIT_DAILY|ERR_LIMIT_MONTHLY` (
 | `test/integration/money/transfer_test.go`, `transaction_request_http_test.go`, `vault_test.go`, `internal/offerguard/offerguard_test.go`, `internal/fee/fee_test.go` | tests |
 
 ## 12. Open questions
-- 2fa provider (SMS, TOTP or push) and the PIN reset flow (owner: product/security).
+- Whether a biometric factor is required from 10 million VND (State Bank Decision 2345/QD-NHNN) and how the mobile app collects it (owner: product and legal).
 - Should quota be keyed per service rather than per ledger type (owner: product, undecided)?
 - Which timezone defines "day" and "month" for limits (owner: product, undecided)?
 - Should fee rounding use a unit (e.g. round to 1 VND is implicit) or ceil instead of floor (owner: finance, undecided)?

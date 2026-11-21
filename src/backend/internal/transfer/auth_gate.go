@@ -46,6 +46,10 @@ type Authenticator interface {
 	RequestOTPCode(ctx context.Context, userID uuid.UUID, purpose string) (string, error)
 	// CheckPINCooling refuses a large amount right after a PIN reset (ADR-0016).
 	CheckPINCooling(ctx context.Context, userID uuid.UUID, amount int64) error
+	// HasActiveTOTP reports whether the user can use the 2fa band; VerifyTOTP checks a TOTP code
+	// or a recovery code once (ADR-0017).
+	HasActiveTOTP(ctx context.Context, userID uuid.UUID) (bool, error)
+	VerifyTOTP(ctx context.Context, userID uuid.UUID, code string) error
 }
 
 // SetAuthenticator wires the credential verifier. Without it any request that
@@ -70,7 +74,7 @@ func needsAuth(method string) bool { return method == "pin" || method == "otp" |
 // confirmCredential verifies the credential for the method recorded on the
 // transaction at request time (transactions.auth_method), not a recomputed one,
 // so a change to the offer between request and confirm cannot weaken it.
-func (s *Service) confirmCredential(ctx context.Context, userID, txnID uuid.UUID, method, pin, otp string) error {
+func (s *Service) confirmCredential(ctx context.Context, userID, txnID uuid.UUID, method, pin, otp, totp string) error {
 	if s.authn == nil {
 		return ErrAuthNotConfigured
 	}
@@ -86,7 +90,17 @@ func (s *Service) confirmCredential(ctx context.Context, userID, txnID uuid.UUID
 			return ErrCredentialRequired
 		}
 		return s.authn.VerifyOTP(ctx, userID, otpPurpose(txnID), otp)
-	default: // 2fa and anything unknown
+	case "2fa":
+		// The 2fa band needs the PIN AND the second factor (ADR-0017). The factor is checked
+		// through the Authenticator, so a biometric factor can be added without changing this flow.
+		if err := s.authn.VerifyPIN(ctx, userID, pin); err != nil {
+			return err
+		}
+		if totp == "" {
+			return ErrCredentialRequired
+		}
+		return s.authn.VerifyTOTP(ctx, userID, totp)
+	default: // anything unknown
 		return ErrAuthMethodUnavailable
 	}
 }

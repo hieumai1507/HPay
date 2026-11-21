@@ -131,6 +131,10 @@ func run(role string) error {
 		// the same tx; the sweeper expires overdue requests (E10).
 		issuer := auth.NewJWTIssuer(cfg.JWTSecret, "user")
 		authSvc := auth.NewService(pool, issuer, log, cfg.Env)
+		authSvc.Wire(cfg.TOTPKey, auth.SenderConfig{
+			Env: cfg.Env, Provider: cfg.SenderProvider,
+			Twilio: auth.TwilioConfig{AccountSID: cfg.TwilioAccountSID, APIKey: cfg.TwilioAPIKey, APISecret: cfg.TwilioAPISecret, From: cfg.TwilioFrom},
+		})
 		approvalSvc := approval.NewService(pool, authSvc, log)
 		engine.SetPauseHook(approvalSvc)
 

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -80,6 +81,48 @@ func newHTTP(timeout time.Duration, g *Guard, tlsCfg *tls.Config) *HTTP {
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 	}
+}
+
+// FormClient is a guarded client for provider APIs that take form-encoded POSTs with Basic auth
+// (for example Twilio). It shares the outbound URL guard of HTTP: https only, public addresses
+// only, no redirects. The credentials are passed per call and never logged here.
+type FormClient struct{ h *HTTP }
+
+// NewFormClient builds the production client (allowlist from OUTBOUND_ALLOWED_HOSTS).
+func NewFormClient(timeout time.Duration) *FormClient { return &FormClient{h: NewHTTP(timeout)} }
+
+// TestClient is a test-only constructor that permits loopback and trusts the given TLS config.
+// Production code uses NewFormClient, which cannot be weakened.
+func TestClient(tlsCfg *tls.Config) *FormClient {
+	return &FormClient{h: newHTTP(5*time.Second, NewGuard(GuardOptions{allowLoopback: true}), tlsCfg)}
+}
+
+// PostForm sends form fields with Basic auth and returns the status code. The body of a failed
+// response is not returned (it can echo request data); only the host and status are reported.
+func (c *FormClient) PostForm(ctx context.Context, rawURL, user, pass string, form map[string]string) (int, error) {
+	if err := c.h.guard.CheckURL(rawURL); err != nil {
+		return 0, err
+	}
+	vals := make(url.Values, len(form))
+	for k, v := range form {
+		vals.Set(k, v)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rawURL, strings.NewReader(vals.Encode()))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(user, pass)
+	resp, err := c.h.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("provider call to %s failed", hostOf(rawURL))
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+	if resp.StatusCode >= 300 {
+		return resp.StatusCode, fmt.Errorf("provider call to %s returned %d", hostOf(rawURL), resp.StatusCode)
+	}
+	return resp.StatusCode, nil
 }
 
 func (h *HTTP) Call(ctx context.Context, req Request) (Response, error) {

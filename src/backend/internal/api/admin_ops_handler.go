@@ -477,3 +477,22 @@ func (h *AdminHandler) ClearUserPIN(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "pin_cleared"})
 }
+
+// ResetUserTOTP is the operator fallback for a user who lost the authenticator (ADR-0017).
+func (h *AdminHandler) ResetUserTOTP(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		respondValidation(c, "invalid user id")
+		return
+	}
+	var req clearPINReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "reason (10 to 255 characters) is required")
+		return
+	}
+	if err := h.authSvc.ResetTOTP(c.Request.Context(), mustAdminID(c), userID, req.Reason); err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "totp_removed"})
+}

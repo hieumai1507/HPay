@@ -114,3 +114,41 @@ func (s *AdminService) ClearPIN(ctx context.Context, adminID, userID uuid.UUID, 
 	}
 	return nil
 }
+
+// ResetTOTP is the operator fallback for a user who lost the authenticator (ADR-0017): it removes
+// the user's TOTP and recovery codes after out-of-band identity verification. It never reads a
+// secret. The caller has already checked the totp.reset permission.
+func (s *AdminService) ResetTOTP(ctx context.Context, adminID, userID uuid.UUID, reason string) error {
+	if reason == "" {
+		return ErrReasonRequired
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	q := s.q.WithTx(tx)
+	n, err := q.DeleteUserTOTP(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrTOTPNotEnrolled
+	}
+	if err := q.DeleteRecoveryCodes(ctx, userID); err != nil {
+		return err
+	}
+	if err := q.InsertAudit(ctx, store.InsertAuditParams{
+		ActorID: adminID, ActorType: "admin", Action: "totp.reset", Resource: "user " + userID.String(),
+		Reason: pgtype.Text{String: reason, Valid: true},
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if err := s.sender.Notify(ctx, userID, Notice{Kind: NoticeTOTP, Text: "Support removed the authenticator from your account. Set up a new one in the app. If you did not ask for this, contact support now."}); err != nil {
+		s.log.Warn("totp reset notice not delivered", "user", userID, "err", err)
+	}
+	return nil
+}

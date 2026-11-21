@@ -3,6 +3,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -77,6 +78,15 @@ type Config struct {
 	// TrustedProxies lists proxy addresses/CIDRs whose X-Forwarded-For is trusted
 	// (env TRUSTED_PROXIES, comma separated). Empty means trust none.
 	TrustedProxies []string
+	// TOTPKey is the 32-byte AES-256 key that protects TOTP secrets at rest (ADR-0017). Required
+	// (TOTP_ENCRYPTION_KEY, base64) outside dev and ci; dev and ci get a fixed test key.
+	TOTPKey []byte
+	// Code delivery (ADR-0016, ADR-0017): SENDER_PROVIDER is "" (environment default) or "twilio".
+	SenderProvider   string
+	TwilioAccountSID string
+	TwilioAPIKey     string
+	TwilioAPISecret  string
+	TwilioFrom       string
 }
 
 // IsDev is true only for APP_ENV=dev: the single environment that may return
@@ -123,6 +133,12 @@ func Load(role string) (Config, error) {
 		CloudinaryAPIKey:    os.Getenv("CLOUDINARY_API_KEY"),
 		CloudinaryAPISecret: os.Getenv("CLOUDINARY_API_SECRET"),
 		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
+
+		SenderProvider:   strings.ToLower(strings.TrimSpace(os.Getenv("SENDER_PROVIDER"))),
+		TwilioAccountSID: os.Getenv("TWILIO_ACCOUNT_SID"),
+		TwilioAPIKey:     os.Getenv("TWILIO_API_KEY"),
+		TwilioAPISecret:  os.Getenv("TWILIO_API_SECRET"),
+		TwilioFrom:       os.Getenv("TWILIO_FROM"),
 	}
 
 	if !isValidEnv(cfg.Env) {
@@ -151,12 +167,48 @@ func Load(role string) (Config, error) {
 			return Config{}, fmt.Errorf("MOCK_BANK_SECRET must be set to a non-default value when APP_ENV=%s", cfg.Env)
 		}
 	}
+	key, err := loadTOTPKey(os.Getenv("TOTP_ENCRYPTION_KEY"), cfg.requiresStrongSecrets())
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.TOTPKey = key
+	switch cfg.SenderProvider {
+	case "":
+	case "twilio":
+		if cfg.TwilioAccountSID == "" || cfg.TwilioAPIKey == "" || cfg.TwilioAPISecret == "" || cfg.TwilioFrom == "" {
+			return Config{}, fmt.Errorf("TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET and TWILIO_FROM are required when SENDER_PROVIDER=twilio")
+		}
+	default:
+		return Config{}, fmt.Errorf("SENDER_PROVIDER %q is not valid: use twilio or leave it empty", cfg.SenderProvider)
+	}
 	if cfg.StorageProvider == "cloudinary" {
 		if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
 			return Config{}, fmt.Errorf("CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are required when STORAGE_PROVIDER=cloudinary")
 		}
 	}
 	return cfg, nil
+}
+
+// devTOTPKey is the fixed key used in dev and ci only, so local runs and tests need no setup.
+// It protects nothing real: outside dev and ci a real key is required.
+const devTOTPKey = "dev-only-totp-key-0123456789abcd" // exactly 32 bytes
+
+// loadTOTPKey decodes TOTP_ENCRYPTION_KEY (base64, 32 bytes). Outside dev and ci it is required.
+func loadTOTPKey(raw string, required bool) ([]byte, error) {
+	if raw == "" {
+		if required {
+			return nil, fmt.Errorf("TOTP_ENCRYPTION_KEY is required (base64, 32 bytes) when APP_ENV is not dev or ci")
+		}
+		return []byte(devTOTPKey), nil
+	}
+	key, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("TOTP_ENCRYPTION_KEY is not valid base64")
+	}
+	if len(key) != 32 {
+		return nil, fmt.Errorf("TOTP_ENCRYPTION_KEY must decode to exactly 32 bytes, got %d", len(key))
+	}
+	return key, nil
 }
 
 func isValidEnv(e string) bool {

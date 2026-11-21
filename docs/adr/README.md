@@ -31,3 +31,4 @@ Lifecycle: an ADR is written as **Proposed** during `hpay-feature` stage 3 (desi
 | [0014](0014-transaction-pin-gate.md) | Hold a transaction in awaiting_auth until the server verifies the PIN | **Accepted** (approved 2026-11-21) |
 | [0015](0015-admin-rbac.md) | Enforce admin permissions on the server from the database role | **Accepted** (approved 2026-11-21) |
 | [0016](0016-pin-reset.md) | Reset a forgotten PIN with password plus a one-time code, with an operator fallback | **Accepted** (approved 2026-11-21) |
+| [0017](0017-totp-second-factor.md) | TOTP built in-house as the 2fa band factor, and a pluggable code-delivery provider starting with Twilio (Messaging) | **Accepted** (approved 2026-11-21) |

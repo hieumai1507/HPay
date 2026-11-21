@@ -10,7 +10,8 @@ export type Permission =
   | 'orgs.edit'
   | 'ai.manage'
   | 'admins.manage'
-  | 'pin.reset';
+  | 'pin.reset'
+  | 'totp.reset';
 
 // FE-side visibility only (UX). The backend is the real enforcement point —
 // nothing here grants any capability the API would not verify again.
@@ -28,6 +29,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     'ai.manage',
     'admins.manage',
     'pin.reset',
+    'totp.reset',
   ],
 };
 

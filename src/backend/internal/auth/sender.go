@@ -22,7 +22,10 @@ const PurposePINReset = "pin_reset"
 // NoticeKind names a security notice sent to the account holder.
 type NoticeKind string
 
-const NoticePINReset NoticeKind = "pin_reset"
+const (
+	NoticePINReset NoticeKind = "pin_reset"
+	NoticeTOTP     NoticeKind = "totp"
+)
 
 // Notice is a message to the user about a security event. Text never contains a secret.
 type Notice struct {

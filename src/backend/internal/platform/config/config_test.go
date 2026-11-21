@@ -75,6 +75,7 @@ func TestLoad_ProductionRejectsWeakOrDefaultSecrets(t *testing.T) {
 func TestLoad_ProductionAcceptsStrongSecrets(t *testing.T) {
 	base(t)
 	t.Setenv("APP_ENV", "production")
+	t.Setenv("TOTP_ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=") // required outside dev and ci (ADR-0017)
 	cfg, err := Load("api")
 	if err != nil {
 		t.Fatalf("strong production config rejected: %v", err)
@@ -138,5 +139,71 @@ func TestTrustedProxiesParsing(t *testing.T) {
 	cfg, _ = Load("api")
 	if len(cfg.TrustedProxies) != 0 {
 		t.Fatalf("unset TRUSTED_PROXIES must mean none, got %v", cfg.TrustedProxies)
+	}
+}
+
+// TC-2FA-022 (ADR-0017): the key that protects TOTP secrets.
+func TestConfig_TOTPKeyRequiredOutsideDev(t *testing.T) {
+	goodKey := "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=" // base64 of 32 bytes
+	for _, env := range []string{"production", "demo"} {
+		base(t)
+		t.Setenv("APP_ENV", env)
+		t.Setenv("TOTP_ENCRYPTION_KEY", "")
+		if _, err := Load("api"); err == nil || !strings.Contains(err.Error(), "TOTP_ENCRYPTION_KEY") {
+			t.Errorf("%s without a key must fail naming TOTP_ENCRYPTION_KEY, got %v", env, err)
+		}
+		t.Setenv("TOTP_ENCRYPTION_KEY", "c2hvcnQ=") // 5 bytes
+		if _, err := Load("api"); err == nil || !strings.Contains(err.Error(), "32") {
+			t.Errorf("%s with a short key must fail, got %v", env, err)
+		}
+		t.Setenv("TOTP_ENCRYPTION_KEY", "not base64 !!")
+		if _, err := Load("api"); err == nil {
+			t.Errorf("%s with a malformed key must fail", env)
+		}
+		t.Setenv("TOTP_ENCRYPTION_KEY", goodKey)
+		cfg, err := Load("api")
+		if err != nil {
+			t.Fatalf("%s with a good key: %v", env, err)
+		}
+		if len(cfg.TOTPKey) != 32 {
+			t.Errorf("the decoded key must be 32 bytes, got %d", len(cfg.TOTPKey))
+		}
+	}
+	for _, env := range []string{"dev", "ci"} {
+		base(t)
+		t.Setenv("APP_ENV", env)
+		t.Setenv("TOTP_ENCRYPTION_KEY", "")
+		cfg, err := Load("api")
+		if err != nil {
+			t.Fatalf("%s must not need a key: %v", env, err)
+		}
+		if len(cfg.TOTPKey) != 32 {
+			t.Errorf("%s gets a fixed 32-byte test key, got %d bytes", env, len(cfg.TOTPKey))
+		}
+	}
+}
+
+func TestConfig_SenderProviderSettings(t *testing.T) {
+	base(t)
+	t.Setenv("APP_ENV", "ci")
+	t.Setenv("SENDER_PROVIDER", "twilio")
+	t.Setenv("TWILIO_ACCOUNT_SID", "")
+	if _, err := Load("api"); err == nil || !strings.Contains(err.Error(), "TWILIO") {
+		t.Fatalf("SENDER_PROVIDER=twilio without settings must fail naming TWILIO_*, got %v", err)
+	}
+	t.Setenv("TWILIO_ACCOUNT_SID", "ACtest")
+	t.Setenv("TWILIO_API_KEY", "SKtest")
+	t.Setenv("TWILIO_API_SECRET", "secret")
+	t.Setenv("TWILIO_FROM", "+15550001111")
+	cfg, err := Load("api")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SenderProvider != "twilio" || cfg.TwilioAccountSID != "ACtest" {
+		t.Fatalf("settings not loaded: %+v", cfg)
+	}
+	t.Setenv("SENDER_PROVIDER", "carrier-pigeon")
+	if _, err := Load("api"); err == nil {
+		t.Fatal("an unknown provider must fail")
 	}
 }

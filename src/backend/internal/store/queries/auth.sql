@@ -155,3 +155,58 @@ WHERE id = $1 AND pin_hash IS NOT NULL;
 
 -- name: GetPINResetAt :one
 SELECT pin_reset_at FROM users WHERE id = $1;
+
+-- name: UpsertPendingTOTP :exec
+-- Start (or restart) enrolment: a new secret, not active, counters cleared. Never overwrites an
+-- ACTIVE secret (the caller refuses that case first).
+INSERT INTO user_totp (user_id, secret_enc, enabled, last_step, failed_attempts, locked_until)
+VALUES ($1, $2, false, 0, 0, NULL)
+ON CONFLICT (user_id) DO UPDATE
+  SET secret_enc = EXCLUDED.secret_enc, enabled = false, last_step = 0, failed_attempts = 0,
+      locked_until = NULL, created_at = now(), activated_at = NULL
+  WHERE user_totp.enabled = false;
+
+-- name: GetUserTOTP :one
+SELECT secret_enc, enabled, last_step, failed_attempts, locked_until FROM user_totp WHERE user_id = $1;
+
+-- name: ClaimTOTPStep :execrows
+-- Accept a code once: only a step strictly newer than the last used one wins, atomically.
+UPDATE user_totp SET last_step = $2, failed_attempts = 0, locked_until = NULL
+WHERE user_id = $1 AND last_step < $2 AND (locked_until IS NULL OR locked_until <= now());
+
+-- name: ActivateTOTP :exec
+UPDATE user_totp SET enabled = true, activated_at = now() WHERE user_id = $1;
+
+-- name: RecordTOTPFailure :one
+-- Atomic counter; the 5th consecutive failure locks TOTP use for 15 minutes.
+UPDATE user_totp SET
+  failed_attempts = CASE WHEN locked_until IS NOT NULL AND locked_until <= now()
+                         THEN 1 ELSE failed_attempts + 1 END,
+  locked_until = CASE
+    WHEN (CASE WHEN locked_until IS NOT NULL AND locked_until <= now()
+               THEN 1 ELSE failed_attempts + 1 END) >= 5
+      THEN now() + interval '15 minutes'
+    WHEN locked_until IS NOT NULL AND locked_until <= now() THEN NULL
+    ELSE locked_until END
+WHERE user_id = $1
+RETURNING failed_attempts, locked_until;
+
+-- name: DeleteUserTOTP :execrows
+DELETE FROM user_totp WHERE user_id = $1;
+
+-- name: InsertRecoveryCode :exec
+INSERT INTO user_recovery_codes (user_id, code_hash) VALUES ($1, $2);
+
+-- name: DeleteRecoveryCodes :exec
+DELETE FROM user_recovery_codes WHERE user_id = $1;
+
+-- name: UseRecoveryCode :execrows
+-- Burn a recovery code: only an unused one can be used, once.
+UPDATE user_recovery_codes SET used_at = now()
+WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL;
+
+-- name: CountRecoveryCodesLeft :one
+SELECT count(*)::int AS n FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL;
+
+-- name: GetUserPhone :one
+SELECT phone FROM users WHERE id = $1;

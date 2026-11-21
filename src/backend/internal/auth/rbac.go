@@ -18,6 +18,7 @@ const (
 	PermAIManage       Permission = "ai.manage"
 	PermAdminsManage   Permission = "admins.manage"
 	PermPINReset       Permission = "pin.reset"
+	PermTOTPReset      Permission = "totp.reset"
 )
 
 // RolePermissions is the single server-side role table.
@@ -28,7 +29,7 @@ var RolePermissions = map[string][]Permission{
 	"ops":          {PermWorkflowAction, PermReconRun},
 	"superadmin": {
 		PermKYCReview, PermFraudResolve, PermWorkflowAction, PermReconRun,
-		PermOrgsEdit, PermAIManage, PermAdminsManage, PermPINReset,
+		PermOrgsEdit, PermAIManage, PermAdminsManage, PermPINReset, PermTOTPReset,
 	},
 }
 
