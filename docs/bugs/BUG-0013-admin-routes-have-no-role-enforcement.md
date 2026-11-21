@@ -9,7 +9,7 @@ audit: [BE-H6]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/test/integration/admin_rbac_test.go ; src/backend/internal/auth/rbac_test.go
+regression_test: src/backend/test/integration/admin/admin_rbac_test.go ; src/backend/internal/auth/rbac_test.go
 related: [BUG-0012]
 ---
 

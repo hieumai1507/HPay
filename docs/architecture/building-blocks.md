@@ -19,7 +19,7 @@ D:\hpay
     db/migrations  000001..000013 .up/.down SQL (golang-migrate file naming, applied by the external CLI)
     internal/store/queries  *.sql inputs; internal/store/gen  sqlc output (generated, built in Docker/CI by `sqlc generate`)
     api/openapi.yaml  63 paths, kept in sync with router.go by scripts/check-openapi-sync.py (CI lint job)
-    test/integration, scripts/ (loadtest k6, check-edge-tests.sh, dev bat files)
+    test/integration/<area>, test/testkit, scripts/ (loadtest k6, check-edge-tests.sh, dev bat files)
   src/admin     React 18 + Vite back-office
   src/mobile    Expo 54 / React Native 0.81 app
   scripts/      test-backend.ps1 / .sh (Docker test runner)

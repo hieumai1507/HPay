@@ -9,7 +9,7 @@ audit: [BE-C2]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/test/integration/transaction_auth_test.go ; src/backend/internal/auth/pin_test.go
+regression_test: src/backend/test/integration/authn/transaction_auth_test.go ; src/backend/internal/auth/pin_test.go
 related: [BUG-0001]
 ---
 

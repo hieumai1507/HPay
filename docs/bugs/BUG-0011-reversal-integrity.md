@@ -9,7 +9,7 @@ audit: [BE-H3, BE-H4]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/test/integration/reversal_integrity_test.go (TestReversal_*, TestAdminDecide_ExpiredRequestRejected)
+regression_test: src/backend/test/integration/admin/reversal_integrity_test.go (TestReversal_*, TestAdminDecide_ExpiredRequestRejected)
 related: [BUG-0001]
 ---
 

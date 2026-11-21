@@ -43,8 +43,8 @@ Sources: `internal/workflow/{types,registry,engine,consumer,recovery}.go`, `inte
    - Replay: deliver the same step event twice; assert one effect (`TestEdge_E04`, `TestEdge_E06` in `internal/workflow/integration_test.go` are the model).
    - Retryable vs terminal classification.
    - Compensation if the step is compensatable (`TestEdge_E07_CompensationReversesMovedFunds`).
-   - If it moves money: concurrent instances on one wallet, assert no deadlock and exact balance (E02/E03 in `test/integration/ledger_test.go`).
-   - Use `env.drain(t)` (pumps the outbox with `Worker.PumpLocal`) in integration tests instead of sleeping. `PumpLocal` skips start events whose handler is not in its registry, so a pump never steals another package's events.
+   - If it moves money: concurrent instances on one wallet, assert no deadlock and exact balance (E02/E03 in `test/integration/money/ledger_test.go`).
+   - Use `env.Drain(t)` (pumps the outbox with `Worker.PumpLocal`) in integration tests instead of sleeping. `PumpLocal` skips start events whose handler is not in its registry, so a pump never steals another package's events.
    - Packages that pump the outbox must have `TestMain` calling `testutil.RunSerialized(m)`.
 6. Update docs: `docs/domain/workflow-engine.md` and the definition table.
 

@@ -7,7 +7,7 @@ spec: spec.md
 
 # Test cases
 
-All automated cases are in `src/backend/test/integration/idempotency_test.go` and `idempotency_migration_test.go`. Run: `.\scripts\test-backend.ps1 -GoArgs "./test/integration -run (TestIdempotency|TestMigration000015) -race -count=1 -v"`.
+All automated cases are in `src/backend/test/integration/money/idempotency_test.go` and `idempotency_migration_test.go`. Run: `.\scripts\test-backend.ps1 -GoArgs "./test/integration/... -run (TestIdempotency|TestMigration000015) -race -count=1 -v"`.
 
 | Test ID | AC | Type | Priority | Executor | Steps | Expected | Automated as |
 |---------|----|------|----------|----------|-------|----------|--------------|

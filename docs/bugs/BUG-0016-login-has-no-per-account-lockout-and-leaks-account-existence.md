@@ -10,7 +10,7 @@ constitution: [C-07, C-13]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending
-regression_test: src/backend/internal/auth/login_lockout_test.go ; src/backend/test/integration/login_lockout_http_test.go
+regression_test: src/backend/internal/auth/login_lockout_test.go ; src/backend/test/integration/authn/login_lockout_http_test.go
 related: [BUG-0012]
 ---
 

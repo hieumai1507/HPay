@@ -31,7 +31,7 @@ Verified on 2026-11-21: `.\scripts\test-backend.ps1 -GoArgs "./internal/fee ./in
 
 Important caveats:
 - The script tests against the SAME database as local development (database `HPay`, compose project `hpay`), not an isolated test database. Tests create random users and rows, so the dev database accumulates test data (seen: workflow instances, outbox rows).
-- The script sets `REDIS_ADDR` but not `TEST_REDIS_ADDR`. Two tests read `TEST_REDIS_ADDR` (`TestEdge_E05` in `internal/workflow/integration_test.go`, `TestEdge_E17` in `test/integration/redis_down_test.go`); without it their real-Redis leg is skipped with a log line while the test still passes. CI sets `TEST_REDIS_ADDR`. To run those legs, add `-e TEST_REDIS_ADDR=redis:6379` to the script's `docker run` (not changed here).
+- The script sets `REDIS_ADDR` but not `TEST_REDIS_ADDR`. Two tests read `TEST_REDIS_ADDR` (`TestEdge_E05` in `internal/workflow/integration_test.go`, `TestEdge_E17` in `test/integration/money/redis_down_test.go`); without it their real-Redis leg is skipped with a log line while the test still passes. CI sets `TEST_REDIS_ADDR`. To run those legs, add `-e TEST_REDIS_ADDR=redis:6379` to the script's `docker run` (not changed here).
 - The script does not pass `-p 1`. CI does (`go test -p 1 ./... -race -count=1`) because packages that pump the shared outbox must not run concurrently (`testutil.RunSerialized`). If you see events stolen between packages, rerun with `-GoArgs "./... -p 1 -count=1"`.
 
 ### Option B: raw `go test` (when Go executables are allowed, e.g. CI or Linux)

@@ -7,7 +7,7 @@ last_verified: 2026-11-21
 
 # Add an HTTP endpoint
 
-Sources: `src/backend/internal/api/router.go`, `errmap.go`, `middleware.go`, `vault_handler.go`, `request_handler.go`, `scripts/check-openapi-sync.py`, `test/integration/transaction_request_http_test.go`, recipe `references/api-test.md`.
+Sources: `src/backend/internal/api/router.go`, `errmap.go`, `middleware.go`, `vault_handler.go`, `request_handler.go`, `scripts/check-openapi-sync.py`, `test/integration/money/transaction_request_http_test.go`, recipe `references/api-test.md`.
 
 ## Surfaces and where routes go
 
@@ -41,7 +41,7 @@ Sources: `src/backend/internal/api/router.go`, `errmap.go`, `middleware.go`, `va
 
 ## Tests
 
-- Cross-module, black-box tests go in `test/integration/` (package `integration`) using the harness in `helpers_test.go` (`newEnv`, `userWithMoney`, `drain`, `postTransfer`, `txnLedgerNet`). Handler-level tests build a small gin router with the real handler and middleware (see `transactionRequestRouter` in `transaction_request_http_test.go`, which injects `user_id` into the context and mounts `RequireIdempotencyKey`).
+- Cross-module, black-box tests go in `test/integration/<area>/` (one package per area: `money`, `authn`, `kyc`, `org`, `admin`) using the shared harness in `test/testkit` (`NewEnv`, `UserWithMoney`, `Drain`, `PostTransfer`, `TxnLedgerNet`, `NewAdminRig`). Handler-level tests build a small gin router with the real handler and middleware (see `transactionRequestRouter` in `test/integration/money/transaction_request_http_test.go`, which injects `user_id` into the context and mounts `RequireIdempotencyKey`).
 - Single-package pure logic: colocated `*_test.go`.
 - Every endpoint suite: happy path with DB assertions (ledger rows, balance, status), idempotent retry (same key twice gives one effect), authorization (another user's resource is invisible), validation (0, negative, over limit, self transfer), async settlement for engine flows (`env.drain(t)` pumps the outbox then assert the `step_executions` trail).
 - Edge cases: name tests `TestEdge_<ID>_<slug>` (CI greps `func TestEdge_E..._` for E01 to E20).

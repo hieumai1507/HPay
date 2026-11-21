@@ -9,7 +9,7 @@ audit: [BE-H1]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/test/integration/idempotency_test.go:TestIdempotency_MissingKeyRejectedInServices ; src/backend/test/integration/idempotency_test.go:TestIdempotency_MountedMoneyRoutesRequireKey ; src/backend/test/integration/idempotency_test.go:TestIdempotency_MoneyRequestCreate ; src/backend/test/integration/idempotency_test.go:TestIdempotency_MoneyRequestSplit
+regression_test: src/backend/test/integration/money/idempotency_test.go:TestIdempotency_MissingKeyRejectedInServices ; src/backend/test/integration/money/idempotency_test.go:TestIdempotency_MountedMoneyRoutesRequireKey ; src/backend/test/integration/money/idempotency_test.go:TestIdempotency_MoneyRequestCreate ; src/backend/test/integration/money/idempotency_test.go:TestIdempotency_MoneyRequestSplit
 related: [BUG-0002]
 ---
 

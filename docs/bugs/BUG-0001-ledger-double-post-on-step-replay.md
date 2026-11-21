@@ -9,7 +9,7 @@ audit: [BE-C1]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/internal/ledger/posting_guard_test.go:TestPost_SecondCallSameKindIsRejected ; src/backend/test/integration/ledger_replay_test.go:TestEdge_E06_DuplicateStepNoDoublePost
+regression_test: src/backend/internal/ledger/posting_guard_test.go:TestPost_SecondCallSameKindIsRejected ; src/backend/test/integration/money/ledger_replay_test.go:TestEdge_E06_DuplicateStepNoDoublePost
 related: []
 ---
 

@@ -15,7 +15,7 @@ Sources: test files under `src/` (counted 2026-11-21), `docs/audit/AUDIT-REPORT.
 |-------|---------|----------|--------------------|-------|
 | Backend unit and white-box | `go test`, colocated `*_test.go` | `src/backend/internal/**` | 20 files in 14 packages | nothing for pure logic; DB for some |
 | Backend workflow integration (white-box) | `go test` | `internal/workflow/integration_test.go`, `handlers/` | 3 files | Postgres, Redis optional (`TEST_REDIS_ADDR`) |
-| Backend cross-module integration (black-box) | `go test` | `src/backend/test/integration/` | 26 files | `TEST_DATABASE_URL` (skips otherwise) |
+| Backend cross-module integration (black-box) | `go test` | `src/backend/test/integration/{money,authn,kyc,org,admin}/` (shared harness in `src/backend/test/testkit/`) | 5 packages, 144 tests | `TEST_DATABASE_URL` (skips otherwise) |
 | Backend gates | shell/python/CI | `scripts/check-edge-tests.sh`, `check-openapi-sync.py`, CI `migrate` job (E18, ledger trigger), `govulncheck`, Trivy | 5 gates | CI |
 | Admin end-to-end | Playwright (chromium) | `src/admin/e2e/*.spec.ts` | 10 spec files | full stack, e2e seed |
 | Admin unit | none | | 0 | |
@@ -63,25 +63,25 @@ Legend: covered = a test with the ID in its name exists in `src/`; partial = rel
 
 | ID | Scenario | Test function | Status |
 |----|----------|---------------|--------|
-| E01 | Idempotent topup (same key) | `TestEdge_E01_IdempotentTopup` (test/integration/wallet_test.go) | covered |
-| E02 | Concurrent overdraw, no negative balance | `TestEdge_E02_ConcurrentOverdraw` (test/integration/ledger_test.go) | covered |
-| E03 | Cross transfer A to B and B to A, no deadlock | `TestEdge_E03_CrossTransferNoDeadlock` (test/integration/ledger_test.go) | covered |
+| E01 | Idempotent topup (same key) | `TestEdge_E01_IdempotentTopup` (test/integration/money/wallet_test.go) | covered |
+| E02 | Concurrent overdraw, no negative balance | `TestEdge_E02_ConcurrentOverdraw` (test/integration/money/ledger_test.go) | covered |
+| E03 | Cross transfer A to B and B to A, no deadlock | `TestEdge_E03_CrossTransferNoDeadlock` (test/integration/money/ledger_test.go) | covered |
 | E04 | Redelivery, no double side effect | `TestEdge_E04_RedeliveryNoDoubleSideEffect` (internal/workflow/integration_test.go) | covered (crash window BE-C1 untested) |
 | E05 | Outbox survives broker outage | `TestEdge_E05_OutboxSurvivesBrokerOutage` (internal/workflow/integration_test.go) | covered (Redis leg needs `TEST_REDIS_ADDR`) |
 | E06 | Duplicate result event idempotent | `TestEdge_E06_DuplicateResultEventIdempotent` (internal/workflow/integration_test.go) | covered |
-| E07 | Compensation reverses moved funds | `TestEdge_E07_CompensationReversesMovedFunds` (test/integration/transfer_test.go) | covered (failing compensation untested) |
-| E08 | Checker race, single finalize | `TestEdge_E08_CheckerRaceSingleFinalize` (test/integration/approval_test.go) | covered |
-| E09 | Policy snapshot survives policy change | `TestEdge_E09_PolicySnapshotSurvivesPolicyChange` (test/integration/approval_test.go) | covered |
-| E10 | Expired approval fails clean | `TestEdge_E10_ExpiredApprovalFailsClean` (test/integration/approval_test.go) | covered |
+| E07 | Compensation reverses moved funds | `TestEdge_E07_CompensationReversesMovedFunds` (test/integration/money/transfer_test.go) | covered (failing compensation untested) |
+| E08 | Checker race, single finalize | `TestEdge_E08_CheckerRaceSingleFinalize` (test/integration/org/approval_test.go) | covered |
+| E09 | Policy snapshot survives policy change | `TestEdge_E09_PolicySnapshotSurvivesPolicyChange` (test/integration/org/approval_test.go) | covered |
+| E10 | Expired approval fails clean | `TestEdge_E10_ExpiredApprovalFailsClean` (test/integration/org/approval_test.go) | covered |
 | E11 | OTP brute force | `TestEdge_E11_OTPBruteForce` (internal/auth/otp_test.go) | covered |
-| E12 | Locked user fails mid-workflow | `TestEdge_E12_LockedUserFailsMidWorkflow` (test/integration/transfer_test.go) | covered |
-| E13 | Limit by KYC tier | `TestEdge_E13_LimitByKycTier` (test/integration/offer_limits_test.go; since ADR-0007 the limit comes from the offer the KYC tier selects) | covered |
+| E12 | Locked user fails mid-workflow | `TestEdge_E12_LockedUserFailsMidWorkflow` (test/integration/money/transfer_test.go) | covered |
+| E13 | Limit by KYC tier | `TestEdge_E13_LimitByKycTier` (test/integration/money/offer_limits_test.go; since ADR-0007 the limit comes from the offer the KYC tier selects) | covered |
 | E14 | Self transfer rejected | `TestEdge_E14_SelfTransferRejected` (internal/ledger/ledger_test.go) | covered |
-| E15 | Duplicate bank callback | `TestEdge_E15_DuplicateBankCallback` (test/integration/wallet_test.go) | covered |
-| E16 | Recon cutoff, no false mismatch | `TestEdge_E16_ReconCutoffNoFalseMismatch` (test/integration/recon_test.go) | covered |
-| E17 | Redis down, no data loss | `TestEdge_E17_RedisDownNoDataLoss` (test/integration/redis_down_test.go) | covered (recovery leg needs `TEST_REDIS_ADDR`) |
+| E15 | Duplicate bank callback | `TestEdge_E15_DuplicateBankCallback` (test/integration/money/wallet_test.go) | covered |
+| E16 | Recon cutoff, no false mismatch | `TestEdge_E16_ReconCutoffNoFalseMismatch` (test/integration/admin/recon_test.go) | covered |
+| E17 | Redis down, no data loss | `TestEdge_E17_RedisDownNoDataLoss` (test/integration/money/redis_down_test.go) | covered (recovery leg needs `TEST_REDIS_ADDR`) |
 | E18 | Migration up, down, up | CI job `migrate` in `backend-ci.yml` (also `make migrate-verify`); not a Go test, exempt in `check-edge-tests.sh` | covered by CI |
-| E19 | Money request expiry race with pay | `TestEdge_E19_ExpiryRacePay` (test/integration/moneyrequest_test.go); mobile `TestEdge_E19_PayExpiredRequest_SafetyCheck` (requests.test.ts) | covered |
+| E19 | Money request expiry race with pay | `TestEdge_E19_ExpiryRacePay` (test/integration/money/moneyrequest_test.go); mobile `TestEdge_E19_PayExpiredRequest_SafetyCheck` (requests.test.ts) | covered |
 | E20 | Stuck recovery lease, no double claim | `TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim` (internal/workflow/integration_test.go) | covered |
 
 ### Mobile contract (M01 to M12)
@@ -109,7 +109,7 @@ Legend: covered = a test with the ID in its name exists in `src/`; partial = rel
 | A02 | New instance inserted while paging | `src/admin/e2e/workflow.spec.ts` "A02 (adapted)" | covered (adapted) |
 | A03 | Session expires mid-review, filters preserved | `src/admin/e2e/edge-cases.spec.ts` "A03 ..." | covered |
 | A04 | Signed KYC image URL expires | `src/admin/e2e/kyc.spec.ts` "A04 ..." | covered |
-| A05 | Two tabs edit the same org policy | no e2e; backend race covered by `TestOrgAdminPolicy_ConcurrentInsertsRaceToOneWinner` and `TestOrgAdminPolicy_VersionConflictMapsToSentinelError` (test/integration/org_admin_policy_test.go, QA case TC-EDG-A05) | partial |
+| A05 | Two tabs edit the same org policy | no e2e; backend race covered by `TestOrgAdminPolicy_ConcurrentInsertsRaceToOneWinner` and `TestOrgAdminPolicy_VersionConflictMapsToSentinelError` (test/integration/org/org_admin_policy_test.go, QA case TC-EDG-A05) | partial |
 | A06 | Report export stays non-blocking | `src/admin/e2e/recon.spec.ts` "A06 ..." | covered |
 | A07 | PII masked in workflow step JSON | `src/admin/e2e/edge-cases.spec.ts` "A07 ..." | covered |
 

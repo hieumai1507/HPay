@@ -9,7 +9,7 @@ audit: [BE-H1]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/test/integration/idempotency_test.go:TestIdempotency_TwoUsersSameKeyAreIndependent ; src/backend/test/integration/idempotency_test.go:TestIdempotency_Transfer_SameKeyDifferentPayloadRejected ; src/backend/test/integration/idempotency_migration_test.go:TestMigration000015_UpDownBackfill
+regression_test: src/backend/test/integration/money/idempotency_test.go:TestIdempotency_TwoUsersSameKeyAreIndependent ; src/backend/test/integration/money/idempotency_test.go:TestIdempotency_Transfer_SameKeyDifferentPayloadRejected ; src/backend/test/integration/money/idempotency_migration_test.go:TestMigration000015_UpDownBackfill
 related: [BUG-0003]
 ---
 
@@ -24,7 +24,7 @@ related: [BUG-0003]
 
 ## Other places with the same flaw
 - `transfer.TransferToUser`, `transfer.ExecuteEngineRequest`, `wallet.Topup`, `moneyrequest.Pay`: fixed (same helper).
-- `org.Topup`, `org.CreateDisbursement`: same pattern; fixed afterwards in the same working tree (2026-11-21) with the same `FindReplay` contract, tests in `test/integration/org_idempotency_test.go`.
+- `org.Topup`, `org.CreateDisbursement`: same pattern; fixed afterwards in the same working tree (2026-11-21) with the same `FindReplay` contract, tests in `test/integration/org/org_idempotency_test.go`.
 - `reversal` uses a server-built key (`rev-<txn id>`) and `cmd/seed` uses literal keys: not client-controlled, left as is.
 
 ## Fix

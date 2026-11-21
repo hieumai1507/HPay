@@ -208,7 +208,7 @@ Error mapping: limits -> `ERR_LIMIT_PER_TXN|ERR_LIMIT_DAILY|ERR_LIMIT_MONTHLY` (
 | `internal/workflow/handlers/handlers.go:37,82,149` | VALIDATE, MOVE_FUNDS, CONFIRM |
 | `internal/api/transaction_engine_handler.go` | HTTP adapter for request/confirm/verify |
 | `internal/product/service.go` | admin listing/CRUD of services, offers, orgs, audit; no money logic |
-| `test/integration/transfer_test.go`, `transaction_request_http_test.go`, `vault_test.go`, `internal/offerguard/offerguard_test.go`, `internal/fee/fee_test.go` | tests |
+| `test/integration/money/transfer_test.go`, `transaction_request_http_test.go`, `vault_test.go`, `internal/offerguard/offerguard_test.go`, `internal/fee/fee_test.go` | tests |
 
 ## 12. Open questions
 - 2fa provider (SMS, TOTP or push) and the PIN reset flow (owner: product/security).

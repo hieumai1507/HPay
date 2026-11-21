@@ -29,7 +29,7 @@ type StepHandler interface {
    - Classify errors: return `workflow.RetryableError{Err: ...}` for transient failures (engine retries with backoff up to `retry`); a plain error is terminal (engine runs `on_failure`).
 2. Register the handler where the others are registered: `cmd/server/main.go` (there is no `registry.go` registration file to edit and no manual consumer-group binding; streams are created automatically from the registry names, see the `registry.Names()` log line).
 3. If a definition change is needed, INSERT a NEW version row in `workflow_definitions` through a migration (never mutate the active version) and flip `is_active`. Note that nothing enforces a single active definition per name.
-4. Write `<name>_test.go` (see `internal/workflow/integration_test.go` and `test/integration/helpers_test.go` for the harness) covering at minimum:
+4. Write `<name>_test.go` (see `internal/workflow/integration_test.go` and `test/testkit/env.go` for the harness) covering at minimum:
    - happy path
    - **replay test**: run the step twice with the same input and assert the side effect happened once; for a money step this test will FAIL today unless the step has its own guard, which is exactly what it is for (E06, BE-C1)
    - retryable vs terminal error classification

@@ -9,7 +9,7 @@ audit: [BE-H9]
 found: 2026-11-21
 fixed: 2026-11-21
 commit: pending (fix is in the working tree, not committed)
-regression_test: src/backend/internal/kyc/image_test.go ; src/backend/internal/api/kyc_upload_test.go ; src/backend/test/integration/kyc_upload_test.go
+regression_test: src/backend/internal/kyc/image_test.go ; src/backend/internal/api/kyc_upload_test.go ; src/backend/test/integration/kyc/kyc_upload_test.go
 related: [BUG-0013]
 ---
 

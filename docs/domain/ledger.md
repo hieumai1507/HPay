@@ -138,7 +138,7 @@ No HTTP endpoints. Go API: `ledger.ValidateLegs`, `ledger.Post(ctx, tx, txnID, l
 | `internal/store/queries/wallets.sql:5,32` | `GetWalletsForUpdate`, `ApplyWalletDelta` |
 | `internal/store/queries/ledger.sql` | `InsertLedgerEntry`, `SumLedgerByWallet`, `InsertLedgerPosting`, `GetLedgerPosting` |
 | `db/migrations/000002...up.sql`, `000006...up.sql`, `000007...up.sql`, `000014_ledger_postings_guard.up.sql` | schema, system pools, append-only trigger, postings guard |
-| `test/integration/ledger_test.go`, `test/integration/ledger_replay_test.go`, `internal/ledger/ledger_test.go`, `internal/ledger/posting_guard_test.go` | tests |
+| `test/integration/money/ledger_test.go`, `test/integration/money/ledger_replay_test.go`, `internal/ledger/ledger_test.go`, `internal/ledger/posting_guard_test.go` | tests |
 
 ## 12. Open questions
 - Should `ledger_accounts` be removed or wired in (owner: ledger/finance, undecided)?
