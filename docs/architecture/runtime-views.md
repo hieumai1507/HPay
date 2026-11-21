@@ -126,6 +126,33 @@ sequenceDiagram
 
 Verified: `wallet/callback.go:61-113`, `api/mockbank_handler.go`. The pending top-up row is created by `CreatePendingTopup` (`callback.go:24`) which is only called from tests and the seeder (comment `:22`). The interactive mobile top-up (`POST /v1/wallets/topup`) is NOT routed in `router.go` (the handler method exists at `wallet_handler.go:33` but is unmounted), so the app's top-up screen currently has no working backend endpoint (audit appendix lists `/v1/wallets/topup` as called by mobile and missing). The engine service `TOPUP_BANK` (wallet strategy `syscash_to_user`) is the supported path through `/v1/transactions/request`. The callback route is mounted in every environment (audit BE-H7).
 
+## 4b. Forgotten PIN reset (ADR-0016)
+Verified against `auth/pin_reset.go`, `api/pin_handler.go`, `api/admin_ops_handler.go` and `transfer/service.go`.
+
+```mermaid
+sequenceDiagram
+  participant U as User (signed in)
+  participant API as api (pin_handler)
+  participant A as auth.Service
+  participant DB as Postgres
+  participant S as Sender port
+  U->>API: POST /v1/me/pin/reset/request {password}
+  API->>A: RequestPINReset
+  A->>DB: verify password hash, PIN exists, hourly count < 3
+  A->>DB: insert otp_challenges (purpose pin_reset, 120 s, 3 tries)
+  A->>S: SendCode (never in the HTTP response outside dev)
+  API-->>U: 200 {status: code_sent}
+  U->>API: POST /v1/me/pin/reset/confirm {code, new_pin}
+  API->>A: ConfirmPINReset
+  A->>A: ValidatePIN first (a weak PIN does not burn the code)
+  A->>DB: count attempt, compare hash
+  A->>DB: one tx: ConsumeOTPIfActive (one winner), ResetUserPIN (clears lock, stamps pin_reset_at), audit pin.reset
+  A->>S: Notify pin_reset
+  API-->>U: 200 {status: pin_reset}
+  Note over U,DB: next 24 h: ExecuteEngineRequest refuses a PIN amount above 2,500,000 VND (ERR_PIN_COOLING)
+```
+
+Operator fallback: `POST /v1/admin/users/:id/pin/reset` (permission `pin.reset`, reason required) removes the PIN, stamps `pin_reset_at`, writes audit `pin.clear` and notifies the user; the user then sets a new PIN with `PUT /v1/me/pin`.
 ## 5. Nightly reconciliation
 
 ```mermaid

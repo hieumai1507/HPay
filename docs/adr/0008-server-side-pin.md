@@ -1,7 +1,7 @@
 ---
 title: ADR 0008 Server-side PIN
 type: decision
-status: accepted (implemented by ADR-0014; PIN reset flow still open)
+status: accepted (implemented by ADR-0014; reset flow by ADR-0016)
 last_verified: 2026-11-21
 ---
 

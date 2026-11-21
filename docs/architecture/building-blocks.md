@@ -53,7 +53,7 @@ Dependencies below were derived from `import` statements in non-test files (2026
 | Domain | `product` | admin service catalog and offers | listing |
 | Domain | `fee` | fee policy lookup and calculation | - |
 | Domain | `offerguard` | per-offer service limits and auth method | - |
-| Domain | `auth` | register/login, argon2id, JWT issuer, refresh rotation, OTP, admin login | - |
+| Domain | `auth` | register/login with per-account lockout, argon2id, JWT issuer, refresh rotation, OTP, server-side PIN and its reset, admin login, `Sender` port for one-time codes and security notices (mock outside production, refusing in production until a provider is chosen, ADR-0016) | - |
 | Core | `ledger` | atomic double-entry posting with lock ordering | - |
 | Support | `ai` | LLM advisor clients (Claude, OpenAI) | - |
 | Support | `gateway` | outbound HTTP gateway and mock | - |

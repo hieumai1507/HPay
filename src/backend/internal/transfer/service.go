@@ -346,6 +346,13 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 	if authReq == "2fa" {
 		return EngineRequestResult{}, ErrAuthMethodUnavailable // no 2fa provider yet: fail closed
 	}
+	// ADR-0016: right after a PIN reset only small PIN transactions are allowed for a while,
+	// so someone who just took over the account cannot empty it at once.
+	if needsAuth(authReq) && s.authn != nil {
+		if cerr := s.authn.CheckPINCooling(ctx, input.SenderUserID, input.Amount); cerr != nil {
+			return EngineRequestResult{}, cerr
+		}
+	}
 
 	// 3. Resolve Sender & Receiver Wallets per strategy
 	sender, err := s.q.GetUserStatusByID(ctx, input.SenderUserID)

@@ -33,6 +33,7 @@ var adminRoutes = []route{
 	{"GET", "/v1/admin/fraud-flags", []string{"risk_officer", "superadmin"}},
 	{"POST", "/v1/admin/fraud-flags/" + zeroID + "/resolve", []string{"risk_officer", "superadmin"}},
 	{"POST", "/v1/admin/reversals", []string{"risk_officer", "ops", "superadmin"}},
+	{"POST", "/v1/admin/users/" + zeroID + "/pin/reset", []string{"superadmin"}}, // ADR-0016
 	{"GET", "/v1/admin/approvals", []string{"risk_officer", "ops", "superadmin"}},
 	{"POST", "/v1/admin/approvals/" + zeroID + "/decide", []string{"risk_officer", "ops", "superadmin"}},
 	{"POST", "/v1/admin/recon/run", []string{"ops", "superadmin"}},

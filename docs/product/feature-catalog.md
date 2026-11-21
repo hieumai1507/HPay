@@ -31,6 +31,7 @@ Status legend: **implemented** = UI (where applicable) and a mounted backend rou
 | A15 | KYC | capture ID and selfie, submit, status; AI score auto-approve/manual review/reject | `(kyc)/intro`, `capture-id`, `capture-selfie`, `status` | `POST /v1/kyc/submit`, `GET /v1/kyc/status` | implemented; client photo validator is a filename heuristic; camera mock buttons are shown when no camera permission; submit uses raw `fetch` multipart (`capture-selfie.tsx:106`) |
 | A16 | App lock and privacy | 5-min idle lock, OS biometric/device-credential unlock with sign-out after 5 failed attempts, privacy mask | `SecurityWrapper` | none | partial: no client PIN any more; no server verification yet (TODO ADR-0008), so the lock is a device-level gate only |
 | A17 | Org context switch | switch the app into a business wallet | account tab | `GET /v1/org` | implemented |
+| A18 | Forgotten PIN reset | backend only: password plus one-time code, then a new PIN; operator clear with `pin.reset`; 24 h cooling cap | none yet (no mobile screen) | `POST /v1/me/pin/reset/request`, `POST /v1/me/pin/reset/confirm`, `POST /v1/admin/users/:id/pin/reset` | partial: backend implemented (ADR-0016); no mobile or admin screen, no real SMS or e-mail provider |
 
 ## B. Business user (mobile, org context)
 

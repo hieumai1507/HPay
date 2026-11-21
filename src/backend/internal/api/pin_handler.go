@@ -6,13 +6,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hieumai1507/hpay-backend/internal/auth"
+	"github.com/hieumai1507/hpay-backend/internal/platform/config"
 )
 
 // PINHandler sets and changes the transaction PIN (ADR-0008, ADR-0014).
 // The PIN is never logged and never returned.
-type PINHandler struct{ svc *auth.Service }
+type PINHandler struct {
+	svc *auth.Service
+	cfg config.Config
+}
 
-func NewPINHandler(svc *auth.Service) *PINHandler { return &PINHandler{svc: svc} }
+func NewPINHandler(svc *auth.Service, cfg config.Config) *PINHandler {
+	return &PINHandler{svc: svc, cfg: cfg}
+}
 
 type setPINReq struct {
 	Password string `json:"password" binding:"required"`
@@ -51,4 +57,47 @@ func (h *PINHandler) Change(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "pin_changed"})
+}
+
+type resetRequestReq struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// ResetRequest starts a forgotten-PIN reset: password step-up, then a code through the
+// delivery port (ADR-0016). The code is in the response only in dev.
+func (h *PINHandler) ResetRequest(c *gin.Context) {
+	var req resetRequestReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "password is required")
+		return
+	}
+	out, err := h.svc.RequestPINReset(c.Request.Context(), mustUserID(c), req.Password)
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	body := gin.H{"status": "code_sent", "expires_in": out.ExpiresIn}
+	if h.cfg.IsDev() && out.DevCode != "" {
+		body["otp_dev"] = out.DevCode
+	}
+	c.JSON(http.StatusOK, body)
+}
+
+type resetConfirmReq struct {
+	Code   string `json:"code" binding:"required"`
+	NewPIN string `json:"new_pin" binding:"required"`
+}
+
+// ResetConfirm checks the code and sets the new PIN.
+func (h *PINHandler) ResetConfirm(c *gin.Context) {
+	var req resetConfirmReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "code and new_pin are required")
+		return
+	}
+	if err := h.svc.ConfirmPINReset(c.Request.Context(), mustUserID(c), req.Code, req.NewPIN); err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "pin_reset"})
 }

@@ -538,6 +538,48 @@ paths:
         "403": { description: ERR_PIN_INCORRECT / ERR_PIN_NOT_SET }
         "429": { description: ERR_PIN_LOCKED / ERR_RATE_LIMITED }
 
+  /v1/me/pin/reset/request:
+    post:
+      tags: [auth]
+      summary: Start a forgotten-PIN reset (ADR-0016). Requires the account password; a one-time code is sent through the delivery port (never in the response outside dev)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string }
+      responses:
+        "200": { description: "{status: code_sent, expires_in}; dev adds otp_dev" }
+        "400": { description: ERR_VALIDATION }
+        "401": { description: ERR_INVALID_CREDENTIALS }
+        "403": { description: ERR_PIN_NOT_SET }
+        "429": { description: "ERR_OTP_COOLDOWN (30 s) / ERR_PIN_RESET_RATE_LIMITED (3 per hour) / ERR_RATE_LIMITED" }
+        "503": { description: "ERR_OTP_DELIVERY_UNAVAILABLE (no real provider configured, fails closed)" }
+
+  /v1/me/pin/reset/confirm:
+    post:
+      tags: [auth]
+      summary: Finish the reset with the code and a new PIN. Clears the PIN lock and starts a 24 hour cooling period for large PIN transactions
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, new_pin]
+              properties:
+                code: { type: string, description: "6 digits sent to the user" }
+                new_pin: { type: string, description: "6 digits, not all the same digit and not a sequence" }
+      responses:
+        "200": { description: "{status: pin_reset}" }
+        "400": { description: "ERR_PIN_WEAK (the code is not consumed) / ERR_OTP_INVALID / ERR_OTP_EXPIRED / ERR_OTP_MAX_ATTEMPTS / ERR_VALIDATION" }
+        "429": { description: ERR_RATE_LIMITED }
+
   /v1/transactions/verify:
     post:
       tags: [transactions]
@@ -882,6 +924,25 @@ paths:
         "401": { description: ERR_INVALID_CREDENTIALS }
         "403": { description: ERR_ACCOUNT_LOCKED }
         "429": { description: "ERR_RATE_LIMITED or ERR_LOGIN_LOCKED (5 failed logins lock the admin for 15 minutes)" }
+
+  /v1/admin/users/{id}/pin/reset:
+    post:
+      tags: [admin]
+      summary: Operator fallback for a user who cannot receive a reset code. Removes the user's PIN (permission pin.reset, superadmin only); the user sets a new one. Never reads or sets a PIN
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 10, maxLength: 255, description: "who verified the identity and how; stored in the audit trail" }
+      responses:
+        "200": { description: "{status: pin_cleared}" }
+        "400": { description: ERR_VALIDATION }
+        "403": { description: "ERR_FORBIDDEN_PERMISSION / ERR_PIN_NOT_SET (no PIN to clear)" }
 
   /v1/admin/kyc:
     get:

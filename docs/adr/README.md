@@ -18,7 +18,7 @@ One decision per file. Format: Status, Context, Decision, Consequences. Accepted
 | [0005](0005-in-process-schedulers-not-asynq.md) | In-process schedulers, not asynq | Accepted (implemented) |
 | [0006](0006-docker-based-backend-tests.md) | Docker-based backend tests | Accepted (implemented) |
 | [0007](0007-kyc-limits-attached-to-offers.md) | KYC limits attached to offers | Accepted, implemented (weekly windows open) |
-| [0008](0008-server-side-pin.md) | Server-side PIN | Accepted, implemented by ADR-0014 (reset flow open) |
+| [0008](0008-server-side-pin.md) | Server-side PIN | Accepted, implemented by ADR-0014; reset by ADR-0016 |
 | [0009](0009-reversal-failure-needs-manual-and-fail-closed-fraud.md) | Reversal failure needs manual, fail-closed fraud | Accepted, reversal part implemented (ADR-0013); `compensation_failed` open |
 | [0010](0010-ledger-postings-guard.md) | Guard ledger postings with a unique (transaction, kind) record | **Accepted** (approved 2026-11-21) |
 | [0011](0011-idempotency-per-user-bound-to-request.md) | Idempotency keys are per user and bound to the request | **Accepted** (approved 2026-11-21) |
@@ -30,3 +30,4 @@ Lifecycle: an ADR is written as **Proposed** during `hpay-feature` stage 3 (desi
 | [0013](0013-reversal-uniqueness-and-needs-manual.md) | One reversal per transaction in the database; impossible reversals parked as needs_manual | **Accepted** (approved 2026-11-21) |
 | [0014](0014-transaction-pin-gate.md) | Hold a transaction in awaiting_auth until the server verifies the PIN | **Accepted** (approved 2026-11-21) |
 | [0015](0015-admin-rbac.md) | Enforce admin permissions on the server from the database role | **Accepted** (approved 2026-11-21) |
+| [0016](0016-pin-reset.md) | Reset a forgotten PIN with password plus a one-time code, with an operator fallback | **Accepted** (approved 2026-11-21) |

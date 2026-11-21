@@ -60,6 +60,7 @@ Only `dev` is special-cased in most places. Values other than `dev` behave as pr
 | api/router.go | Gin release mode unless `dev` |
 | platform/logger | `dev` uses the dev logger format, others the production format |
 | auth/service.go:199 and api/approval_handler.go:48 | `dev` only: OTP value returned in the challenge response (`otp_dev`) |
+| auth/sender.go:NewSender | `production` and `demo` use the refusing sender (every OTP and notice send fails with `ERR_OTP_DELIVERY_UNAVAILABLE`); other values use the log-only sender. A real provider is configured by a later ADR. |
 | cmd/server/main.go:117 | Action pipeline outbound gateway is the Mock gateway unless `APP_ENV == "production"`; the real HTTP gateway is only used for the literal `production`, which config comments do not list (`dev|ci|demo`) |
 | cmd/seed | Refuses `production` |
 | Not env-gated | `/internal/mock-bank/callback` mounted in every env; `godotenv.Load()` in every env |

@@ -44,10 +44,12 @@ type Service struct {
 	jwt  *JWTIssuer
 	log  *slog.Logger
 	env  string
+	// sender delivers one-time codes and security notices (ADR-0016).
+	sender Sender
 }
 
 func NewService(pool *pgxpool.Pool, jwtIssuer *JWTIssuer, log *slog.Logger, env string) *Service {
-	return &Service{pool: pool, q: store.New(pool), jwt: jwtIssuer, log: log, env: env}
+	return &Service{pool: pool, q: store.New(pool), jwt: jwtIssuer, log: log, env: env, sender: NewSender(env, log)}
 }
 
 func (s *Service) Register(ctx context.Context, phone, password, fullName, deviceID string) (UserInfo, TokenPair, error) {

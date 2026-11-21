@@ -453,3 +453,27 @@ func (h *AdminHandler) ListAuditLogs(c *gin.Context) {
 		"total_pages": query.TotalPages(total),
 	})
 }
+
+type clearPINReq struct {
+	Reason string `json:"reason" binding:"required,min=10,max=255"`
+}
+
+// ClearUserPIN is the operator fallback for a user who cannot receive a reset code (ADR-0016).
+// It only removes the PIN; the user sets a new one. It never reads or sets a PIN.
+func (h *AdminHandler) ClearUserPIN(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		respondValidation(c, "invalid user id")
+		return
+	}
+	var req clearPINReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, "reason (10 to 255 characters) is required")
+		return
+	}
+	if err := h.authSvc.ClearPIN(c.Request.Context(), mustAdminID(c), userID, req.Reason); err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "pin_cleared"})
+}

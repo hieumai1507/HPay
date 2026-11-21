@@ -44,6 +44,8 @@ type Authenticator interface {
 	VerifyPIN(ctx context.Context, userID uuid.UUID, pin string) error
 	VerifyOTP(ctx context.Context, userID uuid.UUID, purpose, code string) error
 	RequestOTPCode(ctx context.Context, userID uuid.UUID, purpose string) (string, error)
+	// CheckPINCooling refuses a large amount right after a PIN reset (ADR-0016).
+	CheckPINCooling(ctx context.Context, userID uuid.UUID, amount int64) error
 }
 
 // SetAuthenticator wires the credential verifier. Without it any request that

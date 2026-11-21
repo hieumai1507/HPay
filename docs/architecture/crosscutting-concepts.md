@@ -55,6 +55,8 @@ One wire format: `{code, message, request_id}` (`api/errmap.go:27-31,124-132`). 
 
 Gaps: access token not revocable and user status not checked per request (BE-H6); no admin RBAC on the backend (every admin token can call every `/v1/admin` route, only frontend hides things; see [../product/roles-and-permissions.md](../product/roles-and-permissions.md)); no server-side PIN (BE-C2); `confirm`/`verify` have an IDOR pattern (BE-C2, only the transaction id is needed).
 
+### One-time codes and security notices (ADR-0016)
+Codes (OTP) and notices to the account holder leave the system only through the `auth.Sender` port. Outside production a log-only sender is used: it records that a message was sent and never the code. In `production` and `demo` the refusing sender fails every send, so a flow that depends on delivery (PIN reset) fails closed instead of appearing to succeed. The OTP value itself appears in an HTTP response only when `APP_ENV=dev` (`challengeBody`, `ResetRequest`). A real SMS or e-mail provider is a separate decision (ADR with 2FA); the port keeps the flow independent of it.
 ## 7. Logging
 
 `log/slog` JSON to stdout (`platform/logger/logger.go`); level Debug with source in `dev`, Info otherwise. Access log per request (`router.go:235-247`): request_id, method, route template, status, duration; `X-Request-Id` is accepted from the client or generated and echoed. Policy (comment in logger.go): never log passwords, OTP, tokens, full phones, balances at info or above. Gap: no metrics or tracing; `/healthz` reports Postgres and Redis (503 when degraded).

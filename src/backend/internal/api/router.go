@@ -119,9 +119,12 @@ func NewRouter(d Deps) *gin.Engine {
 		me.GET("/fees/preview", transferH.FeePreview)
 
 		// Service Engine Core — Unified 3-Step Execution API for ALL transaction services
-		pinH := NewPINHandler(authSvc)
+		pinH := NewPINHandler(authSvc, d.Cfg)
 		me.PUT("/me/pin", RateLimitUser(d.Redis, 10, time.Minute), pinH.Set)
 		me.PATCH("/me/pin", RateLimitUser(d.Redis, 10, time.Minute), pinH.Change)
+		// ADR-0016: forgotten PIN. Password, then a one-time code, then a new PIN.
+		me.POST("/me/pin/reset/request", RateLimitUser(d.Redis, 5, time.Minute), pinH.ResetRequest)
+		me.POST("/me/pin/reset/confirm", RateLimitUser(d.Redis, 10, time.Minute), pinH.ResetConfirm)
 		engineH := NewTransactionEngineHandler(transferSvc, d.Cfg)
 		me.POST("/transactions/request", RequireIdempotencyKey(), engineH.RequestTransaction)
 		me.POST("/transactions/confirm", RateLimitUser(d.Redis, 20, time.Minute), engineH.ConfirmTransaction)
@@ -206,6 +209,7 @@ func NewRouter(d Deps) *gin.Engine {
 			orgsEditP = RequirePermission(auth.PermOrgsEdit)
 			aiP       = RequirePermission(auth.PermAIManage)
 			catalogP  = RequirePermission(auth.PermAdminsManage)
+			pinResetP = RequirePermission(auth.PermPINReset)
 			anyP      = RequirePermission() // any permission at all: a viewer sees nothing
 		)
 		adg.GET("/kyc", kycP, adminH.KYCQueue)
@@ -213,6 +217,7 @@ func NewRouter(d Deps) *gin.Engine {
 		adg.GET("/fraud-flags", fraudP, adminH.FraudFlags)
 		adg.POST("/fraud-flags/:id/resolve", fraudP, adminH.ResolveFraudFlag)
 		adg.POST("/reversals", workflowP, adminH.CreateReversal)
+		adg.POST("/users/:id/pin/reset", pinResetP, adminH.ClearUserPIN) // ADR-0016 operator fallback
 		adg.GET("/approvals", workflowP, adminH.AdminApprovals)
 		adg.POST("/approvals/:id/decide", workflowP, adminH.AdminDecide)
 		adg.POST("/recon/run", reconP, adminH.ReconRun)

@@ -278,6 +278,7 @@ Both rows in 'Constraints that are missing' about reversal uniqueness are now cl
 |--------|------------|
 | users.pin_failed_attempts INT NOT NULL DEFAULT 0 CHECK (>= 0), users.pin_locked_until TIMESTAMPTZ | PIN attempt counter and lockout (000018). users.pin_hash already existed and is now used |
 | users.login_failed_attempts INT NOT NULL DEFAULT 0 CHECK (>= 0), users.login_locked_until TIMESTAMPTZ; the same two columns on admin_users | Login failure counter and 15-minute lockout (000024, BUG-0016). |
+| users.pin_reset_at TIMESTAMPTZ | Start of the 24 hour cooling period after a PIN reset or operator clear (000025, ADR-0016). |
 | enum value 	xn_status = 'awaiting_auth' | request held until the credential is verified (000019, own file) |
 | 	ransactions.auth_method auth_method_enum | the method the request required, checked at confirm (000020) |
 | 	ransactions.workflow_name VARCHAR(60), 	ransactions.service_code VARCHAR(40) | what the request resolved, so confirm starts exactly that workflow (000021); NULL for old rows and for requests that needed no confirmation |

@@ -130,3 +130,28 @@ RETURNING login_failed_attempts, login_locked_until;
 -- name: ResetAdminLoginFailures :exec
 UPDATE admin_users SET login_failed_attempts = 0, login_locked_until = NULL
 WHERE id = $1 AND (login_failed_attempts <> 0 OR login_locked_until IS NOT NULL);
+
+-- name: CountRecentOTPs :one
+-- How many codes of this purpose were issued to the user since a point in time (hourly cap).
+SELECT count(*)::int AS n FROM otp_challenges
+WHERE user_id = $1 AND purpose = $2 AND created_at >= $3;
+
+-- name: ConsumeOTPIfActive :execrows
+-- Single-use consume: only one of several parallel confirms can flip consumed_at.
+UPDATE otp_challenges SET consumed_at = now()
+WHERE id = $1 AND consumed_at IS NULL AND expires_at > now();
+
+-- name: ResetUserPIN :execrows
+-- Replace the PIN, clear the attempt counter and lock, start the cooling period.
+UPDATE users
+SET pin_hash = $2, pin_failed_attempts = 0, pin_locked_until = NULL, pin_reset_at = now(), updated_at = now()
+WHERE id = $1;
+
+-- name: ClearUserPIN :execrows
+-- Operator fallback: remove the PIN (the user sets a new one). Starts the cooling period.
+UPDATE users
+SET pin_hash = NULL, pin_failed_attempts = 0, pin_locked_until = NULL, pin_reset_at = now(), updated_at = now()
+WHERE id = $1 AND pin_hash IS NOT NULL;
+
+-- name: GetPINResetAt :one
+SELECT pin_reset_at FROM users WHERE id = $1;
