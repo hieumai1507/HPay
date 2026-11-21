@@ -62,3 +62,16 @@ This project is indexed by GitNexus as **hpay** (3098 symbols, 7737 relationship
 | Work in the Cluster_81 area (3 symbols) | `.claude/skills/generated/cluster-81/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+# HPay workflow
+
+Layout: code in `src/{backend,admin,mobile}`, knowledge-base in `docs/` (start at `docs/README.md`), skills only in `.claude/skills/`, subagents in `.claude/agents/`.
+
+| Situation | Use |
+|-----------|-----|
+| New feature / change / vague request | skill `hpay-feature` (clarify -> spec -> plan -> red tests -> implement -> verify -> review) |
+| Bug, failing test, audit finding | skill `hpay-bugfix` |
+| Before commit / PR | skill `hpay-review` |
+| Building blocks (module, migration, step, endpoint test, page, hook, screen) | `hpay-backend-recipes`, `hpay-admin-recipes`, `hpay-mobile-recipes` |
+
+Rules: docs-first (change docs before code); code is the fact when docs disagree (see `docs/audit/AUDIT-REPORT.md`); never report a command as passing unless it ran in this session; 3 failed fix attempts means stop and report; never commit secrets, `.env`, `data/`; do not push or publish without the user's explicit go-ahead for that push.

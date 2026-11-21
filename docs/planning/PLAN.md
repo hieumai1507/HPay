@@ -1,7 +1,7 @@
 # HPay – Kế hoạch sửa lỗi và hợp nhất monorepo
 
-Ngày: 2026-11-21. Căn cứ: `AUDIT-REPORT.md` (gồm phụ lục xác minh).
-Trạng thái: **bản nháp chờ bạn duyệt**. Chưa có thay đổi nào trong code.
+Ngày: 2026-11-21. Căn cứ: `docs/audit/AUDIT-REPORT.md` (gồm phụ lục xác minh).
+Trạng thái: **đang thực hiện**. Đã xong: gộp monorepo (src/ + docs/), xóa lịch sử git cũ, gom skill về root, dựng workflow skill + subagent (.claude/). Chưa làm: Wave 1 trở đi (bị chặn vì không chạy được go test, xem handoff).
 
 ## 0. Quyết định cần bạn chốt trước khi chạy
 
@@ -17,7 +17,7 @@ Mỗi mục có mặc định tôi đề xuất. Nếu bạn không nói gì, k�
 | D6 | Mock data ở admin | Chỉ bật khi `import.meta.env.DEV`; production hiện lỗi thật |
 | D7 | Hạn mức KYC chuẩn | Bạn phải chọn một bảng số duy nhất (hiện 4 nguồn lệch nhau). Xem mục 5.2 |
 | D8 | Docs nói asynq nhưng code dùng goroutine | Mặc định: sửa docs theo code (goroutine + lease). Thêm asynq chỉ khi bạn muốn chạy nhiều replica |
-| D9 | `ref-docs/` (tài liệu TMDS, `.docx`) | Giữ ngoài repo (không commit), hoặc để `docs/reference/` nếu bạn có quyền chia sẻ |
+| D9 | `docs/reference/external/` (tài liệu TMDS, `.docx`) | Giữ ngoài repo (không commit), hoặc để `docs/reference/` nếu bạn có quyền chia sẻ |
 
 ---
 
@@ -200,7 +200,7 @@ Chờ Wave 1 merge xong (A1 phải xong trước B1).
 - Xong khi: mọi liên kết nội bộ hoạt động (script kiểm tra), không còn file `.html` trong `docs/` ngoài `mockups/`.
 
 **Agent D2 – Sửa nội dung docs** (chạy sau D1 để tránh sửa hai lần)
-- Việc, theo phụ lục và mục 3-5 của `AUDIT-REPORT.md`:
+- Việc, theo phụ lục và mục 3-5 của `docs/audit/AUDIT-REPORT.md`:
   1. Tách thông tin dự án khác (D5): README, doc 06 (đổi "TMDS Standard Platform" thành "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. Sửa comment "DEH" trong `approval/service.go:150` (đụng code, đưa cho agent sở hữu file).
   2. Số liệu: số migration (13, sau A1 là 14), E01–E20 và "39 case", số mockup, F11 vào master-plan, bản EN "$200" → 5,000,000 VND, "ví Mỹ" → ghi rõ là phong cách UI.
   3. Hạn mức KYC: một bảng duy nhất (D7), các nơi khác tham chiếu.
@@ -251,7 +251,7 @@ Các mục dưới đây agent chưa đọc hoặc chưa chạy. Mỗi mục đ�
 |---|---|
 | So enum status transaction/money-request/KYC với DB, so từng field response | F1 |
 | Hai file docs lớn nhất (`00-backend-design-v2-base.html`, `technical-overview.*`) chưa đọc kỹ từng dòng | D2 |
-| File xlsx test case, `ref-docs/*.docx` chưa mở | T1, D2 |
+| File xlsx test case, `docs/reference/external/*.docx` chưa mở | T1, D2 |
 | `workflow/engine.go` chỉ mới kiểm vùng compensation; `round_up.go`, `fraud/rules.go`, `fraud/admin.go`, `product` (phần ghi), `moneyrequest/sweeper.go`, `recon/cron.go` chưa đọc | B1, B2 |
 | Chữ ký callback bank (`wallet/callback.go`), `hmac.Equal` trong signer QR | B2, C2 |
 | `org_handler`: ai được tạo disbursement; role đổi sau khi tạo lệnh | B2 |

@@ -19,7 +19,14 @@ Run every check below against the working diff (`git diff` + `git diff --staged`
 8. **AuthZ two layers.** New queries touching user-owned rows include owner predicate in SQL, not just middleware. Admin endpoints have role check + audit log write with actor + reason where destructive.
 9. **Error contract.** New failure paths return `ERR_*` codes registered in `errmap.go` and documented in `openapi.yaml`. No raw error strings to clients.
 10. **Tests & race.** `go vet ./...`, `golangci-lint run`, `go test ./... -race` all pass. If the diff claims to cover an edge case ID (E/M/A), the corresponding `TestEdge_<ID>_*` exists.
-
+11. **Idempotency scope.** The key is unique per user (`initiated_by`, key) and bound to a request hash; same key + different payload returns 409. No server-side fallback that generates a random key when the client sent none.
+12. **No double posting.** Any ledger post is guarded by a DB uniqueness rule on (transaction, posting kind); a replayed workflow step or redelivered outbox event cannot post twice. Side effects and the step record share one transaction or a claim row.
+13. **Authentication is real.** PIN/OTP is verified server-side (hash, attempt counter, lockout); fields accepted but unused are a FAIL. Transaction reads check `initiated_by`.
+14. **Admin RBAC.** Every admin route checks the specific role/permission, not just "is admin"; destructive or config actions write an audit row with actor and reason.
+15. **Environment guards.** No default secret accepted outside `dev`; dev-only behavior (otp_dev, mock gateway, mock-bank route) is gated on an explicit validated `APP_ENV`.
+16. **Outbound URLs.** Any URL from config/DB passes scheme+host allowlist and private-IP block before request.
+17. **Frontend money.** No `Number()`/`parseInt()`/float math on amounts; writes send an idempotency key and are disabled while pending; no PIN or secret literals.
+18. **Timezone.** Day/month limits use a fixed zone (Asia/Ho_Chi_Minh), not server local time.
 ## Output format
 
 End with one of:
