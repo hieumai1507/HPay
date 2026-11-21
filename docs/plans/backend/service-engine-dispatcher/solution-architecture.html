@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution Architecture — Dynamic Service Engine Dispatcher (hpay-backend)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-backend</code> · plan · solution architecture</div>
+<h1>Solution Architecture — Dynamic Service Engine Dispatcher</h1>
+<blockquote><p>Song hành với <a href="./implementation-plan.html">implementation-plan.html</a>. Mọi sơ đồ là mermaid. Chỉ vẽ phần hệ thống mà feature này chạm tới.</p></blockquote>
+
+<h2>1. Context</h2>
+<p>Bộ 3 API engine giữ nguyên; điểm chèn mới là <b>Dispatcher</b> (đọc <code>services</code>) và <b>OfferGuard</b> (đọc <code>user_offers/offer_services/offer_auth_matrix</code>) đứng trước Workflow Engine.</p>
+<pre class="mermaid">
+flowchart LR
+  cli["📱 Mobile / 🖥 Admin\nPOST /v1/transactions/request"] --> H["TransactionEngineHandler"]
+  H --> OG["🛡 OfferGuard\nlimits + auth method"]
+  OG --> DP["🔀 Dispatcher\n(ExecuteEngineRequest)"]
+  DP -->|"reads"| SVC[("services\nworkflow_name · ledger_txn_type\nwallet_strategy · actions")]
+  OG -->|"reads"| OFR[("user_offers → offer_services\noffer_auth_matrix")]
+  DP --> WE["🔀 Workflow Engine (F4)\nstart(def = workflow_name)"]
+  WE --> AP["⚙️ Action Pipeline step\n(reads services.actions)"]
+  AP --> LE["⚖️ Ledger (F3)\ndouble-entry post"]
+  AP --> GW["🌐 Gateway (HTTP)\nmock in dev/test"]
+  WE --> OB[("outbox → Redis Streams")]
+</pre>
+
+<h2>2. Main flow</h2>
+<p>Luồng request→confirm cho một <code>service_code</code> bất kỳ, gồm nhánh lỗi OfferGuard và nhánh action pipeline.</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant H as EngineHandler
+  participant OG as OfferGuard
+  participant DP as Dispatcher
+  participant DB as Postgres
+  participant WE as WorkflowEngine
+  participant AP as ActionPipeline
+  participant GW as Gateway
+
+  C->>H: request{service_code, amount, ...}
+  H->>DP: ExecuteEngineRequest(input)
+  DP->>DB: GetServiceByCode(code)
+  alt service.status != active
+    DP-->>C: ERR_SERVICE_DISABLED
+  end
+  DP->>OG: Check(user, service, amount)
+  OG->>DB: user_offers → offer_services (limits, volume)
+  alt vượt hạn mức / interval / not in offer
+    OG-->>C: ERR_LIMIT_* / ERR_TOO_FREQUENT / ERR_SERVICE_NOT_IN_OFFER
+  end
+  OG->>DB: offer_auth_matrix(amount) → auth_method
+  OG-->>DP: auth_method
+  DP->>DB: resolveWallets(wallet_strategy)
+  DP->>DB: BEGIN; InsertTransaction(ledger_txn_type); engine.Start(workflow_name); COMMIT
+  DP-->>C: {transaction_id, ref_code, auth_required=auth_method}
+  C->>H: confirm{transaction_id, pin/otp/2fa}
+  H->>WE: verify auth_method matches → resume
+  WE->>AP: run steps (before_gl actions → GL post → after_gl actions)
+  AP->>GW: HTTP gateway call (Directional Integration)
+  AP->>DB: ledger double-entry post
+  WE->>C: (poll) status=completed
+</pre>
+
+<h2>3. State — service dispatch resolution</h2>
+<p>Trạng thái giao dịch không đổi (dùng lại <code>wf_status</code> của F4); phần mới là bước phân giải service → chiến lược thực thi.</p>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> LookupService
+  LookupService --> Rejected: status≠active
+  LookupService --> OfferGuard
+  OfferGuard --> Rejected: limit/interval/auth fail
+  OfferGuard --> ResolveWallets
+  ResolveWallets --> user_to_user: P2P_TRANSFER / MONEY_REQUEST
+  ResolveWallets --> syscash_to_user: TOPUP_BANK
+  ResolveWallets --> org_to_user: ORG_DISBURSEMENT
+  user_to_user --> StartWorkflow
+  syscash_to_user --> StartWorkflow
+  org_to_user --> StartWorkflow
+  StartWorkflow --> [*]: instance running
+  Rejected --> [*]
+</pre>
+
+<h2>4. Data model delta</h2>
+<p>Thêm <code>user_offers</code> + 3 cột dispatch trên <code>services</code>. Các bảng offer/auth đã tồn tại (000004).</p>
+<pre class="mermaid">
+erDiagram
+  users ||--o| user_offers : has
+  offers ||--o{ user_offers : assigned
+  offers ||--o{ offer_services : contains
+  services ||--o{ offer_services : configured
+  offer_services ||--o{ offer_auth_matrix : tiers
+  services {
+    string code
+    string workflow_name "NEW"
+    txn_type ledger_txn_type "NEW"
+    string wallet_strategy "NEW"
+    jsonb actions "existing — pipeline"
+    string action_priority "existing"
+  }
+  user_offers {
+    uuid user_id PK
+    uuid offer_id FK
+  }
+  offer_services {
+    bigint max_amount_per_txn
+    bigint daily_limit
+    bigint monthly_limit
+    int interval_seconds
+    bool is_enabled
+  }
+  offer_auth_matrix {
+    bigint min_amount
+    bigint max_amount
+    auth_method_enum auth_method
+  }
+</pre>
+
+<h2>5. Decisions &amp; trade-offs</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>Tái dùng <code>services.actions</code> JSONB cho Action Pipeline</td><td>Tạo bảng <code>service_action_steps</code> riêng</td><td>Schema đã có sẵn <code>actions</code> + admin 5-tab đã ghi vào đó; thêm bảng = lệch docs-first & phải đồng bộ 2 nguồn</td></tr>
+<tr><td>Dispatch metadata là cột trên <code>services</code></td><td>Bảng map <code>service_workflow</code> riêng</td><td>Quan hệ 1-1 với service, cột đơn giản hơn; đọc 1 row là đủ</td></tr>
+<tr><td>OfferGuard fail-closed</td><td>Fail-open (cho qua khi thiếu offer)</td><td>Nguyên tắc fintech: không rõ hạn mức thì từ chối, không cho tiền chạy</td></tr>
+<tr><td>Feature flag <code>ENGINE_DYNAMIC_DISPATCH</code></td><td>Cut-over thẳng</td><td><code>ExecuteEngineRequest</code> là hub symbol; cần bật dần + rollback nhanh</td></tr>
+<tr><td>Gateway HTTP có interface + mock</td><td>Gọi thẳng partner API</td><td>Test bằng testcontainers cần deterministic; khớp trade-off doc 01 §8 (storage/EventBus interface)</td></tr>
+</tbody>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<thead><tr><th>Invariant (index.html §8)</th><th>Cách feature giữ vững</th></tr></thead>
+<tbody>
+<tr><td>Ledger luôn cân, tiền là BIGINT minor units</td><td>Mọi wallet_strategy vẫn post double-entry qua <code>ledger.Post</code>; không có đường ghi thẳng balance</td></tr>
+<tr><td>Mọi actor đi qua đúng engine (không "đường sau")</td><td>Topup/disbursement giờ cũng đi qua <code>engine.Start</code> + outbox như P2P (bài học TMDS §2)</td></tr>
+<tr><td>Idempotency trên POST tạo giao dịch</td><td>Giữ nguyên <code>Idempotency-Key</code> UNIQUE + snapshot response (E01)</td></tr>
+<tr><td>Hạn mức KYC tier + hạn mức Offer</td><td>OfferGuard bổ sung tầng offer_services lên trên check KYC tier hiện có (E13)</td></tr>
+<tr><td>At-least-once + idempotent handler</td><td>Action Pipeline step check <code>step_executions</code> trước side-effect (E04/E06); gateway call gắn idempotency ref</td></tr>
+</tbody>
+</table>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-backend · 2026-07-22</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter"}});</script>
+</body></html>

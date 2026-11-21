@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation Plan — Playwright E2E Suite (hpay-admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:16px 18px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.s{background:#dcfce7;color:var(--ok)}.m{background:#fef9c3;color:var(--warn)}.l{background:#fee2e2;color:var(--bad)}
+.p0{background:#fee2e2;color:var(--bad)}.p1{background:#fef9c3;color:var(--warn)}.p2{background:var(--n100);color:var(--n500)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-admin</code> · plan</div>
+<h1>Implementation Plan — Playwright E2E Suite cho hpay-admin</h1>
+<blockquote><p><b>Feature slug:</b> <code>e2e-playwright-suite</code> · <b>Nguồn:</b> <a href="../../../../docs/guide/functional-overview.vi.html#admin">functional-overview.vi.html §🛡️ Đội vận hành — Admin web</a> (8 tính năng) + <a href="../../../../docs/architecture/03-admin-solution-architecture.html">03-admin-solution-architecture.html §5</a> (edge case A01–A07). Đây là plan-only: <b>không cài Playwright, không viết spec, không tạo file CI thật</b> — chờ user duyệt trước khi làm (theo yêu cầu "tôi duyệt xong mới được phép làm").</p></blockquote>
+
+<h2>1. Hiện trạng đã khảo sát</h2>
+<table>
+<thead><tr><th>Tầng</th><th>Thực tế trong code</th><th>Kết luận</th></tr></thead>
+<tbody>
+<tr><td>Test tooling hiện có</td><td><code>package.json</code> hpay-admin: không có Playwright, không có Vitest/Jest, không có bất kỳ test runner nào — chỉ <code>tsc --noEmit</code> + <code>eslint</code></td><td>❌ Toàn bộ hạ tầng E2E là mới, không có gì để tái dùng phía FE</td></tr>
+<tr><td>Routes thật</td><td><code>src/router.tsx</code>: <code>/login</code>, <code>/dashboard</code>, <code>/kyc</code>, <code>/kyc/:id</code>, <code>/fraud</code>, <code>/workflows</code>, <code>/workflows/:id</code>, <code>/tasks</code>, <code>/recon</code>, <code>/orgs</code>, <code>/ai-settings</code>, <code>/audit</code> — tất cả sau <code>RequireAdmin</code> guard trừ <code>/login</code></td><td>✅ Danh sách route khớp đúng scope 8 tính năng của functional-overview (dashboard/KYC/fraud/workflow/recon/my-tasks/audit/orgs); <code>ai-settings</code> và <code>services/offers</code> (Service Catalog, Offer Factory) nằm ngoài scope Admin theo functional-overview → để P2/không bắt buộc trong đợt này</td></tr>
+<tr><td>Auth thật</td><td><code>LoginPage.tsx</code> gọi <code>POST /v1/admin/auth/login {email,password}</code> → <code>useAdminStore.setSession(token, admin)</code> ghi vào <code>sessionStorage['hpay-admin-session'] = {token, admin}</code> (chủ đích dùng sessionStorage — phiên không sống qua việc đóng tab). Backend: <code>AdminService.Login</code> (<code>internal/auth/admin.go</code>) cấp JWT audience <code>admin</code>, TTL <b>15 phút</b> (<code>AccessTokenTTL</code>, <code>internal/auth/jwt.go</code>), <b>access-only — chưa có refresh token cho admin</b> (comment trong code: "Access-only tokens for now")</td><td>⚠️ TTL 15 phút là đủ dài cho một lượt chạy Playwright (thường &lt;5 phút/spec) nhưng không đủ margin nếu suite chạy tuần tự lâu → cần mint token mới per-worker, không share 1 token cho cả suite</td></tr>
+<tr><td>Admin account có sẵn</td><td>Migration <code>000001_users_admin_auth.up.sql</code> seed đúng 1 dòng: <code>admin@HPay.dev</code>, role <code>superadmin</code>, password đã hash argon2 — <b>plaintext không xuất hiện ở đâu trong repo</b> (không log, không comment, không doc)</td><td>❌ Không dùng được tài khoản demo này cho E2E vì không biết plaintext, và My Tasks cần <b>≥2 admin khác role</b> (maker-checker) mà seed hiện tại chỉ có 1 → phải bổ sung fixture admin riêng cho E2E (mục 3)</td></tr>
+<tr><td><code>cmd/seed/main.go</code></td><td>643 dòng, idempotent (upsert theo phone/idempotency key), tạo đúng data mà admin cần: user <code>0900000003</code> ở KYC queue (ai_score 64), user <code>0900000004</code> bị khoá + confirmed_fraud + reversal pending trong My Tasks, workflow đa dạng cho monitor — nhưng seed này lấy admin đầu tiên trong bảng (<code>ORDER BY created_at LIMIT 1</code>) cho reversal approval, tức chỉ 1 admin thật sự tồn tại sau khi seed chạy</td><td>✅ Tái dùng được ~90% cho dữ liệu nghiệp vụ (KYC pending, fraud flag, workflow stuck) — chỉ cần thêm phần admin fixture, không viết lại seeder</td></tr>
+<tr><td>Backend CI pattern</td><td><code>src/backend/.github/workflows/ci.yml</code> job <code>test</code>: service containers <code>postgres:16-alpine</code> + <code>redis:7-alpine</code> với healthcheck, <code>migrate</code> tool cài qua curl, chạy migration rồi <code>go test</code></td><td>✅ Pattern service-container + healthcheck tái dùng được cho job E2E mới trong hpay-admin, nhưng hpay-admin là repo riêng — backend code không có sẵn trong checkout (mục 5)</td></tr>
+</tbody>
+</table>
+
+<h2>2. Scope &amp; Non-goals</h2>
+<h3>Ships (plan này bao phủ, để implement sau khi duyệt)</h3>
+<ul>
+<li>Playwright project (TypeScript) trong <code>src/admin/e2e/</code>, cấu hình <code>playwright.config.ts</code>, chạy Chromium trong CI.</li>
+<li>Fixture strategy: mở rộng <code>cmd/seed/main.go</code> (hoặc thêm cờ <code>--profile=e2e</code>) để tạo 2 admin_users cố định với plaintext đã biết, phục vụ maker-checker (My Tasks) và test đồng thời (A01/A05).</li>
+<li>Auth strategy: hỗn hợp — phần lớn test bootstrap session qua API login thật (không qua form) + đúng 1 test đi qua form <code>LoginPage</code> thật (chi tiết mục "Auth strategy").</li>
+<li>8 spec file, một cho mỗi tính năng Admin theo functional-overview: dashboard, KYC queue, fraud monitor, workflow monitor, reconciliation, org/policy, My Tasks, audit log.</li>
+<li>CI job mới (<code>e2e</code>) trong <code>src/admin/.github/workflows/ci.yml</code>, mirror pattern service-container của hpay-backend, checkout hpay-backend làm sibling để build backend thật.</li>
+<li>Chiến lược flakiness (retry, wait, trace) + quyết định blocking vs non-blocking giai đoạn đầu.</li>
+</ul>
+<h3>Non-goals (defer)</h3>
+<ul>
+<li><b>Cross-browser</b> (Firefox/WebKit) trong CI — chỉ Chromium, xem trade-off ở mục 3.</li>
+<li><code>ai-settings</code>, <code>services</code> (Service Catalog), <code>offers</code> (Offer Factory) — không nằm trong 8 mục "Đội vận hành" của functional-overview; để plan E2E riêng nếu cần.</li>
+<li>Visual regression / screenshot diffing — ngoài phạm vi, có thể thêm sau khi suite hành vi đã ổn định.</li>
+<li>Load/performance testing — Playwright ở đây chỉ kiểm tra hành vi đúng, không đo tải.</li>
+<li>Publish Docker image backend lên registry (GHCR) cho CI admin pull — đề xuất ở mục "API changes" §Phương án B nhưng không triển khai đợt này; chọn Phương án A (sibling checkout).</li>
+</ul>
+
+<h2>3. Playwright project setup</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Giá trị</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>Vị trí test</td><td><code>src/admin/e2e/</code> (spec: <code>e2e/*.spec.ts</code>, helper: <code>e2e/fixtures/</code>, <code>e2e/utils/</code>)</td><td>Tách khỏi <code>src/</code> — không lẫn với code app, không bị <code>tsc --noEmit</code> của app quét vào; giữ ngoài <code>vite build</code></td></tr>
+<tr><td>Ngôn ngữ</td><td>TypeScript, <code>tsconfig.json</code> riêng cho <code>e2e/</code> (giống cách <code>scripts/</code> đã có <code>scripts/tsconfig.json</code> cho <code>gen-api.ts</code>)</td><td>Nhất quán với toolchain hiện có (100% TS trong repo), lấy được type của API response nếu cần</td></tr>
+<tr><td>Config</td><td><code>playwright.config.ts</code> ở root repo, <code>testDir: './e2e'</code>, <code>baseURL</code> từ env <code>E2E_BASE_URL</code> (mặc định <code>http://localhost:4173</code> — cổng <code>vite preview</code>)</td><td>Cho phép chạy local (dev server) và CI (preview build) mà không sửa code test</td></tr>
+<tr><td>Browser matrix CI</td><td><b>Chỉ Chromium</b> (project <code>chromium</code>) trong CI mặc định; Firefox/WebKit để local/manual (<code>--project=firefox</code>) hoặc nightly job riêng nếu cần sau này</td><td><b>Trade-off có chủ đích:</b> full-stack E2E (backend + DB thật) đã chậm sẵn; nhân 3 browser = nhân 3 thời gian CI cho lợi ích thấp — admin web không có logic CSS-engine-specific, rủi ro cross-browser thấp hơn nhiều so với lợi ích tốc độ phản hồi PR. Chấp nhận rủi ro bỏ sót lỗi riêng Firefox/Safari, bù bằng nightly cross-browser job không chặn PR</td></tr>
+<tr><td>Reporter</td><td><code>html</code> (local) + <code>github</code> (annotate PR) + <code>junit</code> (để GitHub Actions hiển thị test summary chuẩn)</td><td>Feedback loop nhanh cho reviewer ngay trên PR, không cần mở artifact</td></tr>
+<tr><td>Retries</td><td><code>retries: 2</code> chỉ khi <code>process.env.CI</code>, <code>0</code> khi chạy local</td><td>Che chắn flake mạng/timing trong CI mà không che giấu bug thật khi dev debug local (xem mục Rollout)</td></tr>
+<tr><td>Parallelism</td><td><code>fullyParallel: true</code> nhưng <code>workers: 2</code> trong CI (không phải mặc định = số CPU) — vì mỗi worker mint 1 token riêng và một số spec (My Tasks, Orgs) ghi dữ liệu chia sẻ</td><td>Tránh 2 worker cùng lúc sửa 1 hàng dữ liệu → false-positive 409 (khác với 409 test có chủ đích ở A01/A05)</td></tr>
+</tbody>
+</table>
+
+<h2>4. Test data / fixtures strategy</h2>
+<blockquote><p><b>Xác nhận premise trong đề bài:</b> mỗi lần CI chạy sẽ có postgres container <b>rỗng hoàn toàn</b> (service container mới, không volume) — đây đã là "fresh DB per CI run" miễn phí, không cần cơ chế dọn dẹp thêm. Vấn đề còn lại là: (a) dữ liệu nền tảng dùng chung, và (b) cô lập giữa các test khi chúng ghi/sửa dữ liệu.</p></blockquote>
+<h3>4a. Dữ liệu nền (global setup, chạy 1 lần)</h3>
+<ul>
+<li>Sau khi migrate DB rỗng, chạy <b>đúng 1 lần</b>: <code>go run ./cmd/seed</code> (backend, dựng data nghiệp vụ có sẵn: KYC pending, fraud flag, workflow đa dạng, org + policy) <b>+</b> một bước bổ sung nhỏ tạo <b>2 admin_users cố định</b> với plaintext biết trước — ví dụ <code>e2e-maker@HPay.dev</code> (role <code>ops</code>) và <code>e2e-checker@HPay.dev</code> (role <code>superadmin</code>), password cố định <code>E2ETest@123</code>. Cách làm: thêm cờ <code>--e2e-admins</code> vào <code>cmd/seed/main.go</code> (tách khỏi seed dev mặc định để không lẫn credential test vào demo) — chi tiết implement thuộc phase sau, đây chỉ là quyết định kiến trúc.</li>
+<li>Không tạo admin fixture qua migration mới — seed script là đúng chỗ (đã có tiền lệ seed admin đơn ở migration 000001, nhưng thêm 2 tài khoản chỉ-để-test vào migration sẽ rò rỉ vào production schema; seed script chạy trong CI/dev không đụng migration).</li>
+</ul>
+<h3>4b. Cô lập giữa các test (per-spec, không phải per-test)</h3>
+<ul>
+<li><b>Read-only spec</b> (Dashboard, Workflow Monitor filters, Audit search, Orgs list) dùng thẳng dữ liệu seed — không cần fixture riêng, chạy song song an toàn.</li>
+<li><b>Spec có mutation</b> (KYC approve/reject, Fraud resolve, My Tasks approve/reject, Orgs policy save) tự tạo record của riêng mình trong <code>test.beforeEach</code> bằng cách gọi thẳng API backend thật (không qua UI) với token admin đã mint — ví dụ tạo 1 KYC-pending user mới qua endpoint nội bộ/seed helper thay vì dùng chung user <code>0900000003</code> mà mọi spec khác cũng đọc. Named theo <code>test.info().testId</code> để không đụng nhau khi chạy song song 2 worker.</li>
+<li>Không dùng transaction rollback kiểu test DB (pattern phổ biến ở unit test) vì đây là E2E qua HTTP thật, nhiều service (workflow engine async) — rollback giữa các test sẽ phá vỡ side-effect đã trigger. Chấp nhận dữ liệu cộng dồn trong suốt 1 lần chạy CI, dọn sạch bằng việc container postgres bị huỷ cuối job.</li>
+</ul>
+
+<h2>5. Auth strategy — khuyến nghị thật, không trung lập</h2>
+<blockquote><p><b>Khuyến nghị:</b> <b>hỗn hợp có thiên hướng</b> — phần lớn test bootstrap session bằng cách gọi thẳng <code>POST /v1/admin/auth/login</code> qua HTTP (không qua form), lấy <code>access_token</code>, rồi <code>page.addInitScript</code> ghi thẳng vào <code>sessionStorage['hpay-admin-session']</code> đúng format <code>{token, admin}</code> mà <code>useAdminStore</code> đọc — <b>trước khi</b> navigate vào route cần test. Đúng <b>1 spec</b> (<code>e2e/login.spec.ts</code>) đi qua form thật.</p></blockquote>
+<h3>Vì sao không dùng lại "throwaway Go script mint JWT" như lần verify trước</h3>
+<p>Lần trước dùng Go script gọi thẳng <code>internal/auth.JWTIssuer.Issue()</code> để mint token, bỏ qua hoàn toàn tầng auth service. Cách đó nhanh nhưng có rủi ro thật cho E2E: nếu ai đó phá vỡ logic <code>AdminService.Login</code> (sai mapping role, quên check <code>status=active</code>, đổi field response...), test vẫn xanh vì không bao giờ chạm code đó. E2E của toàn bộ admin console mà auth service không nằm trong đường test nào là một lỗ hổng coverage đáng kể — auth là thứ đầu tiên mọi phiên phải đi qua.</p>
+<h3>Vì sao không bắt mọi test đi qua form UI</h3>
+<p>Form UI (click, type, submit, chờ redirect, chờ toast lỗi nếu có) tốn ~1–2s + round-trip DOM mỗi lần, nhân với hàng chục spec sẽ cộng dồn thành phút chờ vô nghĩa — phần UI login đã được phủ đầy đủ bởi chính <code>login.spec.ts</code>, lặp lại nó ở mọi spec khác không tăng coverage, chỉ tăng thời gian CI và bề mặt flake (network, animation, redirect timing).</p>
+<h3>Cách chọn cụ thể</h3>
+<table>
+<thead><tr><th>Nhóm test</th><th>Cách vào session</th></tr></thead>
+<tbody>
+<tr><td><code>login.spec.ts</code> (1 spec, ~2–3 case)</td><td>Form thật: email/password đúng → redirect <code>/dashboard</code>; sai mật khẩu → thông báo lỗi inline, không redirect; (tuỳ) tài khoản <code>status=locked</code> → lỗi rõ ràng</td></tr>
+<tr><td>Mọi spec còn lại (KYC, Fraud, Workflow, Recon, Orgs, My Tasks, Audit, Dashboard)</td><td>Global fixture <code>e2e/fixtures/auth.ts</code>: gọi <code>POST /v1/admin/auth/login</code> thật bằng credential seed cố định (mục 4a), inject vào <code>sessionStorage</code> qua <code>addInitScript</code> trước mỗi test cần role đó</td></tr>
+<tr><td>My Tasks (maker-checker)</td><td>2 fixture riêng: <code>asMaker</code> (login <code>e2e-maker@HPay.dev</code>) và <code>asChecker</code> (login <code>e2e-checker@HPay.dev</code>) — dùng <code>test.use({storageState:...})</code> hoặc 2 <code>browserContext</code> trong cùng 1 test để mô phỏng đúng A01 (2 reviewer cùng lúc)</td></tr>
+</tbody>
+</table>
+<p>Token TTL 15 phút (access-only, không refresh) là đủ cho một spec file (thường &lt;1 phút), nhưng fixture mint token <b>mới cho mỗi test file</b> (không share 1 token toàn suite) để không phụ thuộc thứ tự chạy và tránh test cuối suite gặp token hết hạn nếu suite chạy chậm trong CI đông tải.</p>
+
+<h2>6. Task breakdown — theo trang, kèm số ca &amp; ưu tiên</h2>
+<table>
+<thead><tr><th>#</th><th>Trang / tính năng</th><th>Số ca dự kiến</th><th>Ưu tiên</th><th>Edge case tham chiếu</th></tr></thead>
+<tbody>
+<tr><td>T0</td><td>Login (form thật)</td><td>2–3</td><td><span class="tag p0">P0</span></td><td>—</td></tr>
+<tr><td>T1</td><td>Dashboard tổng quan</td><td>2</td><td><span class="tag p1">P1</span></td><td>—</td></tr>
+<tr><td>T2</td><td>Hàng chờ KYC + review action</td><td>5</td><td><span class="tag p0">P0</span></td><td>A01 (409 khi 2 reviewer cùng duyệt), A04 (URL ảnh KYC ký hết hạn → auto refetch)</td></tr>
+<tr><td>T3</td><td>Giám sát gian lận + resolve</td><td>4</td><td><span class="tag p0">P0</span></td><td>A01 (409 tương tự KYC)</td></tr>
+<tr><td>T4</td><td>Workflow Monitor + filter</td><td>4</td><td><span class="tag p1">P1</span></td><td>A02 (phân trang cursor khi có instance mới chen vào giữa lúc reviewer đang ở trang sau)</td></tr>
+<tr><td>T5</td><td>Đối soát (chạy + xem + xuất Excel)</td><td>3</td><td><span class="tag p1">P1</span></td><td>A06 (export nặng → poll, không treo UI)</td></tr>
+<tr><td>T6</td><td>Tổ chức &amp; Policy</td><td>3</td><td><span class="tag p2">P2</span></td><td>A05 (2 tab cùng sửa policy) — cảnh báo in-flight requests</td></tr>
+<tr><td>T7</td><td>My Tasks (maker-checker admin)</td><td>4</td><td><span class="tag p0">P0</span></td><td>A01 (2 checker cùng quyết 1 task → 1 thắng, 1 nhận 409 + toast + row cập nhật tại chỗ, không reload cả bảng)</td></tr>
+<tr><td>T8</td><td>Audit Log search</td><td>2</td><td><span class="tag p2">P2</span></td><td>—</td></tr>
+<tr><td>T9</td><td>Cross-cutting: phiên hết hạn giữa lúc review</td><td>1</td><td><span class="tag p1">P1</span></td><td>A03 (token hết hạn → modal re-login giữ nguyên URL + filter trong search params)</td></tr>
+<tr><td>T10</td><td>Cross-cutting: PII masking trong JSON step detail</td><td>1</td><td><span class="tag p2">P2</span></td><td>A07 (JSON input/output step không lộ raw PII qua DevTools/response)</td></tr>
+</tbody>
+</table>
+<p><b>Tổng ước tính: ~31–33 test case</b> trải trên 9 spec file (login, dashboard, kyc, fraud, workflow, recon, orgs, my-tasks, audit) + 1 file cross-cutting (session-expiry, pii-masking gộp chung <code>edge-cases.spec.ts</code>).</p>
+
+<h2>7. CI job design (thay cho "API changes" — không có API mới)</h2>
+<p>Không có schema/API mới ở phía backend hay admin (test suite thuần tiêu thụ API đã có). Phần thiết kế thật nằm ở CI job — sketch bên dưới, <b>chỉ là tài liệu đề xuất, không phải file YAML thật được commit trong đợt plan này</b>.</p>
+<h3>Quyết định: checkout hpay-backend làm sibling repo trong CI job</h3>
+<p><b>Phương án A (khuyến nghị, sketch dưới đây dùng phương án này):</b> job E2E của hpay-admin checkout thêm <code>hieumai1507/hpay-backend</code> vào thư mục con, build binary Go ngay trong job, migrate DB, start server, rồi chạy Playwright nhắm vào server đó. <b>Phương án B (không chọn đợt này):</b> hpay-backend CI tự build &amp; publish Docker image lên registry (GHCR) mỗi lần merge main; hpay-admin CI chỉ <code>docker pull</code> image đã build sẵn — nhanh hơn, tách toolchain, nhưng đòi hỏi việc mới ở hpay-backend (thêm job publish image) chưa tồn tại và không thuộc phạm vi sửa của plan này. Chọn A vì triển khai được ngay trong repo hpay-admin, không cần thay đổi hpay-backend; B ghi lại như cải tiến tương lai (xem Non-goals).</p>
+<pre><code># src/admin/.github/workflows/ci.yml — job mới "e2e" (SKETCH — không phải file commit thật)
+e2e:
+  runs-on: ubuntu-latest
+  services:
+    postgres:
+      image: postgres:16-alpine
+      env: { POSTGRES_USER: HPay, POSTGRES_PASSWORD: HPay, POSTGRES_DB: HPay }
+      ports: ["5432:5432"]
+      options: >-
+        --health-cmd "pg_isready -U HPay" --health-interval 3s --health-retries 10
+    redis:
+      image: redis:7-alpine
+      ports: ["6379:6379"]
+      options: >-
+        --health-cmd "redis-cli ping" --health-interval 3s --health-retries 10
+  env:
+    DB_URL: postgres://HPay:HPay@localhost:5432/HPay?sslmode=disable
+    REDIS_ADDR: localhost:6379
+    E2E_BASE_URL: http://localhost:4173
+  steps:
+    - uses: actions/checkout@v4
+      with: { path: hpay-admin }
+
+    - uses: actions/checkout@v4          # Phương án A: sibling checkout
+      with:
+        repository: hieumai1507/hpay-backend
+        ref: main                        # pin tới tag/SHA đã test nếu muốn giảm rủi ro drift
+        path: hpay-backend
+
+    - uses: actions/setup-go@v5
+      with: { go-version-file: src/backend/go.mod }
+    - uses: sqlc-dev/setup-sqlc@v4
+      with: { sqlc-version: "1.27.0" }
+
+    - name: build + migrate + seed backend
+      working-directory: hpay-backend
+      run: |
+        sqlc generate --no-remote
+        curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xz
+        sudo mv migrate /usr/local/bin/
+        migrate -path db/migrations -database "$DB_URL" up
+        go build -o /tmp/hpay-server ./cmd/server
+        DATABASE_URL="$DB_URL" go run ./cmd/seed --e2e-admins   # T4a: data nền + 2 admin fixture
+
+    - name: start backend
+      working-directory: hpay-backend
+      run: |
+        DATABASE_URL="$DB_URL" REDIS_ADDR="$REDIS_ADDR" /tmp/hpay-server &
+        npx wait-on http://localhost:8080/healthz -t 30000   # healthcheck trước khi FE build/test chạy
+
+    - uses: actions/setup-node@v4
+      with: { node-version: 20, cache: 'npm', cache-dependency-path: src/admin/package-lock.json }
+    - name: install + build admin
+      working-directory: hpay-admin
+      run: |
+        npm ci
+        npm run build
+        npx playwright install --with-deps chromium
+    - name: serve admin (preview build)
+      working-directory: hpay-admin
+      run: npx vite preview --port 4173 &
+        npx wait-on http://localhost:4173 -t 15000
+
+    - name: run Playwright
+      working-directory: hpay-admin
+      run: npx playwright test --project=chromium
+      env:
+        CI: true
+
+    - uses: actions/upload-artifact@v4     # trace/report khi fail, để debug flake
+      if: failure()
+      with: { name: playwright-report, path: src/admin/playwright-report/, retention-days: 7 }
+</code></pre>
+<p><b>Chặn merge:</b> job <code>e2e</code> thêm vào <code>needs</code> của bất kỳ job "gate" tổng hợp nào (hoặc tự nó là 1 required status check trong branch protection của hpay-admin) — giống cách <code>build</code> của hpay-backend khai <code>needs: [lint, test]</code>. Chi tiết bật/tắt "required" ngay từ đầu hay sau, xem mục Rollout.</p>
+
+<h2>8. Test plan (tóm tắt map sang case cụ thể)</h2>
+<table>
+<thead><tr><th>Edge case</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td>A01</td><td><code>TestE2E_MyTasks_TwoCheckersRaceOneWins</code> — 2 <code>browserContext</code> (cùng checker hoặc checker khác) cùng bấm "Duyệt" 1 task; 1 context nhận 200 + row cập nhật, context còn lại nhận toast lỗi + row tự cập nhật theo state mới, không phải reload cả bảng</td></tr>
+<tr><td>A02</td><td><code>TestE2E_Workflow_PaginationStableUnderInsert</code> — mở trang 3, tạo thêm workflow instance mới qua API nền, next/prev không làm trôi hàng đang xem (cursor, không offset)</td></tr>
+<tr><td>A03</td><td><code>TestE2E_SessionExpiry_ReLoginKeepsFilters</code> — set filter + query param, giả lập token hết hạn (ghi đè token trong sessionStorage thành rác), action tiếp theo → modal re-login → login lại → quay về đúng URL + filter cũ</td></tr>
+<tr><td>A04</td><td><code>TestE2E_KYCDetail_ImageURLExpiryRetry</code> — mock URL ảnh 403 lần đầu, verify FE tự xin URL mới đúng 1 lần trước khi báo lỗi</td></tr>
+<tr><td>A05</td><td><code>TestE2E_Orgs_TwoTabsEditPolicy</code> — 2 tab cùng sửa policy 1 org, tab 2 lưu sau nhận 409 xử lý qua interceptor chung (toast thống nhất, không crash)</td></tr>
+<tr><td>A06</td><td><code>TestE2E_Recon_ExportDoesNotBlockUI</code> — bấm xuất Excel, verify UI vẫn tương tác được trong lúc chờ (không có spinner full-page chặn toàn màn), poll tới khi có link tải</td></tr>
+<tr><td>A07</td><td><code>TestE2E_WorkflowDetail_StepJSONMasked</code> — mở step detail có PII, verify network response + DOM không chứa raw PII (đã <code>***</code>) </td></tr>
+<tr><td>—</td><td><code>TestE2E_Login_HappyPath</code> / <code>TestE2E_Login_WrongPassword</code> — qua form thật</td></tr>
+<tr><td>—</td><td><code>TestE2E_KYC_ApproveReject</code>, <code>TestE2E_Fraud_ConfirmDismiss</code>, <code>TestE2E_MyTasks_ApproveReject</code> — happy-path CRUD mỗi trang mutation</td></tr>
+</tbody>
+</table>
+
+<h2>9. Rollout &amp; risk</h2>
+<table>
+<thead><tr><th>Rủi ro</th><th>Giảm thiểu</th></tr></thead>
+<tbody>
+<tr><td>Full-stack E2E vốn dĩ flaky hơn unit/integration test — mạng, timing UI, race giữa nhiều service (workflow async, redis)</td><td><code>retries: 2</code> chỉ trong CI; <b>không dùng <code>page.waitForTimeout</code> tuỳ tiện</b> — bắt buộc chờ theo điều kiện (<code>expect(locator).toBeVisible()</code>, <code>page.waitForResponse()</code>, network-idle cho các trang poll như Recon); trace-on-retry bật sẵn để debug không cần rerun local</td></tr>
+<tr><td>hpay-backend <code>main</code> đổi mà không tương thích với spec đã viết (checkout sibling luôn lấy <code>main</code> mới nhất)</td><td>Job E2E fail được gắn nhãn rõ "backend drift" trong step name; cân nhắc pin ref cụ thể sau giai đoạn trial nếu drift gây ồn quá nhiều</td></tr>
+<tr><td>Dữ liệu chia sẻ giữa spec chạy song song gây false-positive 409 (khác 409 test có chủ đích)</td><td><code>workers: 2</code> giới hạn thay vì mặc định theo CPU; spec mutation tự tạo record riêng theo <code>testId</code> (mục 4b)</td></tr>
+<tr><td>CI chậm đi đáng kể (build Go + build FE + chạy 30+ Playwright case full-stack)</td><td>Ước tính ~4–6 phút thêm cho job <code>e2e</code> (build backend ~1p, build FE ~1p, Playwright Chromium-only ~2–3p) — chạy song song với job <code>lint</code>/<code>test</code> hiện có của hpay-admin (nếu có), không chặn tuần tự</td></tr>
+</tbody>
+</table>
+<h3>Blocking hay non-blocking ngay từ đầu — khuyến nghị</h3>
+<blockquote><p><b>Khuyến nghị: non-blocking (không phải required check) trong 1–2 tuần đầu</b>, dùng <code>continue-on-error: true</code> cho job <code>e2e</code> hoặc không thêm vào danh sách required status check của branch protection, kèm thông báo rõ trong PR (comment/summary) khi fail. Sau giai đoạn trial — khi suite chạy ổn định qua nhiều PR liên tiếp không có false-positive do flake — chuyển sang required/blocking. Lý do: đây là suite hoàn toàn mới, full-stack, nhiều thành phần lần đầu phối hợp trong CI (sibling checkout, healthcheck backend thật, seed E2E-only) — nếu bắt buộc pass ngay từ ngày 1, một lỗi hạ tầng CI (không phải lỗi sản phẩm) có thể chặn mọi PR không liên quan, gây mất niềm tin vào gate và áp lực bypass/skip test — rủi ro lớn hơn lợi ích của việc "chặn ngay từ đầu".</p></blockquote>
+<p>Không có migration/schema nào trong plan này → không có rollback DB. Rollback nếu cần: revert PR thêm job CI, không ảnh hưởng code sản phẩm.</p>
+
+<h2>10. Execution checklist (cho phase implement sau khi được duyệt)</h2>
+<ol>
+<li><code>impact()</code> trên bất kỳ symbol nào bị đụng khi thêm cờ <code>--e2e-admins</code> vào <code>cmd/seed/main.go</code> (bên hpay-backend, theo CLAUDE.md của repo đó).</li>
+<li>Scaffold <code>e2e/playwright.config.ts</code> + <code>e2e/fixtures/auth.ts</code> (T0 auth fixture trước, mọi spec khác phụ thuộc nó).</li>
+<li>Viết spec theo thứ tự ưu tiên P0 trước: T0 → T2 → T3 → T7, rồi P1 (T1, T4, T5, T9), rồi P2 (T6, T8, T10).</li>
+<li>Thêm job <code>e2e</code> vào CI (non-blocking) sau khi suite chạy xanh ổn định local + trong 1 PR thử.</li>
+<li><code>detect_changes()</code> trước khi commit (theo CLAUDE.md của hpay-admin).</li>
+<li>Sau ~1–2 tuần trial không flake → bật required status check.</li>
+</ol>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-admin · 2026-07-29</footer>
+</div></body></html>

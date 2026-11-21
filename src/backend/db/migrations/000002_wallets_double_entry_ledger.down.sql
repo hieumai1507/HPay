@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS ledger_entries;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS ledger_accounts;
+DROP TABLE IF EXISTS wallets;
+DROP TYPE IF EXISTS entry_direction;
+DROP TYPE IF EXISTS txn_status;
+DROP TYPE IF EXISTS txn_type;
+DROP TYPE IF EXISTS wallet_status;
+DROP TYPE IF EXISTS owner_type;

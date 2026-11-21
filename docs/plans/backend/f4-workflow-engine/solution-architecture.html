@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F4 Workflow Engine — Solution Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="implementation-plan.html">← Implementation Plan</a> · f4-workflow-engine</div>
+<h1>F4 Workflow Engine — Solution Architecture</h1>
+
+<h2>1. Context — các thành phần và luồng event</h2>
+<pre class="mermaid">
+flowchart LR
+  api["API / module bất kỳ\nengine.Start(defName, txnID, ctx)"] -->|"cùng DB tx:\ninstance + outbox(step.start)"| pg[("PostgreSQL")]
+  rel["outbox relay\nclaim SKIP LOCKED\navailable_at <= now"] --> pg
+  rel -->|"XADD"| st1[["wf:steps:echo"]]
+  rel -->|"XADD"| st2[["wf:steps:wallet (F5)"]]
+  rel -->|"XADD"| ev[["wf:events"]]
+  st1 --> w1["step worker (group: workers)\nidempotency → handler(timeout)\n→ step_execution + outbox(result)\n→ XACK"]
+  w1 --> pg
+  ev --> ec["engine consumer (group: engine)\nOnResult: advance/retry/fail/pause\n→ outbox(step.start kế) → XACK"]
+  ec --> pg
+  rec["recovery (60s)\nXAUTOCLAIM pending chết\n+ sweep lease instance kẹt"] --> st1
+  rec --> pg
+</pre>
+
+<h2>2. Main flow — một step auto trọn vòng đời (kèm nhánh lỗi)</h2>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant EN as engine
+  participant OB as outbox→relay
+  participant ST as wf:steps:H
+  participant W as step worker
+  participant DB as PostgreSQL
+  participant EV as wf:events
+  EN->>OB: step.start {inst, step, attempt}
+  OB->>ST: XADD
+  ST->>W: XREADGROUP
+  W->>DB: step_executions đã có (inst,step,attempt)?
+  alt đã completed (redelivery — E04/E06)
+    W->>OB: phát lại result cũ (không side-effect)
+  else chưa
+    W->>W: handler.Execute(ctx, timeout_ms)
+    alt ok
+      W->>DB: tx: side-effects + step_execution(completed) + outbox(result ok)
+    else RetryableError
+      W->>DB: step_execution(failed, attempt) + outbox(result failed retryable)
+    else terminal
+      W->>DB: step_execution(failed) + outbox(result failed terminal)
+    end
+  end
+  W->>ST: XACK
+  EV->>EN: result event
+  EN->>DB: SELECT instance FOR UPDATE\nguard: status=running AND current_step khớp
+  alt ok → còn step
+    EN->>OB: step.start(step kế, attempt=1)
+  else ok → hết step
+    EN->>DB: instance=completed
+  else failed retryable & attempt < retry
+    EN->>OB: step.start(cùng step, attempt+1)\navailable_at = now + 2^attempt s (trần 60s)
+  else failed terminal
+    EN->>DB: theo on_failure: failed / compensating / manual\n+ FailTransactionGuarded nếu có txn
+  end
+</pre>
+
+<h2>3. State — workflow instance (F4 kích hoạt đầy đủ trừ resume)</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> running : Start()
+  running --> running : step completed → advance / retry
+  running --> waiting_approval : gặp step human_approval\n(resume ở F6)
+  running --> completed : hết step
+  running --> failed : on_failure=fail / manual
+  running --> compensating : on_failure=compensate
+  compensating --> compensated : mọi step cần đảo đã đảo\n(F4: framework, F5: thực thi tiền)
+  running --> recovering : sweep lease (E20)
+  recovering --> running : re-emit step hiện tại
+  completed --> [*]
+  failed --> [*]
+  compensated --> [*]
+</pre>
+
+<h2>4. Data model delta</h2>
+<pre class="mermaid">
+erDiagram
+  outbox {
+    bigint id PK
+    varchar event_type "workflow.step.start | workflow.step.result"
+    jsonb payload "handler nằm trong payload để relay định tuyến"
+    timestamptz available_at "MỚI - backoff retry"
+    timestamptz published_at "NULL = chưa phát"
+  }
+  workflow_instances ||--o{ step_executions : "unique(instance,step,attempt) = chốt idempotency"
+</pre>
+
+<h2>5. Decisions & trade-offs</h2>
+<table>
+<tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr>
+<tr><td>Backoff bằng <code>outbox.available_at</code></td><td>asynq delayed task / Redis ZSET</td><td>Retry là quyết định đã commit trong DB — để nó ở DB giữ đúng bất biến "event không mất sau commit"; relay chỉ cần thêm 1 điều kiện WHERE</td></tr>
+<tr><td>Worker phát lại result event khi gặp redelivery thay vì im lặng</td><td>Bỏ qua message trùng</td><td>Nếu crash xảy ra SAU khi ghi step_execution nhưng TRƯỚC khi relay phát result, im lặng = engine chờ mãi; phát lại luôn an toàn vì engine idempotent (E06)</td></tr>
+<tr><td>Guard advance bằng (status, current_step) trong FOR UPDATE</td><td>Dedup theo event id</td><td>Không cần bảng dedup: trạng thái instance TỰ là nguồn chân lý; event lạc hậu tự vô hiệu</td></tr>
+<tr><td>Lease recovery = UPDATE…WHERE updated_at < ngưỡng RETURNING</td><td>Advisory lock / cờ riêng</td><td>Học từ TMDS (pending→attempt): 1 câu SQL, race-safe, 2 sweeper không claim trùng — đúng E20</td></tr>
+<tr><td>Test handlers (echo/flaky/boom) thay vì chờ business handler</td><td>Test engine cùng F5</td><td>Engine được chứng minh độc lập; F5 chỉ còn lo nghiệp vụ</td></tr>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<tr><th>Bất biến</th><th>Đảm bảo tại</th></tr>
+<tr><td>Event không phát trước commit, không mất sau commit</td><td>outbox ghi cùng tx với instance/step_execution; relay chỉ đọc hàng đã commit — E05</td></tr>
+<tr><td>Exactly-once effect trên at-least-once delivery</td><td>unique(instance,step,attempt) + engine guard — E04/E06</td></tr>
+<tr><td>Giao dịch lơ lửng không bị quên</td><td>XAUTOCLAIM + sweep lease — E20</td></tr>
+<tr><td>Chuyển trạng thái qua transition có guard</td><td>Mọi UPDATE instance/transaction đều kèm WHERE status hợp lệ</td></tr>
+</table>
+</div>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{fontFamily:'Inter',fontSize:'13px'}});</script>
+</body>
+</html>

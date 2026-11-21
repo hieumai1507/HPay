@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Solution Architecture — F6 Org Disbursement HTTP Endpoint</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200);letter-spacing:-.01em}
+h3{font-size:16.5px;font-weight:600;margin:26px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top;min-width:120px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+a{color:var(--brand)}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · src/backend/docs/plans/f6-org-disbursement-endpoint</div>
+<h1>Solution Architecture — Org Disbursement HTTP Endpoint</h1>
+<blockquote><p>Pure wiring change: expose the already-implemented <code>org.Service.CreateDisbursement</code> over HTTP. No new domain logic, no schema change. Diagrams below show only the request path this feature adds.</p></blockquote>
+
+<h2>1. Context</h2>
+<div class="mermaid">
+flowchart LR
+  Mobile["hpay-mobile\ndisburse.tsx\nuseDisburseOrgMoney()"] -->|"POST /v1/org/:id/transactions\nIdempotency-Key header"| Router["router.go\n/v1/org group"]
+  Router --> MW["RequireIdempotencyKey()"]
+  MW --> Handler["OrgHandler.Disburse\n(NEW)"]
+  Handler --> Svc["org.Service.CreateDisbursement\n(EXISTING, unchanged)"]
+  Svc --> DB[(Postgres\ntransactions·wallets)]
+  Svc --> Engine["workflow.Engine.Start\ndisbursementDefinition"]
+  Engine --> Streams[(Redis Streams)]
+  Handler --> ErrMap["respondErr / errmap.go\n(EXISTING error table)"]
+</div>
+
+<h2>2. Main flow</h2>
+<div class="mermaid">
+sequenceDiagram
+  participant M as Mobile (maker)
+  participant R as router.go
+  participant MW as RequireIdempotencyKey
+  participant H as OrgHandler.Disburse (NEW)
+  participant S as org.Service.CreateDisbursement
+  participant DB as Postgres
+  participant E as Workflow Engine
+
+  M->>R: POST /v1/org/{id}/transactions {phone, amount, note}\nheader Idempotency-Key
+  R->>MW: middleware chain
+  alt header missing or >64 chars
+    MW-->>M: 400 ERR_IDEMPOTENCY_KEY_REQUIRED
+  else header present
+    MW->>H: c.Set("idempotency_key", key) → Disburse(c)
+    H->>H: bind JSON {phone, amount, note}
+    alt bind fails
+      H-->>M: 400 ERR_VALIDATION
+    else bound ok
+      H->>S: CreateDisbursement(ctx, actorID, orgID, phone, amount, note, idemKey)
+      S->>DB: requireRole == maker
+      alt not maker
+        S-->>H: ErrForbiddenRole
+        H-->>M: 403 ERR_FORBIDDEN_ROLE
+      else maker
+        S->>DB: policy/balance/receiver checks (fail-fast)
+        alt any check fails
+          S-->>H: domain error (ErrNoPolicy / ErrAmountInvalid / ...)
+          H-->>M: mapped 4xx via respondErr
+        else all pass
+          S->>DB: BEGIN; InsertTransaction; COMMIT
+          S->>E: engine.Start(disbursementDefinition)
+          E-->>S: instance started (pauses later at WAIT_APPROVAL, async)
+          S-->>H: DisbursementResult{ref_code,status,amount,fee,total,created_at}
+          H-->>M: 201 DisbursementResult (JSON)
+        end
+      end
+    end
+  end
+</div>
+
+<h2>3. State</h2>
+<p>No new lifecycle. This endpoint only creates the transaction; the existing status machine (already documented in <code>docs/planning/master-plan.html §7</code>) applies unchanged: <code>created → pending_approval → processing → completed | failed</code>, driven entirely inside <code>CreateDisbursement</code> + the workflow engine's <code>WAIT_APPROVAL</code> pause hook. The HTTP layer only ever observes the synchronous return value (<code>status</code> is whatever <code>InsertTransaction</code> set at the moment of response — typically <code>pending_approval</code> once the pause hook has run inline, or <code>created</code> if the caller races ahead of it).</p>
+
+<h2>4. Data model delta</h2>
+<p>None — no table or column changes. For reference, the existing shape this endpoint reads/writes:</p>
+<div class="mermaid">
+erDiagram
+  ORGANIZATIONS ||--o{ ORG_MEMBERS : has
+  ORGANIZATIONS ||--|| WALLETS : owns
+  ORG_MEMBERS }o--|| USERS : is
+  TRANSACTIONS }o--|| WALLETS : "sender (org)"
+  TRANSACTIONS }o--|| WALLETS : "receiver (user)"
+  TRANSACTIONS ||--o| APPROVAL_REQUESTS : gates
+  TRANSACTIONS {
+    uuid id
+    string ref_code
+    string idempotency_key
+    string type "org_disbursement"
+    bigint amount
+    bigint fee
+    string status
+  }
+</div>
+
+<h2>5. Decisions &amp; trade-offs</h2>
+<table>
+<tr><th>Decision</th><th>Alternatives considered</th><th>Why</th></tr>
+<tr><td>Route path <code>POST /v1/org/{id}/transactions</code></td><td>Route the mobile client's existing target vs. changing mobile to hit the unified <code>/v1/me/transactions/request</code> engine endpoint with a <code>service_code</code></td><td>Mobile already calls this exact path and shape; the org group already scopes by <code>{id}</code> the same way members/policies do. Changing mobile would touch a second repo for zero benefit — the service method is org-specific (maker-role check, org wallet) and doesn't fit the generic engine's per-user model cleanly.</td></tr>
+<tr><td>Response body = raw <code>org.DisbursementResult</code> struct (ref_code-keyed)</td><td>Wrap in a generic <code>{transaction_id, status}</code> envelope as the original ask suggested</td><td>Every other transaction-creation endpoint in this codebase (P2P transfer, topup, engine request) keys its response on <code>ref_code</code>, not a numeric/UUID transaction id — matching that idiom keeps the wire contract consistent. The mobile client's <code>OrgDisbursementResult</code> type was already written against this exact shape.</td></tr>
+<tr><td>Idempotency key sourced from <code>c.GetString("idempotency_key")</code> (header, via middleware), request body has no idempotency field</td><td>Accept idempotency key in JSON body like <code>engineRequestReq.Idempotency</code></td><td>Matches the <code>/v1/me/transactions/request</code> + topup + transfer convention exactly (header-only). Mobile's <code>useDisburseOrgMoney</code> already sends it as a header.</td></tr>
+<tr><td>New handler method on existing <code>OrgHandler</code>, not a new handler type</td><td>Separate <code>OrgTransactionHandler</code></td><td><code>OrgHandler</code> already owns org-scoped mutations (Create, AddMember, CreatePolicy); one more org-scoped mutation keeps related code together, consistent with how the file is organized today.</td></tr>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<tr><th>Invariant (docs index.html §8)</th><th>How this feature upholds it</th></tr>
+<tr><td>Retry không tạo giao dịch đôi (idempotency)</td><td>Delegated entirely to <code>CreateDisbursement</code>'s existing unique-constraint + duplicate-detect path; the handler only forwards the header value untouched, plus <code>RequireIdempotencyKey()</code> rejects requests with no key before the service is ever called.</td></tr>
+<tr><td>Mỗi giao dịch ≥ 2 bút toán, tổng Nợ = tổng Có</td><td>Unaffected — ledger posting still happens inside the workflow engine's <code>MOVE_FUNDS</code> step, unchanged by this endpoint.</td></tr>
+<tr><td>Maker-checker cho org_txn</td><td><code>CreateDisbursement</code>'s <code>requireRole(..., OrgRoleMaker)</code> check runs unchanged; the new handler adds no bypass — it is a thin pass-through, and <code>errmap.go</code> already maps <code>ErrForbiddenRole</code>/<code>ErrNotMember</code> to 403.</td></tr>
+<tr><td>Errors always use the Error schema with stable ERR_* code</td><td>Handler uses the existing <code>respondErr</code>/<code>respondValidation</code> helpers exclusively — no ad-hoc error JSON introduced.</td></tr>
+</table>
+
+<footer>src/backend/docs/plans/f6-org-disbursement-endpoint · generated via gen-feature-plan</footer>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script>
+</div></body></html>

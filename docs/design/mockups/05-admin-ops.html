@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>HPay Admin — Ops</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mp-base.css">
+</head>
+<body>
+<div class="board" style="flex-direction:column">
+
+<!-- ═══════════ A6. FRAUD QUEUE ═══════════ -->
+<div class="slot"><div class="label">A6 · Fraud Monitor</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item active">🚨 Gian lận <span style="margin-left:auto;background:var(--danger-600);color:#fff;border-radius:99px;padding:1px 8px;font:600 11px Inter">3</span></div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị</div>
+    <div class="item">🏢 Tổ chức & Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">Giám sát gian lận</span>
+      <div class="toolbar"><span class="fbtn">Status: Mở ▾</span><span class="fbtn">Rule ▾</span><span class="fbtn">☑ Mark safe hàng loạt</span></div>
+    </div>
+    <div class="page">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th style="width:36px"><input type="checkbox"></th><th>Flag</th><th>Rule</th><th class="num">Score</th><th>Giao dịch</th><th class="num">Số tiền</th><th>User</th><th>Tuổi</th><th>Trạng thái</th></tr>
+          <tr style="background:var(--danger-50)"><td><input type="checkbox"></td><td class="mono">#291</td><td><span class="chip danger" style="font-size:11px">VELOCITY_5MIN</span></td><td class="num" style="font-weight:700;color:var(--danger-600)">87</td><td class="mono">MP26070800119</td><td class="num money">9.800.000</td><td>Trần B** Long</td><td style="color:var(--danger-600);font-weight:700">41m ⚠ SLA</td><td><span class="chip warning"><span class="dot"></span>Mở</span></td></tr>
+          <tr><td><input type="checkbox"></td><td class="mono">#292</td><td><span class="chip danger" style="font-size:11px">AMOUNT_SPIKE</span></td><td class="num" style="font-weight:700;color:var(--warning-600)">64</td><td class="mono">MP26070800127</td><td class="num money">48.000.000</td><td>Lý T** Mai</td><td>18m</td><td><span class="chip warning"><span class="dot"></span>Mở</span></td></tr>
+          <tr><td><input type="checkbox"></td><td class="mono">#293</td><td><span class="chip danger" style="font-size:11px">NEW_DEVICE</span></td><td class="num" style="font-weight:700;color:var(--warning-600)">55</td><td class="mono">MP26070800131</td><td class="num money">3.200.000</td><td>Hồ V** Nam</td><td>6m</td><td><span class="chip warning"><span class="dot"></span>Mở</span></td></tr>
+          <tr style="opacity:.6"><td></td><td class="mono">#288</td><td><span class="chip danger" style="font-size:11px">ODD_HOURS</span></td><td class="num">42</td><td class="mono">MP26070800072</td><td class="num money">1.100.000</td><td>Đinh Q** Anh</td><td>3h</td><td><span class="chip success"><span class="dot"></span>Đã clear</span></td></tr>
+        </table>
+      </div>
+      <div class="card" style="border-left:4px solid var(--danger-600)">
+        <div class="field-label" style="margin-bottom:8px">CHI TIẾT FLAG #291 — GIẢI THÍCH</div>
+        <div style="display:flex;gap:24px">
+          <div style="flex:1">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--danger-600)">●</span><span style="font:400 13.5px Inter"><b>Rule VELOCITY_5MIN:</b> 6 giao dịch đi trong 4 phút 12 giây (ngưỡng: 5)</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--danger-600)">●</span><span style="font:400 13.5px Inter"><b>Rule NEW_RECEIVER:</b> cả 6 người nhận đều lần đầu</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--info-600)">◆</span><span style="font:400 13.5px Inter"><b>AI nhận định:</b> mẫu hình giống chia nhỏ tiền để rút (smurfing). Đề xuất khóa tạm và liên hệ chủ tài khoản.</span></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;width:280px">
+            <div class="fbtn" style="justify-content:center;border-color:var(--success-600);color:var(--success-600)">✓ Đánh dấu an toàn</div>
+            <div class="fbtn" style="justify-content:center;border-color:var(--danger-600);color:var(--danger-600)">🔒 Xác nhận gian lận — chọn hệ quả…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A7. FRAUD RESOLVE DIALOG ═══════════ -->
+<div class="slot"><div class="label">A7 · Fraud — Dialog hệ quả</div>
+<div class="desk" style="align-items:center;justify-content:center;background:rgba(11,18,32,.55)">
+  <div style="width:560px;background:#fff;border-radius:18px;padding:28px;display:flex;flex-direction:column;gap:18px;box-shadow:0 32px 80px -16px rgba(2,12,40,.5)">
+    <div>
+      <div class="h2">Xác nhận gian lận — flag #291</div>
+      <div class="cap" style="margin-top:4px">Chọn hệ quả áp dụng. Hành động được ghi audit log và không thể hoàn tác từ UI.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="border:2px solid var(--brand-600);border-radius:14px;padding:14px 16px;display:flex;gap:12px;background:var(--brand-50)">
+        <span style="width:20px;height:20px;border-radius:99px;border:6px solid var(--brand-600);flex-shrink:0;margin-top:2px"></span>
+        <div><div style="font:600 14px Inter">Khóa tài khoản + hủy giao dịch đang chờ</div><div class="cap">User không đăng nhập được; workflow đang chạy sẽ bồi hoàn (saga). Giao dịch đã completed giữ nguyên.</div></div>
+      </div>
+      <div style="border:1.5px solid var(--n200);border-radius:14px;padding:14px 16px;display:flex;gap:12px">
+        <span style="width:20px;height:20px;border-radius:99px;border:2px solid var(--n300);flex-shrink:0;margin-top:2px"></span>
+        <div><div style="font:600 14px Inter">Khóa tài khoản + tạo lệnh đảo giao dịch đã hoàn tất</div><div class="cap">Tạo reversal cho MP26070800119 (bút toán đảo, không xóa sổ cái). Cần quyền risk_officer.</div></div>
+      </div>
+      <div style="border:1.5px solid var(--n200);border-radius:14px;padding:14px 16px;display:flex;gap:12px">
+        <span style="width:20px;height:20px;border-radius:99px;border:2px solid var(--n300);flex-shrink:0;margin-top:2px"></span>
+        <div><div style="font:600 14px Inter">Chỉ đánh dấu, không can thiệp</div><div class="cap">Giữ hồ sơ để điều tra thêm, không ảnh hưởng user.</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Lý do (bắt buộc, ≥ 10 ký tự)</div>
+      <div class="input" style="height:auto;min-height:64px;align-items:flex-start;padding:12px 14px"><span>Mẫu hình smurfing rõ, 6 GD/4 phút tới 6 người nhận mới, user không phản hồi cuộc gọi xác minh.</span></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <span class="fbtn" style="height:44px;padding:0 18px">Hủy</span>
+      <span class="fbtn" style="height:44px;padding:0 18px;background:var(--danger-600);border-color:var(--danger-600);color:#fff">Xác nhận khóa tài khoản</span>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A8. RECON ═══════════ -->
+<div class="slot"><div class="label">A8 · Đối soát</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item active">⚖️ Đối soát</div>
+    <div class="sect">Quản trị</div>
+    <div class="item">🏢 Tổ chức & Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;gap:12px;align-items:center"><span class="h2" style="font-size:17px">Đối soát ngày 07/07/2026</span><span class="chip warning"><span class="dot"></span>Lệch 3 bút toán</span></div>
+      <div class="toolbar"><span class="fbtn">📅 Chọn ngày</span><span class="fbtn primary">⤓ Xuất Excel</span></div>
+    </div>
+    <div class="page">
+      <div class="kpis">
+        <div class="kpi"><span class="cap">Tổng đối chiếu</span><div class="v">2.173</div><span class="d">giao dịch</span></div>
+        <div class="kpi"><span class="cap">Khớp</span><div class="v" style="color:var(--success-600)">2.170</div><span class="d up">99,86%</span></div>
+        <div class="kpi"><span class="cap">Lệch</span><div class="v" style="color:var(--danger-600)">3</div><span class="d down">cần xử lý</span></div>
+        <div class="kpi"><span class="cap">Chạy lúc</span><div class="v" style="font-size:20px">00:15</div><span class="d">cron daily · 4,2s</span></div>
+      </div>
+      <div class="card" style="background:linear-gradient(135deg,#F5F3FF,#EFF6FF);border-left:4px solid #7C3AED">
+        <div class="field-label" style="margin-bottom:6px">🤖 AI TÓM TẮT NGUYÊN NHÂN</div>
+        <div style="font:400 14px/22px Inter;color:var(--n700)">Cả 3 bút toán lệch đều thuộc nhóm <b>missing_external</b> và phát sinh trong khung <b>23:58–00:02</b>. Khả năng cao là lệch cutoff ngày giữa HPay và sao kê ngân hàng — giao dịch ghi nhận ngày 07/07 phía ví nhưng rơi sang ngày 08/07 phía bank. Đề xuất: đối chiếu lại với sao kê ngày 08/07 trước khi tạo case điều tra.</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>Kết quả</th><th>Mã GD nội bộ</th><th>Ref sao kê</th><th class="num">Ví (₫)</th><th class="num">Bank (₫)</th><th>Thời điểm</th><th>Xử lý</th></tr>
+          <tr><td><span class="chip danger" style="font-size:11px">missing_external</span></td><td class="mono">MP26070799871</td><td class="mono" style="color:var(--n300)">—</td><td class="num money">5.000.000</td><td class="num" style="color:var(--n300)">—</td><td>23:58:41</td><td style="color:var(--brand-600);font-weight:600">Đối chiếu 08/07 →</td></tr>
+          <tr><td><span class="chip danger" style="font-size:11px">missing_external</span></td><td class="mono">MP26070799902</td><td class="mono" style="color:var(--n300)">—</td><td class="num money">1.200.000</td><td class="num" style="color:var(--n300)">—</td><td>23:59:12</td><td style="color:var(--brand-600);font-weight:600">Đối chiếu 08/07 →</td></tr>
+          <tr><td><span class="chip danger" style="font-size:11px">missing_external</span></td><td class="mono">MP26070799911</td><td class="mono" style="color:var(--n300)">—</td><td class="num money">750.000</td><td class="num" style="color:var(--n300)">—</td><td>00:01:03</td><td style="color:var(--brand-600);font-weight:600">Đối chiếu 08/07 →</td></tr>
+          <tr style="opacity:.55"><td><span class="chip success" style="font-size:11px">matched</span></td><td class="mono">MP26070799870</td><td class="mono">VCB88213</td><td class="num money">2.000.000</td><td class="num money">2.000.000</td><td>23:55:18</td><td>—</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A9. ORGS & POLICIES ═══════════ -->
+<div class="slot"><div class="label">A9 · Tổ chức & Policy</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị</div>
+    <div class="item active">🏢 Tổ chức & Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">DEH Corp — Chính sách phê duyệt</span>
+      <div class="toolbar"><span class="fbtn">+ Thêm policy</span></div>
+    </div>
+    <div class="page" style="flex-direction:row;gap:20px">
+      <div style="width:300px;display:flex;flex-direction:column;gap:10px">
+        <div class="search" style="width:100%">🔍 Tìm tổ chức…</div>
+        <div class="card" style="border:2px solid var(--brand-600);display:flex;gap:12px;align-items:center"><span style="width:40px;height:40px;border-radius:10px;background:#312E81;color:#fff;display:flex;align-items:center;justify-content:center;font:700 11px Inter">DEH</span><div><div class="li-title">DEH Corp</div><div class="li-sub">12 thành viên · 2 policies</div></div></div>
+        <div class="card" style="display:flex;gap:12px;align-items:center"><span style="width:40px;height:40px;border-radius:10px;background:#9A3412;color:#fff;display:flex;align-items:center;justify-content:center;font:700 11px Inter">SBX</span><div><div class="li-title">Sandbox Studio</div><div class="li-sub">4 thành viên · 1 policy</div></div></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="border-left:4px solid var(--warning-600);background:var(--warning-50);box-shadow:none;padding:12px 16px">
+          <span style="font:500 13px Inter;color:var(--n700)">⚠️ Có <b>3 lệnh đang chờ duyệt</b> theo policy snapshot cũ. Thay đổi dưới đây chỉ áp dụng cho lệnh tạo mới.</span>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div><div class="h2" style="font-size:15px">Chi lớn (v3)</div><div class="cap">Áp dụng: 10.000.000 ₫ → không giới hạn · đang hiệu lực</div></div>
+            <span class="chip success"><span class="dot"></span>Active</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:14px;background:var(--n50);border-radius:12px;padding:12px 16px">
+              <span class="chip" style="background:var(--brand-50);color:var(--brand-600)">Level 1</span>
+              <span style="font:500 13.5px Inter;flex:1">Từ 10M — cần <b>1</b> chữ ký Checker L1</span>
+              <span class="fbtn" style="height:30px">− 1 +</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;background:var(--n50);border-radius:12px;padding:12px 16px">
+              <span class="chip" style="background:var(--brand-50);color:var(--brand-600)">Level 2</span>
+              <span style="font:500 13.5px Inter;flex:1">Từ 40M — cần thêm <b>1</b> chữ ký Checker L2</span>
+              <span class="fbtn" style="height:30px">− 1 +</span>
+            </div>
+            <div class="fbtn" style="justify-content:center;border-style:dashed">+ Thêm level</div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div><div class="h2" style="font-size:15px">Chi thường (v1)</div><div class="cap">Dưới 10.000.000 ₫ · cần 1 chữ ký Checker L1</div></div>
+            <span class="chip success"><span class="dot"></span>Active</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px">
+          <span class="fbtn">Hủy thay đổi</span><span class="fbtn primary">Lưu — tạo version v4</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A10. AUDIT LOG ═══════════ -->
+<div class="slot"><div class="label">A10 · Audit Log</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị</div>
+    <div class="item">🏢 Tổ chức & Policy</div>
+    <div class="item active">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">Audit log</span>
+      <div class="toolbar"><span class="search">🔍 Actor, action, resource…</span><span class="fbtn">24h ▾</span><span class="fbtn">⤓ Export</span></div>
+    </div>
+    <div class="page">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>Thời điểm</th><th>Actor</th><th>Action</th><th>Resource</th><th>Chi tiết</th><th>IP</th></tr>
+          <tr><td class="mono">09:41:38</td><td><b>hieu.checker</b> <span class="cap">(checker L2)</span></td><td><span class="chip success" style="font-size:11px">approval.approve</span></td><td class="mono">appr #OD-0142</td><td>Chữ ký cuối · OTP ✓ · finalized</td><td class="mono">118.70.•••.12</td></tr>
+          <tr><td class="mono">09:33:04</td><td><b>an.risk</b> <span class="cap">(risk_officer)</span></td><td><span class="chip danger" style="font-size:11px">account.lock</span></td><td class="mono">user 8813…</td><td>Flag #291 · lý do: smurfing pattern…</td><td class="mono">10.0.•••.4</td></tr>
+          <tr><td class="mono">09:26:51</td><td><b>quang.checker</b> <span class="cap">(checker L1)</span></td><td><span class="chip success" style="font-size:11px">approval.approve</span></td><td class="mono">appr #OD-0142</td><td>Level 1 · OTP ✓</td><td class="mono">113.161.•••.88</td></tr>
+          <tr><td class="mono">09:15:22</td><td><b>lan.kyc</b> <span class="cap">(kyc_reviewer)</span></td><td><span class="chip danger" style="font-size:11px">kyc.reject</span></td><td class="mono">kyc_req 5520…</td><td>Lý do: ảnh chụp lại từ màn hình</td><td class="mono">10.0.•••.7</td></tr>
+          <tr><td class="mono">09:02:10</td><td><b>ops.bot</b> <span class="cap">(system)</span></td><td><span class="chip info" style="font-size:11px">workflow.retry</span></td><td class="mono">wf_8c07…</td><td>CONFIRM attempt 2 · auto sau timeout</td><td class="mono">—</td></tr>
+          <tr><td class="mono">08:47:33</td><td><b>admin.root</b> <span class="cap">(superadmin)</span></td><td><span class="chip warning" style="font-size:11px">policy.update</span></td><td class="mono">policy "Chi lớn" v2→v3</td><td>tier L2: 2 chữ ký → 1 chữ ký</td><td class="mono">10.0.•••.2</td></tr>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="cap">Immutable — chỉ đọc & export. 1.408 bản ghi 24h qua.</span><div class="toolbar"><span class="fbtn">← Trước</span><span class="fbtn">Sau →</span></div></div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+</body>
+</html>

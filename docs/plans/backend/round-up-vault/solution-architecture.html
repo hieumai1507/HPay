@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution Architecture — Round-up Vault Step (hpay-backend)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-backend</code> · plan · solution architecture</div>
+<h1>Solution Architecture — Round-up Vault Step</h1>
+<blockquote><p>Song hành với <a href="./implementation-plan.html">implementation-plan.html</a>. Nguyên tắc chủ đạo: round-up là một <b>step thêm vào cuối workflow definition</b>, không phải một tính năng tách rời — đúng tinh thần "khoe engine cấu hình được" của doc 04 §2.2.</p></blockquote>
+
+<h2>1. Context</h2>
+<pre class="mermaid">
+flowchart LR
+  mob["📱 Vault detail\ntoggle round-up"] --> VAPI["PATCH /v1/vaults/{id}/round-up-target"]
+  VAPI --> DB1[("wallets\nround_up_target")]
+  P2P["📱 P2P transfer confirm"] --> ENG["🔀 Workflow Engine\ndef p2p_transfer v2"]
+  ENG --> VALIDATE --> FRAUD --> MOVE["MOVE_FUNDS\n(wallet handler)"] --> CONFIRM --> RU["ROUND_UP\n(round_up handler, mới)"]
+  RU --> DB1
+  RU --> LE["⚖️ Ledger\n2 legs bổ sung: main → vault"]
+</pre>
+
+<h2>2. Main flow — giao dịch P2P kèm round-up</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant ENG as Engine
+  participant RU as round_up handler
+  participant Q as store.Queries
+  participant L as Ledger
+
+  U->>ENG: confirm P2P transfer 123.000đ
+  ENG->>ENG: VALIDATE → FRAUD_CHECK → MOVE_FUNDS (123.000 + fee) → CONFIRM
+  ENG->>RU: dispatch ROUND_UP
+  RU->>Q: GetTransactionByWorkflow(txnID)
+  RU->>RU: diff = ceil(123.000/10.000)*10.000 - 123.000 = 7.000
+  alt diff == 0 (chia hết)
+    RU-->>ENG: OK {round_up_applied:false, reason:"exact"}
+  end
+  RU->>Q: GetRoundUpTargetVault(sender.ownerID)
+  alt không có target
+    RU-->>ENG: OK {round_up_applied:false, reason:"no_target"}
+  end
+  RU->>Q: GetWalletByID(main) — số dư sau MOVE_FUNDS
+  alt số dư còn lại < diff
+    RU-->>ENG: OK {round_up_applied:false, reason:"insufficient_balance"}
+  end
+  RU->>L: Post(txnID, [debit main 7.000, credit vault 7.000])
+  L-->>RU: ok
+  RU-->>ENG: OK {round_up_applied:true, amount:7.000}
+  ENG-->>U: instance completed
+</pre>
+<p><b>Bất biến thiết kế:</b> mọi nhánh "không áp dụng" trả <code>OK</code>, không bao giờ trả lỗi terminal cho lý do nghiệp vụ — round-up là best-effort, không được phép làm hỏng trạng thái <code>completed</code> của giao dịch chính đã xong ở bước CONFIRM trước đó.</p>
+
+<h2>3. State — nhánh quyết định của round_up handler</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> ComputeDiff
+  ComputeDiff --> Skipped: diff == 0 (chia hết đơn vị)
+  ComputeDiff --> LookupTarget: diff > 0
+  LookupTarget --> Skipped: không có round_up_target
+  LookupTarget --> CheckBalance: có target
+  CheckBalance --> Skipped: main wallet không đủ diff
+  CheckBalance --> Posted: đủ số dư
+  Posted --> [*]
+  Skipped --> [*]
+</pre>
+
+<h2>4. Data model delta</h2>
+<pre class="mermaid">
+erDiagram
+  wallets ||--o{ ledger_entries : journals
+  wallets {
+    boolean round_up_target "NEW, mặc định false"
+    string purpose "main | vault"
+  }
+  workflow_definitions {
+    string name "p2p_transfer"
+    int version "2, NEW — v1 tắt is_active"
+    jsonb steps "thêm bước ROUND_UP"
+  }
+</pre>
+<p>Ràng buộc: <b>partial unique index</b> <code>(owner_type, owner_id, currency) WHERE round_up_target AND purpose='vault'</code> — đảm bảo tại một thời điểm mỗi user chỉ có tối đa 1 vault nhận round-up; đổi target là một transaction DB (unset cũ, set mới) để không vi phạm index giữa chừng.</p>
+
+<h2>5. Decisions &amp; trade-offs</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>Thêm version 2 của <code>p2p_transfer</code>, không sửa v1 tại chỗ</td><td>UPDATE steps của v1</td><td>Instance đang chạy dở tham chiếu <code>definition_id</code> cố định; sửa JSONB tại chỗ sẽ làm <code>ParseSteps</code> đọc definition khác với lúc <code>Start</code> — vi phạm bất biến workflow (đã có convention version tăng dần trong migration 000003)</td></tr>
+<tr><td>Round-up không bao giờ fail transaction chính</td><td>Coi round-up là bước bắt buộc như MOVE_FUNDS</td><td>Doc 04 gọi đây là stretch/optional; ép buộc sẽ biến một tính năng phụ thành single point of failure cho toàn bộ P2P</td></tr>
+<tr><td>Đơn vị làm tròn là hằng số hệ thống (env, mặc định 10.000)</td><td>Cấu hình theo user</td><td>Giữ phạm vi nhỏ đúng "stretch"; thêm UI chọn đơn vị là một tính năng khác, không nằm trong doc 04</td></tr>
+<tr><td>Vault target xác định qua cột <code>round_up_target</code> trên chính <code>wallets</code></td><td>Bảng cấu hình riêng <code>user_preferences</code></td><td>Vault đã là 1 dòng <code>wallets</code>; thêm cờ ngay trên đó tránh 1 bảng chỉ để lưu 1 quan hệ 1-1</td></tr>
+<tr><td>Không đụng gap <code>ActionPipeline</code> chưa được wire</td><td>Nhân tiện wire luôn <code>action_pipeline</code> vào definition</td><td>Ngoài phạm vi round-up; wire sai chỗ có thể kích hoạt các "Directional Integration" actions (gọi gateway ngân hàng thật) ngoài ý muốn — cần plan riêng để review kỹ</td></tr>
+</tbody>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<thead><tr><th>Invariant (index §8)</th><th>Cách giữ</th></tr></thead>
+<tbody>
+<tr><td>Tiền là <code>BIGINT</code>, không float</td><td><code>diff</code> tính bằng phép chia/nhân số nguyên trên <code>int64</code>, không qua float bất kỳ bước nào</td></tr>
+<tr><td>Mỗi giao dịch ≥ 2 bút toán, Nợ = Có</td><td>Legs round-up là 1 cặp debit/credit cân đối riêng, cộng dồn vào cùng <code>transaction_id</code> — không phá cặp legs của MOVE_FUNDS đã post trước đó (đúng tiền lệ leg phí)</td></tr>
+<tr><td><code>wallets.balance = SUM(ledger_entries)</code></td><td><code>ledger.Post</code> là đường post duy nhất, dùng lại nguyên hàm hiện có, không có shortcut ghi thẳng <code>balance</code></td></tr>
+<tr><td>Ledger append-only</td><td>Không UPDATE/DELETE nào mới; trigger 000007 vẫn áp dụng</td></tr>
+<tr><td>Retry không tạo giao dịch đôi</td><td><code>step_executions(instance_id, step_name, attempt)</code> unique key có sẵn của engine bảo vệ round_up y hệt mọi step khác</td></tr>
+<tr><td>Số dư khách không âm</td><td>Kiểm tra số dư main wallet trước khi post; không đủ thì bỏ qua thay vì để <code>ledger.Post</code> trả <code>ErrInsufficientBalance</code> giữa chừng</td></tr>
+</tbody>
+</table>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-backend · 2026-07-24</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter"}});</script>
+</body></html>

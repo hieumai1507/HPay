@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F9 Fraud + Recon + Reversal — Implementation Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}li{color:var(--n700);margin:4px 0 4px 20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.warn{border-left:4px solid #D97706;background:#FFFBEB;border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../f8-kyc/implementation-plan.html">← F8</a> · f9-fraud-recon-reversal · <a href="solution-architecture.html">solution-architecture →</a></div>
+<h1>F9 Fraud + Recon + Reversal — Implementation Plan</h1>
+
+<h2>1. Scope & non-goals</h2>
+<div class="note"><b>3 mảng độc lập, 1 nguyên tắc chung</b> (index.html §9): quyết định cứng về tiền luôn là <b>rule deterministic + con người</b> — LLM chỉ advisory (giải thích fraud, tóm tắt recon), mock fallback khi thiếu key. Reversal theo TMDS (doc 04 §1): <b>bút toán đảo passive, KHÔNG đi qua workflow engine</b>, bắt buộc maker-checker giữa 2 admin — executor đăng ký vào approval framework F6 qua đúng cái <code>RegisterExecutor</code> đã chừa sẵn.</div>
+<table>
+<tr><th>Ships</th><th>Không làm ở F9</th></tr>
+<tr><td><b>Fraud:</b> rule engine deterministic thay FraudStub trong step FRAUD_CHECK (VELOCITY_5MIN · AMOUNT_SPIKE vs trung bình 30 ngày · ODD_HOURS 0–5h · NEW_RECEIVER); score int cộng dồn cap 100; <b>&gt;70 → chặn</b> (terminal, txn fail qua on_failure có sẵn) + flag; <b>40–70 → flag open + LLM advisory tiếng Việt</b> (best-effort, LLM lỗi không chặn giao dịch) + txn đi tiếp; &lt;40 pass. Admin API: list flags + resolve (clear|confirm_fraud, guarded open→…, audit). <b>Recon:</b> RunForDate — so khớp topup completed vs bank_statements <b>theo ref_code toàn cục, KHÔNG lọc theo ngày</b> (E16: statement rơi sang ngày kề vẫn matched, detail đánh dấu cutoff_shift; statement trùng ref → detail duplicate, nửa E15); phân loại matched/amount_mismatch/missing_internal/missing_external; recon nội bộ SUM(ledger)=balance từng ví; xlsx export (excelize) lưu qua storage + signed URL; AI summary đính vào run; cron 00:15 (ticker, guard run_date UNIQUE); admin API run/get/export. <b>Reversal:</b> admin A tạo request (subject=reversal, snapshot 1 chữ ký, policy NULL) → admin B ≠ A decide (My Tasks admin) → executor TRONG finalize tx: txn mới type=reversal + reversal_of, bút toán mirror từ txn row (đúng cách compensate F5 đã test E07) qua <code>ledger.Post</code>, gốc completed→reversed guarded; double chặn 2 lớp (UNIQUE subject + one_reversal_per_txn)</td>
+<td>Account lock qua approval (subject sẵn trong enum, executor để A-phases/F10 — resolve fraud KHÔNG tự khóa account); OTP cho admin decide (OTP infra FK→users, admin đã đăng nhập aud=admin — xem Rủi ro); bank callback endpoint thật (E15 test đầy đủ ở F10); NEW_DEVICE rule (transactions không lưu device_id — thay bằng NEW_RECEIVER, cũng nằm trong danh sách docs 00 §8.2); notification</td></tr>
+</table>
+
+<h2>2. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td>Migration 000016: (a) DROP FK <code>approval_requests.created_by</code> + <code>approval_actions.checker_id</code> → users — actor đa hình theo subject_type (user cho org_transaction, ADMIN cho reversal/account_lock/policy_change; cùng class lỗi reviewer_id đã sửa 000015, docs 00 sẽ note); (b) <code>ALTER reconciliation_runs ADD ai_summary TEXT</code> (docs nói "AI tóm tắt đính vào báo cáo" nhưng schema gốc thiếu cột)</td><td>db/migrations/000016_*</td><td>S</td><td>—</td></tr>
+<tr><td>T2</td><td>Queries: fraud.sql (CountSenderTxnsSince, AvgSenderAmount30d, HasSentToReceiver, InsertFraudFlag, ListFraudFlags theo status, ResolveFraudFlagGuarded WHERE status='open'); recon.sql (ListCompletedTopupsByDate, FindStatementsByRefCodes, InsertReconRun/Item, GetReconRunByDate, ListReconItems, ListWalletBalanceMismatches SUM-ledger-vs-balance); transactions.sql (InsertReversalTransaction có reversal_of + status completed thẳng — passive posting không qua engine, MarkTransactionReversed guarded completed→reversed); approval.sql (InsertApprovalRequest sửa org_id/policy_id thành NULLIF-nullable để reversal truyền Nil; ListPendingAdminRequests subject≠org_transaction kèm txn info)</td><td>internal/store/queries/*</td><td>L</td><td>T1</td></tr>
+<tr><td>T3</td><td><code>internal/ai</code>: Advisor interface {Complete(ctx, system, user)} — claude text (net/http, timeout 15s, style scorer_claude F8) + mock (template cố định); chọn theo ANTHROPIC_API_KEY</td><td>internal/ai/*</td><td>S</td><td>—</td></tr>
+<tr><td>T4</td><td><code>internal/fraud</code>: rules.go thuần (mỗi rule trả {code, points, evidence}; Score = tổng cap 100) + unit tests biên 40/70; handler.go thay FraudStub (đọc lịch sử qua queries, quyết định 3 nhánh, flag + advisory); RegisterAll bỏ FraudStub → fraud.RegisterHandler(reg, pool, advisor); service admin list/resolve</td><td>internal/fraud/*, internal/workflow/handlers</td><td>L</td><td>T2,T3</td></tr>
+<tr><td>T5</td><td><code>internal/recon</code>: RunForDate (match E16 + duplicate detect + internal ledger check + insert run/items trong 1 tx, run_date UNIQUE = idempotent); xlsx.go (excelize → storage key <code>recon/{date}.xlsx</code>); summary qua Advisor; cron.go ticker (00:15, RunForDate hôm qua); admin service</td><td>internal/recon/*</td><td>L</td><td>T2,T3</td></tr>
+<tr><td>T6</td><td>Reversal: <code>internal/reversal</code> — CreateRequest (admin maker: txn completed? chưa reversed? → approval_requests subject=reversal, snapshot {L1×1}, expires 24h); Executor (đăng ký <code>approval.RegisterExecutor(reversal)</code>: chạy TRONG finalize tx — InsertReversalTransaction + ledger.Post mirror legs từ txn row [sender+amount+fee đảo chiều, SYSTEM_FEE hoàn] + MarkTransactionReversed + audit); approval.AdminDecide (tái dùng Evaluate/finalize/execs của F6, KHÔNG OTP, guard <b>maker ≠ checker</b> + actor là admin)</td><td>internal/reversal/*, internal/approval</td><td>L</td><td>T2</td></tr>
+<tr><td>T7</td><td>API admin + wiring: GET/POST fraud-flags[+/:id/resolve]; POST reversals; GET admin/approvals (My Tasks) + POST admin/approvals/:id/decide; POST recon/run {date} + GET recon/runs/:date + export (signed URL); refactor route file thành <code>GET /v1/files/*key</code> (Signer.SignURL đổi base — phục vụ cả kyc lẫn recon report); errmap; openapi 0.9.0; main.go (advisor, recon cron, reversal executor, fraud handler)</td><td>internal/api/*, cmd/server, api/openapi.yaml</td><td>L</td><td>T4,T5,T6</td></tr>
+<tr><td>T8</td><td>Tests: <code>TestEdge_E16_ReconCutoffNoFalseMismatch</code> (txn 23:59 ngày D, statement ngày D+1 → run D và D+1 đều KHÔNG báo lệch giả, detail cutoff_shift); fraud: unit rules + integration 3 nhánh (pass/flag+advisory-mock/block → txn failed, không bút toán); recon: full run 4 phân loại + duplicate statement + xlsx file tồn tại + run idempotent theo ngày; reversal E2E: A tạo → B decide → tiền hoàn đúng (kể cả fee), gốc reversed, ledger net 0; A tự decide bị chặn; tạo request lần 2 → 409; reversal transaction thứ 2 bị unique chặn; CI += E16</td><td>test/integration/*, ci.yml</td><td>L</td><td>T7</td></tr>
+</table>
+
+<h2>3. Schema changes</h2>
+<p>Migration 000016 — 2 việc, cả hai là hệ quả thiết kế đã chốt chứ không phải tính năng mới: (1) drop 2 FK → users trên bảng approval (actor đa hình — <b>docs 00 §3.4 cần note sau merge</b>, giống đợt reviewer_id); (2) thêm <code>reconciliation_runs.ai_summary TEXT</code> (docs 00 §8.2 mô tả tính năng nhưng §3.5 thiếu cột — <b>docs cũng cần bổ sung cột này</b>). Down: re-add FK (có comment: fail nếu đã có data admin actor — chấp nhận, reversible về mặt cấu trúc).</p>
+
+<h2>4. API changes (openapi 0.9.0, cùng commit)</h2>
+<table>
+<tr><th>Endpoint</th><th>Mô tả</th><th>Lỗi chính</th></tr>
+<tr><td><code>GET /v1/admin/fraud-flags?status=open|cleared|confirmed_fraud</code></td><td>Queue fraud (default open), kèm reasons (rule evidence + LLM advisory)</td><td>401</td></tr>
+<tr><td><code>POST /v1/admin/fraud-flags/{id}/resolve</code></td><td>{action: clear|confirm_fraud, reason} — guarded open→…, audit</td><td>ERR_FLAG_NOT_FOUND, ERR_ALREADY_RESOLVED (409)</td></tr>
+<tr><td><code>POST /v1/admin/reversals</code></td><td>{ref_code, reason} — admin maker tạo yêu cầu đảo</td><td>ERR_TXN_NOT_FOUND, ERR_TXN_NOT_REVERSIBLE (chưa completed), ERR_ALREADY_REVERSED, ERR_REVERSAL_PENDING (409 — đã có request)</td></tr>
+<tr><td><code>GET /v1/admin/approvals?status=pending</code></td><td>My Tasks admin — request subject ≠ org_transaction</td><td>401</td></tr>
+<tr><td><code>POST /v1/admin/approvals/{id}/decide</code></td><td>{action: approve|reject, reason} — admin ≠ người tạo; đủ chữ ký → executor chạy ngay trong finalize tx</td><td>ERR_APPROVAL_NOT_FOUND, ERR_SELF_APPROVAL (403), ERR_ALREADY_FINALIZED, ERR_ALREADY_ACTED</td></tr>
+<tr><td><code>POST /v1/admin/recon/run</code></td><td>{date: YYYY-MM-DD} — chạy tay (demo); cron tự chạy 00:15 cho hôm qua</td><td>ERR_RECON_ALREADY_RAN (409, run_date UNIQUE)</td></tr>
+<tr><td><code>GET /v1/admin/recon/runs/{date}</code></td><td>Run + items + ai_summary + report_url (signed)</td><td>ERR_RECON_NOT_FOUND</td></tr>
+<tr><td><code>GET /v1/files/{key}</code></td><td>Thay route /v1/files/kyc/{key} — phục vụ cả ảnh KYC lẫn xlsx recon (HMAC như cũ)</td><td>403/404/410 như F8</td></tr>
+</table>
+
+<h2>5. Test plan</h2>
+<table>
+<tr><th>ID</th><th>Test</th></tr>
+<tr><td>E16</td><td><code>TestEdge_E16_ReconCutoffNoFalseMismatch</code>: topup completed 23:59:30 ngày D, bank statement mang stmt_date D+1 cùng ref_code → run(D) matched (detail cutoff_shift=true), run(D+1) không double-count; KHÔNG có item missing nào cho ref đó</td></tr>
+<tr><td>—</td><td>Fraud unit: từng rule cho đúng points; tổng biên 39/40/70/71 → pass/flag/flag/block. Integration: (a) transfer bình thường → không flag; (b) chuỗi 4 transfer trong 5' + số tiền spike → flag open + advisory mock text trong reasons, txn vẫn completed; (c) score &gt;70 (spike lớn + đêm + receiver mới + velocity) → txn failed, không bút toán, flag open</td></tr>
+<tr><td>—</td><td>Recon: 1 matched + 1 amount_mismatch + 1 missing_internal + 1 missing_external + 1 duplicate statement → counts đúng, xlsx tồn tại trong storage, ai_summary (mock) non-empty, chạy lại cùng ngày → ERR_RECON_ALREADY_RAN</td></tr>
+<tr><td>—</td><td>Reversal: E2E hoàn cả amount+fee (sender về nguyên trạng, SYSTEM_FEE bị trừ lại), gốc→reversed, txn mới type=reversal completed, ledger net 0 trên cả 3 ví; self-approve → ERR_SELF_APPROVAL; request thứ 2 cùng txn → 409; reject → txn gốc GIỮ NGUYÊN completed</td></tr>
+</table>
+
+<h2>6. Rollout & risk</h2>
+<div class="warn"><b>2 deviation cần anh gật đầu khi duyệt plan:</b> (1) <b>Admin decide không OTP</b> — doc 00 §5 mô tả OTP cho checker, nhưng otp_challenges FK→users; admin đã xác thực aud=admin + password argon2id, và Maker≠Checker vẫn enforce. Nếu muốn OTP admin thật thì cần migration nới FK — đề xuất để A-phases quyết khi làm UI. (2) <b>Rule NEW_DEVICE → NEW_RECEIVER</b> — transactions không lưu device_id; NEW_RECEIVER nằm cùng danh sách docs §8.2 nên vẫn đúng thiết kế, chỉ là chọn 4/5 rule có data.</div>
+<ul>
+<li>Fraud chặn (&gt;70) dùng đường on_failure=fail CÓ SẴN của definition p2p/org — không sửa definition, không migration engine.</li>
+<li>LLM advisory sync trong handler nhưng timeout 15s &lt; step timeout 3s? — KHÔNG: FRAUD_CHECK timeout_ms=3000 trong definition! Advisory phải chạy SAU quyết định, fire-and-forget goroutine với context riêng (không giữ step), flag update reasons async. Ghi rõ trong solution-architecture.</li>
+<li>Excelize là dep mới (~vài MB) — chỉ import trong internal/recon, không ảnh hưởng binary path nóng.</li>
+<li>Route /v1/files đổi shape — chỉ admin SPA dùng (chưa build), an toàn đổi; openapi cập nhật cùng commit.</li>
+<li>Reversal executor chạy trong finalize tx của decide — giữ nguyên bất biến "resume/effect commit cùng quyết định" của F6; ledger.Post lock ordering tự lo deadlock.</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ul><li>[x] gen-feature-plan · [ ] T1 (gen-migration) → T2 (sqlc) → T3→T8 · [ ] fintech-review · [ ] commit <code>feat: F9 fraud rules + llm advisory, reconciliation with xlsx, admin reversal via approval</code></li></ul>
+</div></body>
+</html>

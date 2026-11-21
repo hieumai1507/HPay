@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F5 P2P & Fee — Solution Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="implementation-plan.html">← Implementation Plan</a> · f5-p2p-fee</div>
+<h1>F5 P2P Transfer & Fee — Solution Architecture</h1>
+
+<h2>1. Main flow — P2P end-to-end</h2>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant API as POST /v1/transactions/transfer
+  participant T as transfer.Service
+  participant E as engine (F4)
+  participant W as worker handlers
+  participant L as ledger.Post
+  U->>API: {receiver_phone, amount, note} + Idempotency-Key
+  API->>T: Transfer()
+  T->>T: resolve receiver (phone→wallet), fee = fee.Calc(tier, amount)\nsoft checks: self? locked? limit? balance?
+  T->>T: 1 DB tx: INSERT transactions(processing, fee)\n+ engine.Start(p2p_transfer) → outbox(VALIDATE)
+  T-->>U: 202 {ref_code, fee} — app poll timeline
+  W->>W: VALIDATE: user status × 2, limit, re-soft-balance
+  W->>W: FRAUD_CHECK: stub safe (F9 thay thật)
+  W->>L: MOVE_FUNDS: re-check status (E12) rồi Post atomic:\nDr sender (amount+fee) · Cr receiver amount · Cr SYSTEM_FEE fee
+  W->>W: CONFIRM: processing → completed (guarded)
+  Note over E,W: step nào fail terminal SAU MOVE_FUNDS\n→ compensation walk ngược (mục 2)
+</pre>
+
+<h2>2. Compensation — walk ngược có hàng đợi</h2>
+<pre class="mermaid">
+flowchart TB
+  f["Step X fail terminal\non_failure = compensate"] --> q["Engine dựng queue các step\nTRƯỚC X đã completed và compensatable\n(lưu context._compensate, status=compensating)"]
+  q --> d["Dispatch compensate event\n(StartEvent.compensate=true, attempt≥101)"]
+  d --> h["Handler nhận StepInput.Compensating\nwallet: đảo bút toán từ txn row\nvalidator/fraud/confirm: no-op"]
+  h --> r["Result event → engine (guard chấp nhận compensating)"]
+  r -->|"queue còn"| d
+  r -->|"queue rỗng"| done["instance = compensated\ntxn = failed (đã hoàn tiền)"]
+  r -->|"compensate fail"| manual["instance = failed\nlog ERROR — admin xử lý (A3)"]
+</pre>
+
+<h2>3. State — transaction với compensation</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> processing : transfer tạo (idempotent)
+  processing --> completed : CONFIRM ok
+  processing --> failed : VALIDATE/FRAUD/MOVE_FUNDS fail\n(tiền CHƯA đi - atomic MOVE_FUNDS)
+  processing --> failed : step sau MOVE_FUNDS fail\n→ compensation hoàn tiền xong mới failed
+  completed --> [*]
+  failed --> [*]
+</pre>
+
+<h2>4. Data model delta</h2>
+<p>Không đổi schema — chỉ seed (definition + fee policies). Fee chọn theo: <code>txn_type</code> khớp + (<code>kyc_tier</code> = tier của tôi ƯU TIÊN hơn tier NULL) + is_active, version mới nhất.</p>
+
+<h2>5. Decisions & trade-offs</h2>
+<table>
+<tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr>
+<tr><td>MOVE_FUNDS 1 step atomic thay vì DEBIT+CREDIT</td><td>Giữ 2 step như docs 00</td><td>Loại bỏ trạng thái tiền lơ lửng theo cấu trúc; compensation chỉ còn cần cho step phi-tiền phía sau — ít đường lỗi hơn hẳn</td></tr>
+<tr><td>Compensate đảo từ txn row (deterministic)</td><td>Lưu legs vào step output rồi đọc lại</td><td>Txn row là nguồn chân lý bất biến (amount, fee, 2 ví); không phụ thuộc format output</td></tr>
+<tr><td>Fee tính TRƯỚC khi tạo txn, đóng băng vào cột fee</td><td>Tính tại MOVE_FUNDS</td><td>User thấy đúng con số đã preview; đổi policy giữa chừng không ảnh hưởng giao dịch đang chạy (giống policy snapshot)</td></tr>
+<tr><td>Attempt ≥ 101 cho compensation</td><td>Cột riêng phase</td><td>Không cần migration; unique(instance,step,attempt) vẫn là chốt idempotency cho cả 2 chiều</td></tr>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<tr><th>Bất biến</th><th>Đảm bảo</th></tr>
+<tr><td>Sum Dr = Sum Cr</td><td>3 chân forward cân (amount+fee = amount + fee); 3 chân đảo cũng cân — E07 assert ledger net 0</td></tr>
+<tr><td>Không âm ví</td><td>MOVE_FUNDS qua ledger.Post (check sau lock) — kế thừa E02</td></tr>
+<tr><td>Retry không nhân đôi</td><td>Idempotency-Key ở API + unique step attempt ở engine — kế thừa E01/E04/E06</td></tr>
+<tr><td>Ledger append-only</td><td>Compensation = INSERT bút toán đảo, không UPDATE/DELETE</td></tr>
+</table>
+</div>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{fontFamily:'Inter',fontSize:'13px'}});</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+import { useMemo, useState } from 'react';
+import { useReactTable, getCoreRowModel, createColumnHelper } from '@tanstack/react-table';
+
+import { ApiError } from '@/api/errors';
+import { DataTable } from '@/components/table/DataTable';
+import { useTableQueryState } from '@/hooks/useTableQueryState';
+import {
+  useAdminApprovals,
+  useDecideApproval,
+  type AdminApprovalItem,
+} from '@/queries/useApprovalQueries';
+import { useAdminStore } from '@/stores/admin';
+import { useToastStore } from '@/stores/toast';
+import { Badge } from '@/ui';
+
+const columnHelper = createColumnHelper<AdminApprovalItem>();
+
+const MIN_REASON = 10;
+
+function subjectTone(subject: string): 'danger' | 'warning' | 'info' {
+  if (subject === 'reversal') return 'danger';
+  if (subject === 'account_lock') return 'warning';
+  return 'info';
+}
+
+function formatVnd(v: number) {
+  return v ? `${v.toLocaleString('vi-VN')} ₫` : '—';
+}
+
+export default function MyTasksPage() {
+  const { pagination, setPagination, sorting, setSorting, queryParams } = useTableQueryState({
+    initialPageSize: 10,
+  });
+  const can = useAdminStore((s) => s.can);
+  const toast = useToastStore((s) => s.push);
+
+  // Reversal / account_lock / policy_change are ops-grade actions; the backend
+  // re-checks the admin token regardless of what the UI chooses to show.
+  const canDecide = can('workflow.action');
+
+  const serverParams = useMemo(
+    () => ({ page: queryParams.page, limit: queryParams.limit }),
+    [queryParams.page, queryParams.limit]
+  );
+
+  const { data, isLoading } = useAdminApprovals(serverParams);
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+
+  const decide = useDecideApproval();
+  const [selected, setSelected] = useState<AdminApprovalItem | null>(null);
+  const [reason, setReason] = useState('');
+
+  function close() {
+    setSelected(null);
+    setReason('');
+  }
+
+  function submit(action: 'approve' | 'reject') {
+    if (!selected) return;
+    if (reason.trim().length < MIN_REASON) {
+      toast(`Lý do phải có ít nhất ${MIN_REASON} ký tự (ghi vào audit log).`, 'error');
+      return;
+    }
+    decide.mutate(
+      { id: selected.id, action, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          toast(action === 'approve' ? 'Đã phê duyệt lệnh.' : 'Đã từ chối lệnh.', 'success');
+          close();
+        },
+        onError: (err) => {
+          if (err instanceof ApiError && err.status === 409) {
+            toast('Lệnh đã được xử lý ở nơi khác — danh sách vừa được cập nhật.', 'info');
+            close();
+            return;
+          }
+          toast(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.', 'error');
+        },
+      }
+    );
+  }
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('subjectType', {
+        header: 'Loại lệnh',
+        cell: (info) => (
+          <Badge tone={subjectTone(info.getValue())}>{info.getValue()}</Badge>
+        ),
+      }),
+      columnHelper.accessor('refCode', {
+        header: 'Mã giao dịch',
+        cell: (info) => (
+          <span className="font-mono text-slate-600">{info.getValue() || '—'}</span>
+        ),
+      }),
+      columnHelper.accessor('amount', {
+        header: 'Số tiền',
+        cell: (info) => (
+          <span className="tabular-nums font-semibold">{formatVnd(info.getValue())}</span>
+        ),
+      }),
+      columnHelper.accessor('reason', {
+        header: 'Lý do yêu cầu',
+        cell: (info) => (
+          <span className="text-slate-700">{info.getValue() || 'Không ghi chú'}</span>
+        ),
+      }),
+      columnHelper.accessor('currentLevel', {
+        header: 'Cấp duyệt',
+        cell: (info) => `L${info.getValue()}`,
+      }),
+      columnHelper.accessor('expiresAt', {
+        header: 'Hết hạn',
+        cell: (info) => (
+          <span className="text-slate-500">
+            {new Date(info.getValue()).toLocaleString('vi-VN')}
+          </span>
+        ),
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: '',
+        cell: (ctx) =>
+          canDecide ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(ctx.row.original);
+                setReason('');
+              }}
+              className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:opacity-90 cursor-pointer"
+            >
+              Xử lý
+            </button>
+          ) : (
+            <span className="text-xs text-slate-400">Chỉ xem</span>
+          ),
+      }),
+    ],
+    [canDecide]
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: { pagination, sorting },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    pageCount: Math.max(1, Math.ceil(total / pagination.pageSize)),
+  });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">My Tasks — Hộp duyệt</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Các lệnh quản trị đang chờ bạn quyết định: bút toán đảo, khoá tài khoản, đổi chính sách.
+          Mọi quyết định đều ghi kèm lý do vào audit log.
+        </p>
+      </div>
+
+      <DataTable
+        table={table}
+        isLoading={isLoading}
+        totalCount={total}
+        emptyMessage="Không có lệnh nào đang chờ duyệt 🎉"
+      />
+
+      {selected && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 flex flex-col gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Xử lý lệnh <Badge tone={subjectTone(selected.subjectType)}>{selected.subjectType}</Badge>
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {selected.refCode ? `Giao dịch ${selected.refCode} · ` : ''}
+                {formatVnd(selected.amount)}
+              </p>
+            </div>
+
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-semibold text-slate-700">
+                Lý do quyết định <span className="text-rose-600">*</span>
+              </span>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                placeholder={`Tối thiểu ${MIN_REASON} ký tự — nội dung này vào audit log`}
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand/40"
+              />
+              <span className="text-xs text-slate-400">{reason.trim().length}/{MIN_REASON}</span>
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={close}
+                disabled={decide.isPending}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                onClick={() => submit('reject')}
+                disabled={decide.isPending}
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+              >
+                Từ chối
+              </button>
+              <button
+                type="button"
+                onClick={() => submit('approve')}
+                disabled={decide.isPending}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer"
+              >
+                Phê duyệt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

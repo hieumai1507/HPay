@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Implementation Plan — M3 Core Screens &amp; Flows (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16A34A;--ok-50:#ECFDF3;--warn:#D97706;--warn-50:#FFFBEB;--bad:#DC2626;--bad-50:#FEF2F2;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.65;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+h4{font-size:14px;font-weight:600;margin:18px 0 6px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.warn-note{border-left:4px solid var(--warn);background:var(--warn-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.bad-note{border-left-color:var(--bad);background:var(--bad-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:#ECFDF3;color:var(--ok)}
+.tag-m{background:var(--warn-50);color:var(--warn)}
+.mermaid{margin:20px 0}
+</style></head><body><div class="wrap">
+<h1>📋 Implementation Plan — M3 Core Screens &amp; Flows <span class="tag">mobile</span></h1>
+<p>Phase xây dựng toàn bộ màn hình chính: <b>Home</b> (hiện số dư, quick actions, giao dịch gần đây), <b>History</b> (lọc theo loại, phân trang cursor), <b>Topup</b> (nạp tiền mock bank), <b>P2P Transfer</b> (chuyển khoản async qua workflow engine), và <b>Txn Detail</b> (timeline xem trạng thái giao dịch).</p>
+<p>Dependency backend: <b>F2 (Auth) + F3 (Wallet/Topup) + F5 (Transfer/Fee) + F8 (KYC)</b> — đã hoàn thành.</p>
+
+<h2>1. Scope &amp; non-goals</h2>
+<h3>Ships</h3>
+<ul>
+  <li><b>Home Screen:</b>
+    <ul>
+      <li>Header chào + avatar user (lấy tên từ <code>session.user.full_name</code>).</li>
+      <li>Balance Card: <code>AmountDisplay</code> size display, nút ẩn/hiện (👁) — <b>mặc định ẨN</b> khi mở app (<code>balanceVisible</code> Zustand store, persist vào MMKV/AsyncStorage).</li>
+      <li>4 Quick actions: Nạp tiền, Chuyển tiền, QR, Lịch sử — điều hướng tương ứng.</li>
+      <li>"Giao dịch gần đây": 5 <code>TxnListItem</code> gần nhất lấy từ <code>GET /v1/transactions</code>, nút "Xem tất cả" → tab History.</li>
+      <li>Pull-to-refresh refetch cả balance + recent txns.</li>
+    </ul>
+  </li>
+  <li><b>History Screen:</b>
+    <ul>
+      <li>Filter chips: Tất cả / Tiền vào / Tiền ra / Đang xử lý (client-side filter trên dữ liệu đã fetch).</li>
+      <li>Danh sách nhóm theo ngày (section headers: "Hôm nay", "Hôm qua", "12/07/2026").</li>
+      <li>Infinite scroll với cursor-based pagination (<code>next_cursor</code> + <code>next_cursor_id</code>) dùng React Query <code>useInfiniteQuery</code>.</li>
+      <li>Skeleton / Empty / Error states đầy đủ (UX rule §6).</li>
+    </ul>
+  </li>
+  <li><b>Topup Flow (2 bước):</b>
+    <ul>
+      <li><b>AmountInput screen:</b> Component <code>AmountInput</code> mới (số lớn giữa màn, ngăn cách nghìn, đơn vị ₫ mờ bên phải). Validate: &gt; 0 và ≤ KYC limit (hiện thông báo "Vượt hạn mức").</li>
+      <li><b>Result screen:</b> Gọi <code>POST /v1/wallets/topup</code> (synchronous). Hiển thị kết quả thành công (✓) hoặc lỗi. Dùng <code>useIdempotencyKey</code> bảo vệ double-tap (M01).</li>
+    </ul>
+  </li>
+  <li><b>P2P Transfer Flow (4 bước):</b>
+    <ul>
+      <li><b>Chọn người nhận:</b> Nhập SĐT (debounce 500ms), tìm kiếm tên masked khi tìm thấy. Hiện danh bạ gần đây (top 5 từ history).</li>
+      <li><b>Nhập số tiền:</b> <code>AmountInput</code> + hiện số dư khả dụng + trường ghi chú (note). Validate hạn mức KYC realtime. Gọi <code>GET /v1/fees/preview</code> để tính phí.</li>
+      <li><b>Xác nhận:</b> Tóm tắt (người nhận, số tiền, phí, tổng). Cảnh báo nếu là người nhận lần đầu. Nút "Chuyển tiền" (Loading variant, disable ngay khi bấm — M01). Gọi <code>POST /v1/transactions/transfer</code> → <b>202 Accepted</b>.</li>
+      <li><b>Processing → Result:</b> Sau khi submit, chuyển sang màn processing có spinner + timeline rút gọn. Dùng <code>PollingTransactionWatcher</code> (đã có ở M1) poll <code>GET /v1/transactions/{refCode}/timeline</code>. Kết quả 3 biến thể: success (✓), failed (lý do + nút thử lại), timeout/processing ("Giao dịch đang được xử lý, vui lòng kiểm tra sau").</li>
+    </ul>
+  </li>
+  <li><b>Txn Detail Screen:</b>
+    <ul>
+      <li><code>AmountDisplay</code> + <code>StatusBadge</code> + <code>TimelineStep</code> list (public view).</li>
+      <li><code>ref_code</code> hiển thị mono + nút copy.</li>
+      <li>Giao dịch thông tin đầy đủ: loại, trạng thái, phí, note, thời gian.</li>
+    </ul>
+  </li>
+  <li><b>UI Components mới:</b>
+    <ul>
+      <li><code>AmountInput</code> — input nhập số tiền full-screen style, live-format dùng <code>money.ts</code>.</li>
+      <li><code>TxnListItem</code> — item giao dịch trong list (avatar/icon + tên + note + amount + status).</li>
+      <li><code>TimelineStep</code> — step trong timeline (done/active/failed/waiting variants).</li>
+      <li><code>FilterChips</code> — nhóm chip lọc theo trạng thái/loại giao dịch.</li>
+      <li><code>EmptyState</code> / <code>ErrorState</code> / <code>Skeleton</code> — 3 states bắt buộc cho mọi list.</li>
+      <li><code>BalanceCard</code> — card hiện số dư, nút ẩn/hiện.</li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Non-goals</h3>
+<ul>
+  <li>QR nhận tiền (M4) — tab QR giữ placeholder.</li>
+  <li>Request Money / Split Bill (M4).</li>
+  <li>Business Wallet maker/checker flow (M5).</li>
+  <li>Account screen chi tiết (settings, đổi pass, biometric toggle — M4/M5).</li>
+</ul>
+
+<h2>2. Data flow &amp; API mapping</h2>
+
+<div class="mermaid">
+graph LR
+  subgraph "React Query Hooks"
+    A["useWallets()"] -->|GET /v1/wallets| B["{ wallets: Wallet[] }"]
+    C["useTransactions()"] -->|GET /v1/transactions?cursor&cursor_id| D["{ transactions[], next_cursor, next_cursor_id }"]
+    E["useFeePreview(amount)"] -->|GET /v1/fees/preview?amount| F["{ amount, fee, total }"]
+    G["useTimeline(refCode)"] -->|GET /v1/transactions/{refCode}/timeline| H["{ ref_code, txn_status, timeline }"]
+    I["useTxnDetail(refCode)"] -->|GET /v1/transactions/{refCode}| J["Transaction detail"]
+  end
+  subgraph "React Query Mutations"
+    K["useTopup()"] -->|POST /v1/wallets/topup| L["TopupResult"]
+    M["useTransfer()"] -->|POST /v1/transactions/transfer| N["TransferResult (202)"]
+  end
+</div>
+
+<h3>Response shapes (from backend code analysis)</h3>
+<table>
+<tr><th>Endpoint</th><th>Key fields</th><th>Notes</th></tr>
+<tr><td><code>GET /v1/wallets</code></td><td><code>wallets[].{id, currency, purpose, label, balance}</code></td><td>Main wallet = <code>purpose:"main"</code>. Balance = int64 minor units (VND).</td></tr>
+<tr><td><code>GET /v1/transactions</code></td><td><code>transactions[].{id, ref_code, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, created_at, completed_at}</code></td><td>Keyset pagination: <code>next_cursor</code> (RFC3339Nano) + <code>next_cursor_id</code> (UUID). Page size = 20.</td></tr>
+<tr><td><code>POST /v1/wallets/topup</code></td><td><code>{ref_code, status, amount, new_balance, created_at, duplicate?}</code></td><td>Sync — completes immediately. Duplicate idem-key → 200 + original.</td></tr>
+<tr><td><code>POST /v1/transactions/transfer</code></td><td><code>{ref_code, status, amount, fee, total, created_at, duplicate?}</code></td><td>Async — returns <b>202</b>. Client must poll timeline.</td></tr>
+<tr><td><code>GET /v1/fees/preview?amount</code></td><td><code>{amount, fee, total}</code></td><td>Fee based on caller's KYC tier.</td></tr>
+<tr><td><code>GET /v1/transactions/{refCode}/timeline</code></td><td><code>{ref_code, txn_status, timeline: {instance_status, current_step, steps[]}}</code></td><td>Steps: <code>{step, status, attempt, finished_at?}</code>. Settled when <code>instance_status ∈ {completed, failed, compensated}</code>.</td></tr>
+<tr><td><code>GET /v1/transactions/{refCode}</code></td><td>Full <code>Transaction</code> row (owner-only, 404 otherwise) + <code>direction, counterparty_name, counterparty_phone</code></td><td>Dùng cho Txn Detail screen.</td></tr>
+<tr><td><code>GET /v1/users/lookup?phone=</code></td><td><code>{found, masked_name}</code></td><td>Backend m3-api-support. 404 = không tìm thấy; 429 = rate-limited.</td></tr>
+<tr><td><code>GET /v1/users/me</code></td><td><code>{user:{..., kyc_status}, txn_limit}</code></td><td>Backend m3-api-support. Nguồn duy nhất cho limit hiển thị.</td></tr>
+</table>
+<p><i>Ghi chú:</i> <code>GET /v1/transactions</code> items cũng có thêm <code>direction/counterparty_*</code> (masked); timeline có thêm <code>failure_code?</code> khi failed.</p>
+
+<h2>3. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td>Xây dựng <b>API hooks layer</b>: <code>useWallets</code>, <code>useTransactions</code> (infinite), <code>useTopup</code> (mutation), <code>useTransfer</code> (mutation), <code>useFeePreview</code>, <code>useTimeline</code>, <code>useTxnDetail</code></td><td><code>src/features/wallet/hooks/</code></td><td>L</td><td>M1 (client, polling)</td></tr>
+<tr><td>T2</td><td>Xây dựng <b>UI components mới</b>: <code>AmountInput</code>, <code>TxnListItem</code>, <code>TimelineStep</code>, <code>FilterChips</code>, <code>BalanceCard</code>, <code>EmptyState</code>, <code>ErrorState</code>, <code>Skeleton</code></td><td><code>src/ui/</code></td><td>L</td><td>M1 tokens</td></tr>
+<tr><td>T3</td><td>Xây dựng <b>Home screen</b>: balance card, quick actions, recent txns (5 items), pull-to-refresh</td><td><code>app/(main)/home.tsx</code>, <code>src/features/wallet/components/</code></td><td>L</td><td>T1, T2</td></tr>
+<tr><td>T4</td><td>Xây dựng <b>History screen</b>: filter chips, grouped list by date, infinite scroll cursor pagination, empty/error/skeleton</td><td><code>app/(main)/history.tsx</code>, <code>src/features/wallet/components/TransactionList.tsx</code></td><td>L</td><td>T1, T2</td></tr>
+<tr><td>T5</td><td>Xây dựng <b>Topup flow</b>: AmountInput → Result. Mutation <code>useTopup</code> + idempotency key + auto-invalidate wallet balance</td><td><code>app/(main)/topup/</code> (amount.tsx, result.tsx)</td><td>M</td><td>T1, T2</td></tr>
+<tr><td>T6</td><td>Xây dựng <b>Transfer flow</b>: Receiver → Amount → Confirm → Processing/Result. Debounce search, fee preview, polling timeline, 3 result variants</td><td><code>app/(main)/transfer/</code> (receiver.tsx, amount.tsx, confirm.tsx, processing.tsx, result.tsx)</td><td>XL</td><td>T1, T2</td></tr>
+<tr><td>T7</td><td>Xây dựng <b>Txn Detail screen</b>: Amount + Status + Timeline steps + ref_code copy + thông tin chi tiết</td><td><code>app/(main)/txn-detail.tsx</code></td><td>M</td><td>T1, T2</td></tr>
+<tr><td>T8</td><td>Cập nhật <b>tab layout</b>: icon + label tiếng Việt, badge notification count (groundwork), QR placeholder, Account placeholder</td><td><code>app/(main)/_layout.tsx</code></td><td>S</td><td>T3</td></tr>
+<tr><td>T9</td><td>Viết <b>unit tests</b>: hooks (mocked fetch), components (TxnListItem render, AmountInput formatting), edge cases (M01 double-tap, M02 poll timeout, M03 partial failure copy)</td><td><code>src/features/wallet/__tests__/</code>, <code>src/ui/__tests__/</code></td><td>L</td><td>T1–T7</td></tr>
+</table>
+
+<h2>4. Edge cases (from doc 02 §6)</h2>
+<table>
+<tr><th>Edge</th><th>Scenario</th><th>Handling</th></tr>
+<tr><td>M01</td><td>User double-tap nút "Chuyển tiền" hoặc "Nạp tiền"</td><td><code>useIdempotencyKey</code> cùng key → backend idempotent, FE disable nút ngay khi bấm (Loading variant). Mutation <code>onMutate</code> set <code>isSubmitting=true</code>.</td></tr>
+<tr><td>M02</td><td>Transfer 202 nhưng poll timeout 30s</td><td>Hiện "Giao dịch đang được xử lý" (không nói "thất bại"). <code>PollingTransactionWatcher</code> trả <code>{kind:'timeout'}</code> → navigate to Result(processing).</td></tr>
+<tr><td>M03</td><td>Transfer workflow fails (e.g. fraud, balance race)</td><td>Poll thấy <code>instance_status='failed'</code> → navigate Result(failed) + hiện <code>failure_reason</code> bằng error map. Nút "Thử lại" generate new idem key.</td></tr>
+<tr><td>M06</td><td>Tiền luôn là BigInt, không dùng Number/parseInt</td><td>Tất cả amount fields parse qua <code>parseAmountToBigInt</code> → truyền xuống API dạng int64. Render qua <code>AmountDisplay</code>/<code>formatAmountVND</code>.</td></tr>
+<tr><td>E01</td><td>Idempotency-Key replay</td><td>BE trả 200 + original txn → FE không tạo giao dịch mới, hiện kết quả ban đầu.</td></tr>
+<tr><td>New</td><td>Balance ẩn khi mở app</td><td><code>balanceVisible</code> store default=false. Toggle lưu persist. <code>AmountDisplay</code> hiện "••••••" khi ẩn.</td></tr>
+</table>
+
+<h2>5. Routing structure</h2>
+<pre><code>app/
+├── (main)/
+│   ├── _layout.tsx          ← Tab navigator (cập nhật icons + labels)
+│   ├── home.tsx             ← Home screen (thay thế placeholder)
+│   ├── history.tsx          ← History screen (thay thế placeholder)
+│   ├── qr.tsx               ← QR placeholder (giữ nguyên)
+│   ├── account.tsx          ← Account placeholder (giữ nguyên)
+│   ├── topup/
+│   │   ├── _layout.tsx      ← Stack navigator cho topup flow
+│   │   ├── amount.tsx       ← Nhập số tiền nạp
+│   │   └── result.tsx       ← Kết quả nạp tiền
+│   ├── transfer/
+│   │   ├── _layout.tsx      ← Stack navigator cho transfer flow
+│   │   ├── receiver.tsx     ← Chọn người nhận
+│   │   ├── amount.tsx       ← Nhập số tiền + note
+│   │   ├── confirm.tsx      ← Xác nhận giao dịch
+│   │   └── result.tsx       ← Processing → Result
+│   └── txn-detail.tsx       ← Chi tiết giao dịch (param: refCode)
+</code></pre>
+
+<h2>6. Schema changes</h2>
+<p><b>None</b> — client-only phase. Backend APIs đã sẵn sàng.</p>
+
+<h2>7. API changes</h2>
+<p>Tiêu thụ các endpoint đã có của Backend:</p>
+<ul>
+  <li><code>GET /v1/wallets</code>: Lấy danh sách ví (balance)</li>
+  <li><code>GET /v1/transactions</code>: Lịch sử giao dịch (cursor pagination)</li>
+  <li><code>GET /v1/transactions/{refCode}</code>: Chi tiết giao dịch</li>
+  <li><code>GET /v1/transactions/{refCode}/timeline</code>: Timeline workflow</li>
+  <li><code>POST /v1/wallets/topup</code>: Nạp tiền (sync)</li>
+  <li><code>POST /v1/transactions/transfer</code>: Chuyển khoản P2P (async 202)</li>
+  <li><code>GET /v1/fees/preview?amount</code>: Xem trước phí</li>
+  <li><code>GET /v1/users/lookup?phone=</code>: Xác nhận người nhận (masked name) — <b>mới, backend m3-api-support</b></li>
+  <li><code>GET /v1/users/me</code>: KYC status + <code>txn_limit</code> — <b>mới, backend m3-api-support</b></li>
+</ul>
+<p>Sau khi backend merge: chạy <code>npm run gen:api</code> để cập nhật <code>src/api/schema.d.ts</code> trước khi code T1.</p>
+
+<h2>8. Test plan</h2>
+<table>
+<tr><th>Edge</th><th>Test (jest)</th><th>Nội dung</th></tr>
+<tr><td>M01</td><td><code>TestEdge_M01_DoubleTapTransfer_SingleRequest</code></td><td>Bấm nút "Chuyển tiền" 2 lần nhanh → mutation chỉ gọi 1 lần, cùng idempotency key</td></tr>
+<tr><td>M02</td><td><code>TestEdge_M02_TransferPollTimeout_ProcessingCopy</code></td><td>Mock poll luôn trả "running" → timeout → hiển thị "đang xử lý" chứ không hiện "thất bại"</td></tr>
+<tr><td>M03</td><td><code>TestEdge_M03_TransferFailed_ErrorMapDisplay</code></td><td>Mock poll trả "failed" → hiển thị lý do cụ thể từ error map, nút thử lại visible</td></tr>
+<tr><td>M06</td><td><code>TestEdge_M06_BigIntMoney_NoPrecisionLoss</code></td><td>Kiểm tra parse/format amounts lớn (99.999.999.999 VND) qua BigInt, không mất precision</td></tr>
+<tr><td>—</td><td><code>Test_AmountInput_LiveFormatting</code></td><td>Nhập "1234567" → hiển thị "1.234.567", paste "50000" → "50.000"</td></tr>
+<tr><td>—</td><td><code>Test_TxnListItem_DirectionSign</code></td><td>Txn sender=myWallet → sign="out" (−), receiver=myWallet → sign="in" (+)</td></tr>
+<tr><td>—</td><td><code>Test_BalanceCard_HideToggle</code></td><td>Default ẩn (••••••), tap toggle → hiện số dư, tap lại → ẩn</td></tr>
+<tr><td>—</td><td><code>Test_FilterChips_ClientFilter</code></td><td>Chips Tiền vào → chỉ hiện in txns, Đang xử lý → chỉ hiện processing/running</td></tr>
+<tr><td>—</td><td><code>Test_CursorPagination_NextPage</code></td><td>Khi scroll đến cuối, useInfiniteQuery fetch trang tiếp theo đúng cursor</td></tr>
+</table>
+
+<h2>9. Dependencies cần cài thêm</h2>
+<div class="note">
+<b>Không cần thêm dependency mới.</b> Toàn bộ UI dùng React Native core components + design tokens có sẵn. React Query, Zustand, expo-crypto đã có. FlashList có thể cân nhắc sau nếu list > 100 items gây lag — hiện tại dùng <code>FlatList</code> RN core là đủ.
+</div>
+
+<h2>10. Rollout &amp; risk</h2>
+<ul>
+  <li><b>Balance visibility:</b> Mặc định ẨN khi mở app (fintech best practice). Lưu preference persist để giữ qua session.</li>
+  <li><b>Receiver search:</b> Dùng <code>GET /v1/users/lookup?phone=</code> (backend phase <code>m3-api-support</code>) — trả <code>{found, masked_name}</code>, rate-limited. KHÔNG có fallback dry-run.</li>
+  <li><b>Recent contacts (divergence khi implement):</b> counterparty_phone trong history là dữ liệu ĐÃ MASKED nên không thể dùng để prefill lệnh chuyển mới. v1 dùng store session-scoped (ghi lại {phone đầy đủ do chính user nhập, masked_name} sau mỗi transfer thành công — <code>src/features/wallet/recent-contacts.ts</code>). Danh bạ bền vững cần contract pay-by-counterparty-token → backlog M4.</li>
+  <li><b>Offline/slow network:</b> React Query <code>staleTime:30s</code> + retry 2 lần đã có. Mutation không retry (idem key bảo vệ).</li>
+  <li><b>KYC limit hiển thị:</b> Lấy <code>txn_limit</code> từ <code>GET /v1/users/me</code> (backend <code>m3-api-support</code>) — KHÔNG hardcode map client-side (map cũ trong plan này đã lệch server: manual_review cũng 5M, auto_approved cũng 100M).</li>
+  <li><b>Failure reason (M03):</b> Đọc <code>failure_code</code> từ timeline response (backend <code>m3-api-support</code>) → map qua <code>src/lib/errors.ts</code>.</li>
+</ul>
+
+<div class="note">
+<b>✅ Gap contract đã xử lý contract-first:</b> 4 điểm trước đây định "dùng tạm" (receiver lookup, counterparty name trong history, KYC limit hardcode, failure reason) đã được bổ sung phía backend trong <code>src/backend/docs/plans/m3-api-support/</code>. M3 mobile chỉ bắt đầu code phần phụ thuộc sau khi backend phase đó merge và <code>npm run gen:api</code> được chạy lại. Không còn workaround nào trong scope M3.
+</div>
+
+<h2>11. Execution checklist</h2>
+<ol>
+  <li>Tạo kế hoạch (file này + solution-architecture.html) → <b>chờ người dùng duyệt</b></li>
+  <li>T1: Xây API hooks layer (useWallets, useTransactions, useTopup, useTransfer, useFeePreview, useTimeline)</li>
+  <li>T2: Xây UI components (AmountInput, TxnListItem, TimelineStep, FilterChips, BalanceCard, EmptyState, ErrorState, Skeleton)</li>
+  <li>T3: Home screen (thay placeholder, wire hooks)</li>
+  <li>T4: History screen (filter, grouped list, infinite scroll)</li>
+  <li>T5: Topup flow (amount → result)</li>
+  <li>T6: Transfer flow (receiver → amount → confirm → processing → result)</li>
+  <li>T7: Txn Detail screen</li>
+  <li>T8: Tab layout update (icons, labels)</li>
+  <li>T9: Unit tests cho hooks, components, edge cases</li>
+  <li>Chạy kiểm tra: <code>npm run typecheck && npm run lint && npm test</code></li>
+  <li>Đưa báo cáo kết quả và commit code lên Git.</li>
+</ol>
+<footer style="margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px">hpay-mobile · docs/plans/m3-core-screens · 18/07/2026</footer>
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body></html>

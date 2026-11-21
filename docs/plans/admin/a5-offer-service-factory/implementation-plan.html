@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A5 Offer Factory &amp; Service Catalog — Implementation Plan (hpay-admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0E90A3;--brand-50:#E6FAFD;--ok:#16A34A;--ok-50:#ECFDF3;--warn:#D97706;--warn-50:#FFFBEB;--bad:#DC2626;--bad-50:#FEF2F2;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:15px;font-weight:700;margin:24px 0 8px}p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--ok-50);color:var(--ok)}
+.tag-m{background:var(--warn-50);color:var(--warn)}.tag-l{background:var(--bad-50);color:var(--bad)}
+.mermaid{margin:20px 0;background:#fff;border:1px solid var(--n200);border-radius:12px;padding:16px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="solution-architecture.html">← solution-architecture</a> · a5-offer-service-factory</div>
+<h1>A5 Offer Factory &amp; Service Catalog — Implementation Plan</h1>
+
+<h2>1. Scope &amp; Deliverables</h2>
+<p>Bổ sung module Quản trị Gói sản phẩm và Dịch vụ tài chính cho <code>hpay-admin</code>:</p>
+<ul>
+  <li>Màn hình <b>Service Catalog Manager</b> (`/services`): Quản lý danh mục dịch vụ, bật/tắt chế độ bảo trì (Maintenance Mode).</li>
+  <li>Màn hình <b>Offer Factory List</b> (`/offers`): Danh sách gói sản phẩm theo phân hạng người dùng.</li>
+  <li>Màn hình <b>Offer Detail Builder</b> (`/offers/:id`): Trình cấu hình 4 bước (Basic info, Pocket Limits, Authorized Services, Service Components - Limit Matrix &amp; Authentication Matrix).</li>
+</ul>
+
+<h2>2. Task Breakdown</h2>
+<table>
+  <tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+  <tr>
+    <td>T1</td>
+    <td>Service Catalog hooks: <code>useServices()</code>, <code>useUpdateServiceStatus()</code>, <code>useCreateService()</code></td>
+    <td><code>src/features/services/hooks.ts</code></td>
+    <td><span class="tag">S</span></td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>T2</td>
+    <td>Màn hình Service Catalog Page: Table dịch vụ, toggle switch Maintenance Mode, modal thêm service mới</td>
+    <td><code>src/pages/ServiceCatalogPage.tsx</code></td>
+    <td><span class="tag tag-m">M</span></td>
+    <td>T1</td>
+  </tr>
+  <tr>
+    <td>T3</td>
+    <td>Offer Factory hooks: <code>useOffers()</code>, <code>useOfferDetail(id)</code>, <code>useSaveOffer()</code></td>
+    <td><code>src/features/offers/hooks.ts</code></td>
+    <td><span class="tag">S</span></td>
+    <td>—</td>
+  </tr>
+  <tr>
+    <td>T4</td>
+    <td>Màn hình Offer Factory List Page: Grid thẻ Offer (Customer vs Business), thông tin level, role, trạng thái active</td>
+    <td><code>src/pages/OfferFactoryPage.tsx</code></td>
+    <td><span class="tag tag-m">M</span></td>
+    <td>T3</td>
+  </tr>
+  <tr>
+    <td>T5</td>
+    <td>Màn hình Offer Detail Builder Page: Wizard 4 bước (Basic Info, Pocket Limits, Authorized Services, Service Component Limits &amp; Auth Matrix Editor)</td>
+    <td><code>src/pages/OfferDetailPage.tsx</code></td>
+    <td><span class="tag tag-l">L</span></td>
+    <td>T3,T4</td>
+  </tr>
+  <tr>
+    <td>T6</td>
+    <td>Cập nhật <code>Sidebar.tsx</code> (thêm menu Dịch vụ &amp; Gói Offer) và <code>router.tsx</code> (routes `/services`, `/offers`, `/offers/:id`)</td>
+    <td><code>src/ui/Sidebar.tsx</code>, <code>src/router.tsx</code></td>
+    <td><span class="tag">S</span></td>
+    <td>T2,T5</td>
+  </tr>
+  <tr>
+    <td>T7</td>
+    <td>Kiểm tra chất lượng (typecheck, lint, build) &amp; commit push code</td>
+    <td>All project files</td>
+    <td><span class="tag">S</span></td>
+    <td>T6</td>
+  </tr>
+</table>
+
+<h2>3. Verification &amp; Definition of Done</h2>
+<pre><code>npm run typecheck    # 0 lỗi TypeScript
+npm run lint         # 0 lỗi ESLint
+npm run build        # Vite build thành công
+git push origin main
+</code></pre>
+
+<footer>hpay-admin · A5 Implementation Plan v1 · 2026</footer>
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body>
+</html>

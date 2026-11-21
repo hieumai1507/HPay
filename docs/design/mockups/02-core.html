@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>HPay — Core Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mp-base.css">
+</head>
+<body>
+<div class="board">
+
+<!-- ═══════════ 1. HOME ═══════════ -->
+<div class="slot"><div class="label">07 · Home</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="content" style="gap:18px;padding-top:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="avatar" style="background:linear-gradient(135deg,#7C3AED,#4F46E5)">HM</span>
+      <div style="flex:1"><div class="cap">Chào buổi sáng 👋</div><div class="li-title" style="font-size:16px">Hiếu Mai</div></div>
+      <span style="width:40px;height:40px;border-radius:99px;background:var(--n0);box-shadow:var(--shadow-card);display:flex;align-items:center;justify-content:center;position:relative">🔔<span style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:99px;background:var(--danger-600);border:1.5px solid #fff"></span></span>
+    </div>
+    <div class="hero">
+      <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
+        <span style="font:600 13px Inter;opacity:.85">Tổng số dư</span>
+        <span style="font:600 12px Inter;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:99px">👁 Hiện</span>
+      </div>
+      <div class="display" style="margin:10px 0 4px;position:relative;z-index:1">••••••••</div>
+      <div style="font:500 12.5px Inter;opacity:.75;position:relative;z-index:1">Ví chính · VND</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:56px;height:56px;border-radius:18px;background:var(--n0);box-shadow:var(--shadow-card);display:flex;align-items:center;justify-content:center;font-size:22px">➕</span><span style="font:600 12px Inter">Nạp tiền</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:56px;height:56px;border-radius:18px;background:var(--brand-600);box-shadow:0 8px 20px -6px rgba(11,95,255,.5);display:flex;align-items:center;justify-content:center;font-size:22px">💸</span><span style="font:600 12px Inter;color:var(--brand-600)">Chuyển</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:56px;height:56px;border-radius:18px;background:var(--n0);box-shadow:var(--shadow-card);display:flex;align-items:center;justify-content:center;font-size:22px">⊞</span><span style="font:600 12px Inter">Mã QR</span></div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:56px;height:56px;border-radius:18px;background:var(--n0);box-shadow:var(--shadow-card);display:flex;align-items:center;justify-content:center;font-size:22px">🧾</span><span style="font:600 12px Inter">Lịch sử</span></div>
+    </div>
+    <div class="card" style="flex:1;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span class="h2" style="font-size:16px">Giao dịch gần đây</span><span style="font:600 13px Inter;color:var(--brand-600)">Xem tất cả</span>
+      </div>
+      <div class="list-item"><span class="avatar" style="background:#F59E0B">MA</span><div class="li-main"><div class="li-title">Minh Anh</div><div class="li-sub">Tiền cafe sáng ☕</div></div><div class="li-right"><span class="amt-in money">+500.000 ₫</span><span class="cap">09:12</span></div></div>
+      <div class="list-item"><span class="avatar" style="background:#10B981">TL</span><div class="li-main"><div class="li-title">Thảo Linh</div><div class="li-sub">Chia tiền ăn tối</div></div><div class="li-right"><span class="amt-out money">−230.000 ₫</span><span class="cap">Hôm qua</span></div></div>
+      <div class="list-item"><span class="avatar" style="background:var(--brand-600)">⬇</span><div class="li-main"><div class="li-title">Nạp tiền</div><div class="li-sub">Vietcombank ••••4821</div></div><div class="li-right"><span class="amt-in money">+2.000.000 ₫</span><span class="cap">Hôm qua</span></div></div>
+      <div class="list-item"><span class="avatar" style="background:#6366F1">DN</span><div class="li-main"><div class="li-title">Cty DEH Corp</div><div class="li-sub">Hoàn ứng công tác</div></div><div class="li-right"><span class="amt-in money">+4.500.000 ₫</span><span class="chip warning" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Chờ duyệt</span></div></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <div class="tab active"><span class="ico">🏠</span>Trang chủ</div>
+    <div class="tab"><span class="ico">🧾</span>Lịch sử</div>
+    <div class="tab"><span class="ico">⊞</span>QR</div>
+    <div class="tab"><span class="ico">👤</span>Tài khoản</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 2. TRANSFER: NGƯỜI NHẬN ═══════════ -->
+<div class="slot"><div class="label">08 · Chuyển tiền — Người nhận</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Chuyển tiền</div></div>
+  <div class="content" style="gap:18px">
+    <div class="input focus"><span>🔍</span><span>091 234 5</span><span style="width:2px;height:20px;background:var(--brand-600)"></span><span style="margin-left:auto;color:var(--brand-600);font-size:20px">⊞</span></div>
+    <div class="card" style="display:flex;gap:14px;align-items:center;border:1.5px solid var(--brand-600);box-shadow:0 0 0 4px rgba(11,95,255,.1)">
+      <span class="avatar" style="background:#EC4899">NA</span>
+      <div style="flex:1"><div class="li-title">Nguyễn V** Anh</div><div class="li-sub mono">0912 345 xxx · Đã xác minh ✓</div></div>
+      <span style="color:var(--brand-600);font-size:18px">→</span>
+    </div>
+    <div>
+      <div class="field-label" style="margin-bottom:12px">Gần đây</div>
+      <div style="display:flex;gap:16px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span class="avatar" style="background:#F59E0B;width:54px;height:54px">MA</span><span class="cap" style="font-size:12px">Minh Anh</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span class="avatar" style="background:#10B981;width:54px;height:54px">TL</span><span class="cap" style="font-size:12px">Thảo Linh</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span class="avatar" style="background:#8B5CF6;width:54px;height:54px">QB</span><span class="cap" style="font-size:12px">Quốc Bảo</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span class="avatar" style="background:#0EA5E9;width:54px;height:54px">PH</span><span class="cap" style="font-size:12px">Phương</span></div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--brand-50);box-shadow:none">
+      <span style="font-size:20px">🛡️</span><span class="cap" style="color:var(--n700)">Người nhận lần đầu sẽ có bước xác nhận bổ sung để bảo vệ bạn khỏi lừa đảo.</span>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Tiếp tục</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 3. TRANSFER: SỐ TIỀN ═══════════ -->
+<div class="slot"><div class="label">09 · Chuyển tiền — Số tiền</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Số tiền</div></div>
+  <div class="content" style="gap:20px">
+    <div style="display:flex;gap:10px;align-items:center;background:var(--n0);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow-card)">
+      <span class="avatar" style="background:#EC4899;width:36px;height:36px;font-size:13px">NA</span>
+      <div style="flex:1"><div style="font:600 14px Inter">Nguyễn V** Anh</div><div class="cap mono" style="font-size:12px">0912 345 xxx</div></div>
+      <span class="cap" style="color:var(--brand-600);font-weight:600">Đổi</span>
+    </div>
+    <div style="text-align:center;padding:18px 0 6px">
+      <div class="display money" style="font-size:44px;line-height:52px">1.250.000<span style="font-size:24px;color:var(--n500)"> ₫</span></div>
+      <div class="cap" style="margin-top:8px">Số dư khả dụng: <b style="color:var(--n900)" class="money">12.450.000 ₫</b></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <span class="chip neutral" style="padding:8px 14px">100K</span>
+      <span class="chip neutral" style="padding:8px 14px">500K</span>
+      <span class="chip" style="padding:8px 14px;background:var(--brand-50);color:var(--brand-600)">1.25M ✓</span>
+      <span class="chip neutral" style="padding:8px 14px">5M</span>
+    </div>
+    <div>
+      <div class="field-label">Lời nhắn</div>
+      <div class="input"><span>Tiền học phí tháng 7 🎓</span><span style="margin-left:auto" class="cap">21/100</span></div>
+    </div>
+    <div class="card" style="display:flex;justify-content:space-between;box-shadow:none;background:var(--n100);padding:12px 16px">
+      <span class="cap" style="color:var(--n700)">Phí giao dịch</span><span style="font:600 13px Inter;color:var(--success-600)">Miễn phí</span>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Tiếp tục</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 4. TRANSFER: XÁC NHẬN ═══════════ -->
+<div class="slot"><div class="label">10 · Chuyển tiền — Xác nhận</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Xác nhận giao dịch</div></div>
+  <div class="content" style="gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0">
+      <span class="avatar" style="background:#EC4899;width:64px;height:64px;font-size:22px">NA</span>
+      <div style="text-align:center"><div class="h2">Nguyễn V** Anh</div><div class="cap mono">0912 345 xxx</div></div>
+      <div class="display money" style="font-size:36px">1.250.000 ₫</div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:0;padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Lời nhắn</span><span style="font:500 14px Inter">Tiền học phí tháng 7 🎓</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Phí</span><span style="font:600 14px Inter;color:var(--success-600)">Miễn phí</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Tổng trừ</span><span class="money" style="font:700 15px Inter">1.250.000 ₫</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Từ</span><span style="font:500 14px Inter">Ví chính ••••</span></div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--warning-50);box-shadow:none">
+      <span style="font-size:18px">⚠️</span><span class="cap" style="color:var(--n700)"><b>Người nhận lần đầu.</b> Kiểm tra kỹ tên và số điện thoại trước khi chuyển.</span>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;gap:10px">
+      <div class="btn" style="background:linear-gradient(135deg,var(--brand-600),var(--brand-700))">Quẹt để chuyển  ›››</div>
+      <div class="cap" style="text-align:center">🔒 Bảo vệ bởi xác thực sinh trắc học</div>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 5. PROCESSING ═══════════ -->
+<div class="slot"><div class="label">11 · Đang xử lý</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="content" style="justify-content:center;gap:28px;align-items:center">
+    <div style="width:96px;height:96px;border-radius:99px;background:var(--brand-50);display:flex;align-items:center;justify-content:center;position:relative">
+      <span style="position:absolute;inset:-6px;border-radius:99px;border:3px solid transparent;border-top-color:var(--brand-600);transform:rotate(45deg)"></span>
+      <span style="font-size:38px">💸</span>
+    </div>
+    <div style="text-align:center">
+      <div class="h1" style="margin-bottom:6px">Đang chuyển tiền…</div>
+      <div class="body" style="color:var(--n500)">Thường chỉ mất vài giây</div>
+    </div>
+    <div class="card" style="width:100%;padding:20px">
+      <div class="timeline">
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line done"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Đã tạo lệnh</div><div class="li-sub">09:41:02</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Kiểm tra an toàn</div><div class="li-sub">Đã qua kiểm tra gian lận</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot active">●</div><div class="tl-line"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px;color:var(--brand-600)">Đang chuyển tiền</div><div class="li-sub">Ghi sổ giao dịch…</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot wait"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px;color:var(--n500)">Hoàn tất</div></div></div>
+      </div>
+    </div>
+    <span class="cap mono">MP26070800142</span>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 6. RESULT SUCCESS ═══════════ -->
+<div class="slot"><div class="label">12 · Kết quả — Thành công</div>
+<div class="screen" style="background:linear-gradient(180deg,#F0FDF4 0%,var(--n50) 40%)">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="content" style="gap:18px;align-items:center;padding-top:48px">
+    <span style="width:88px;height:88px;border-radius:99px;background:var(--success-600);display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff;box-shadow:0 16px 32px -8px rgba(22,163,74,.4)">✓</span>
+    <div style="text-align:center">
+      <div class="h1">Chuyển thành công!</div>
+      <div class="display money" style="margin-top:10px;font-size:36px">1.250.000 ₫</div>
+      <div class="body" style="color:var(--n500);margin-top:6px">tới <b style="color:var(--n900)">Nguyễn V** Anh</b></div>
+    </div>
+    <div class="card" style="width:100%;padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Mã giao dịch</span><span class="mono">MP26070800142 ⧉</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Thời gian</span><span style="font:500 14px Inter">08/07/2026 · 09:41</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Trạng thái</span><span class="chip success"><span class="dot"></span>Thành công</span></div>
+    </div>
+    <div style="display:flex;gap:10px;width:100%">
+      <div class="btn secondary" style="flex:1">Chia sẻ biên lai</div>
+      <div class="btn secondary" style="flex:1">Chuyển tiếp</div>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px;width:100%"><div class="btn">Về trang chủ</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 7. TOPUP ═══════════ -->
+<div class="slot"><div class="label">13 · Nạp tiền</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Nạp tiền vào ví</div></div>
+  <div class="content" style="gap:20px">
+    <div style="text-align:center;padding:14px 0 4px">
+      <div class="display money" style="font-size:44px;line-height:52px">2.000.000<span style="font-size:24px;color:var(--n500)"> ₫</span></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <span class="chip neutral" style="padding:8px 14px">500K</span>
+      <span class="chip" style="padding:8px 14px;background:var(--brand-50);color:var(--brand-600)">2M ✓</span>
+      <span class="chip neutral" style="padding:8px 14px">5M</span>
+      <span class="chip neutral" style="padding:8px 14px">10M</span>
+    </div>
+    <div>
+      <div class="field-label" style="margin-bottom:10px">Nguồn tiền</div>
+      <div class="card" style="display:flex;gap:14px;align-items:center;border:1.5px solid var(--brand-600);box-shadow:0 0 0 4px rgba(11,95,255,.1);margin-bottom:10px">
+        <span style="width:44px;height:44px;border-radius:12px;background:#065F46;display:flex;align-items:center;justify-content:center;color:#fff;font:700 11px Inter">VCB</span>
+        <div style="flex:1"><div class="li-title">Vietcombank</div><div class="li-sub mono">•••• 4821 · Miễn phí</div></div>
+        <span style="width:22px;height:22px;border-radius:99px;background:var(--brand-600);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">✓</span>
+      </div>
+      <div class="card" style="display:flex;gap:14px;align-items:center">
+        <span style="width:44px;height:44px;border-radius:12px;background:#7C2D12;display:flex;align-items:center;justify-content:center;color:#fff;font:700 11px Inter">TCB</span>
+        <div style="flex:1"><div class="li-title">Techcombank</div><div class="li-sub mono">•••• 9034</div></div>
+        <span style="width:22px;height:22px;border-radius:99px;border:2px solid var(--n300)"></span>
+      </div>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Nạp 2.000.000 ₫</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 8. HISTORY ═══════════ -->
+<div class="slot"><div class="label">14 · Lịch sử</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="title" style="margin:0 auto">Lịch sử giao dịch</div></div>
+  <div class="content" style="gap:14px">
+    <div style="display:flex;gap:8px">
+      <span class="chip" style="padding:8px 14px;background:var(--n900);color:#fff">Tất cả</span>
+      <span class="chip neutral" style="padding:8px 14px">Tiền vào</span>
+      <span class="chip neutral" style="padding:8px 14px">Tiền ra</span>
+      <span class="chip neutral" style="padding:8px 14px">Đang xử lý</span>
+    </div>
+    <div>
+      <div class="cap" style="font-weight:600;margin-bottom:6px">HÔM NAY · 8 TH 7</div>
+      <div class="card" style="padding:2px 16px">
+        <div class="list-item"><span class="avatar" style="background:#EC4899">NA</span><div class="li-main"><div class="li-title">Nguyễn V** Anh</div><div class="li-sub">Tiền học phí tháng 7 🎓</div></div><div class="li-right"><span class="amt-out money">−1.250.000 ₫</span><span class="chip success" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Thành công</span></div></div>
+        <div class="list-item"><span class="avatar" style="background:#F59E0B">MA</span><div class="li-main"><div class="li-title">Minh Anh</div><div class="li-sub">Tiền cafe sáng ☕</div></div><div class="li-right"><span class="amt-in money">+500.000 ₫</span><span class="chip success" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Thành công</span></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="cap" style="font-weight:600;margin-bottom:6px">HÔM QUA · 7 TH 7</div>
+      <div class="card" style="padding:2px 16px">
+        <div class="list-item"><span class="avatar" style="background:#6366F1">DN</span><div class="li-main"><div class="li-title">Cty DEH Corp</div><div class="li-sub">Hoàn ứng công tác</div></div><div class="li-right"><span class="amt-in money">+4.500.000 ₫</span><span class="chip warning" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Chờ duyệt</span></div></div>
+        <div class="list-item"><span class="avatar" style="background:#10B981">TL</span><div class="li-main"><div class="li-title">Thảo Linh</div><div class="li-sub">Chia tiền ăn tối</div></div><div class="li-right"><span class="amt-out money">−230.000 ₫</span><span class="chip success" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Thành công</span></div></div>
+        <div class="list-item"><span class="avatar" style="background:var(--brand-600)">⬇</span><div class="li-main"><div class="li-title">Nạp tiền</div><div class="li-sub">Vietcombank ••••4821</div></div><div class="li-right"><span class="amt-in money">+2.000.000 ₫</span><span class="chip success" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Thành công</span></div></div>
+        <div class="list-item"><span class="avatar" style="background:#8B5CF6">QB</span><div class="li-main"><div class="li-title">Quốc Bảo</div><div class="li-sub">Trả nợ trận bida 🎱</div></div><div class="li-right"><span class="amt-out money">−150.000 ₫</span><span class="chip danger" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Thất bại</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <div class="tab"><span class="ico">🏠</span>Trang chủ</div>
+    <div class="tab active"><span class="ico">🧾</span>Lịch sử</div>
+    <div class="tab"><span class="ico">⊞</span>QR</div>
+    <div class="tab"><span class="ico">👤</span>Tài khoản</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 9. TXN DETAIL ═══════════ -->
+<div class="slot"><div class="label">15 · Chi tiết giao dịch</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Chi tiết giao dịch</div><span style="margin-left:auto;font-size:18px">⇪</span></div>
+  <div class="content" style="gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0">
+      <span class="avatar" style="background:#EC4899;width:56px;height:56px;font-size:20px">NA</span>
+      <div class="h2">Nguyễn V** Anh</div>
+      <div class="display money" style="font-size:32px">−1.250.000 ₫</div>
+      <span class="chip success"><span class="dot"></span>Thành công</span>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="field-label" style="margin-bottom:14px">HÀNH TRÌNH GIAO DỊCH</div>
+      <div class="timeline">
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line done"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Khởi tạo lệnh</div><div class="li-sub">09:41:02</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line done"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Kiểm tra an toàn</div><div class="li-sub">09:41:02 · đạt</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line done"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Chuyển tiền</div><div class="li-sub">09:41:03</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div></div><div class="tl-body" style="padding-bottom:0"><div class="li-title" style="font-size:14px">Hoàn tất</div><div class="li-sub">09:41:03</div></div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Mã GD</span><span class="mono">MP26070800142 ⧉</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Lời nhắn</span><span style="font:500 14px Inter">Tiền học phí tháng 7 🎓</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Phí</span><span style="font:600 14px Inter;color:var(--success-600)">Miễn phí</span></div>
+    </div>
+    <div class="btn ghost" style="color:var(--danger-600)">Báo cáo sự cố</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 10. QR ═══════════ -->
+<div class="slot"><div class="label">16 · Mã QR nhận tiền</div>
+<div class="screen" style="background:linear-gradient(160deg,#1ECBE1,#0B7181)">
+  <div class="statusbar" style="color:#fff"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back" style="background:rgba(255,255,255,.14);color:#fff;box-shadow:none">←</div><div class="title" style="color:#fff">Nhận tiền</div></div>
+  <div class="content" style="align-items:center;gap:20px;padding-top:24px">
+    <div style="background:#fff;border-radius:28px;padding:28px;display:flex;flex-direction:column;align-items:center;gap:16px;box-shadow:0 24px 48px -12px rgba(2,12,40,.45);width:100%">
+      <span class="avatar" style="background:linear-gradient(135deg,#7C3AED,#4F46E5);width:56px;height:56px;margin-top:-56px;border:4px solid #fff">HM</span>
+      <div style="text-align:center"><div class="h2">Hiếu Mai</div><div class="cap mono">0912 ••• 507 · Đã xác minh ✓</div></div>
+      <div style="width:230px;height:230px;border-radius:16px;background:
+        repeating-conic-gradient(var(--n900) 0% 25%, #fff 0% 50%) 0 0/28px 28px;position:relative">
+        <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="width:52px;height:52px;border-radius:14px;background:var(--brand-600);display:flex;align-items:center;justify-content:center;color:#fff;font:700 13px Inter;border:4px solid #fff">MP</span></span>
+      </div>
+      <div class="cap" style="text-align:center">Quét mã để chuyển tiền cho tôi<br>qua HPay</div>
+    </div>
+    <div style="display:flex;gap:10px;width:100%">
+      <div class="btn" style="flex:1;background:rgba(255,255,255,.14);box-shadow:none">⇪ Chia sẻ</div>
+      <div class="btn" style="flex:1;background:#fff;color:var(--brand-600);box-shadow:none">⤓ Lưu ảnh</div>
+    </div>
+  </div>
+  <div class="homebar" style="background:#fff"></div>
+</div></div>
+
+</div>
+</body>
+</html>

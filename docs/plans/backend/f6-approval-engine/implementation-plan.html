@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F6 Approval Engine — Implementation Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}li{color:var(--n700);margin:4px 0 4px 20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../f5-p2p-fee/implementation-plan.html">← F5</a> · f6-approval-engine · <a href="solution-architecture.html">solution-architecture →</a></div>
+<h1>F6 Approval Engine — Implementation Plan</h1>
+
+<h2>1. Scope & non-goals</h2>
+<div class="note"><b>Điểm thuận lợi:</b> schema approval đã generalized sẵn từ F1 (migration 000005: <code>approval_requests</code> có <code>subject_type</code> đủ 4 loại, <code>approval_actions</code> UNIQUE(request_id, checker_id), <code>approval_policies</code> versioned, <code>otp_challenges</code>). F6 KHÔNG cần đổi schema — chỉ seed definition + viết code. OTP service F2 (<code>auth.RequestOTP/VerifyOTP</code>, purpose-scoped) dùng lại nguyên.</div>
+<table>
+<tr><th>Ships</th><th>Không làm ở F6</th></tr>
+<tr><td>Org API: tạo org (kèm ví org atomically, creator = org admin), thêm member, tạo/đổi policy (version mới + deactivate cũ); org topup mock-bank (để demo được); maker tạo lệnh chi <code>org_disbursement</code> qua engine; definition <code>org_disbursement</code> v1 (VALIDATE → FRAUD_CHECK → WAIT_APPROVAL → MOVE_FUNDS → CONFIRM); engine pause-hook: gặp <code>human_approval</code> → tạo <code>approval_requests</code> (policy match theo org+amount, snapshot tiers) + txn → <code>pending_approval</code> trong CÙNG tx; checker API 3 bước (inbox "My Tasks" / challenge OTP / decide có FOR UPDATE + <code>Evaluate</code> thuần); resume qua outbox ResultEvent cho step WAIT_APPROVAL (kèm step_execution để timeline hiện đủ); expiry sweeper (claim-lease UPDATE…RETURNING, E10); handler validator/wallet hỗ trợ ví org (owner-status generic); audit_logs cho decide + policy change; executor registry theo <code>subject_type</code> (F6 đăng ký <code>org_transaction</code>); E08/E09/E10 tests; openapi.yaml cùng commit</td>
+<td>Executor cho <code>reversal</code> / <code>account_lock</code> / <code>policy_change</code> (framework nhận subject nhưng API tạo request các loại này đến F9 cùng fraud/recon); admin_users auth + <code>/v1/admin/*</code> My Tasks màn admin (A-phases — F6 phục vụ checker là USER của org qua mobile business, đúng doc 03/M5); notification cho maker/checker (F7 notify); daily limit org</td></tr>
+</table>
+
+<h2>2. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td>Migration 000013: seed definition <code>org_disbursement</code> v1 (WAIT_APPROVAL: <code>expires_h=24</code>, on_failure=fail; MOVE_FUNDS compensatable) + fee policy <code>org_disbursement</code> 0đ (tường minh, khỏi fallback ngầm)</td><td>db/migrations/000013_*</td><td>S</td><td>—</td></tr>
+<tr><td>T2</td><td>Queries: org.sql (org CRUD, members, RequireRole lookup), approval.sql (insert request, GetForUpdate, insert action, finalize guarded, inbox theo checker+level, ExpireDue claim-lease, policy match theo org+amount+active), wallets.sql thêm <code>GetOwnerStatusByWalletID</code> (user HOẶC org — sửa gap ví org) + CreateOrgWallet; transactions.sql thêm <code>PendTransactionGuarded</code> (processing → pending_approval)</td><td>internal/store/queries/*</td><td>M</td><td>T1</td></tr>
+<tr><td>T3</td><td><code>internal/approval</code>: <code>Evaluate(snapshot, actions)</code> thuần + unit tests (reject-first, tier tăng dần, current_level); types PolicySnapshot/Decision</td><td>internal/approval/evaluate*.go</td><td>S</td><td>—</td></tr>
+<tr><td>T4</td><td>Engine: <code>PauseHook</code> interface + <code>SetPauseHook</code> (advance gặp human_approval gọi hook TRONG cùng tx q); OnResult guard chấp nhận <code>waiting_approval</code> khi step là human_approval; sweeper stuck bỏ qua waiting_approval (đã đúng — chỉ quét running)</td><td>internal/workflow/engine.go, types.go</td><td>M</td><td>T2</td></tr>
+<tr><td>T5</td><td><code>internal/approval</code> service: CreateForInstance (pause-hook impl: match policy, snapshot, txn→pending_approval); Challenge (eligibility: đúng org, role checker, level = current_level, chưa act, request pending → OTP purpose <code>approve:{requestID}</code>); Decide (verify OTP → tx: FOR UPDATE request, guard pending + chưa hết hạn, insert action (23505 → ERR_ALREADY_ACTED), Evaluate → finalize + step_execution WAIT_APPROVAL + outbox ResultEvent + audit_log); Expiry sweeper loop (worker role)</td><td>internal/approval/service.go, sweeper.go</td><td>L</td><td>T3,T4</td></tr>
+<tr><td>T6</td><td><code>internal/org</code> service: CreateOrg (+ví org, creator admin, 1 tx), AddMember, CreatePolicy/NewVersion (audit), OrgTopup (mock bank, idempotency như user topup), CreateDisbursement (maker: policy tồn tại → fail fast ERR_NO_POLICY; txn type org_disbursement sender=ví org + engine.Start cùng tx — tái dùng pattern transfer)</td><td>internal/org/service.go</td><td>L</td><td>T2</td></tr>
+<tr><td>T7</td><td>Handlers ví org: validator + wallet đổi sang <code>GetOwnerStatusByWalletID</code> (org bị suspend giữa chừng cũng fail như E12); API layer: middleware <code>RequireOrgRole</code>, org_handler + approval_handler, routes <code>/v1/org/*</code> (mount theo MountsAdminAPI — role admin|all), errmap mới, openapi.yaml</td><td>internal/workflow/handlers/, internal/api/*</td><td>L</td><td>T5,T6</td></tr>
+<tr><td>T8</td><td>Tests: E08/E09/E10 + E2E 2-tier + reject path + eligibility/authz; wire main.go (pause hook, sweeper); CI REQUIRED_EDGE_IDS += E08 E09 E10</td><td>*_test.go, cmd/server, ci</td><td>L</td><td>T7</td></tr>
+</table>
+
+<h2>3. Schema changes</h2>
+<p>Không có bảng/cột mới. 000013 chỉ là <b>seed data migration</b> (definition + fee policy) — down xóa đúng 2 row theo name/version. Mọi bảng approval đã có từ 000005; nếu khi code phát hiện thiếu cột → dừng, quay lại đề xuất sửa docs trước (docs-first).</p>
+
+<h2>4. API changes (vào openapi.yaml cùng commit)</h2>
+<table>
+<tr><th>Endpoint</th><th>Role</th><th>Mô tả / Lỗi</th></tr>
+<tr><td><code>POST /v1/org</code></td><td>user</td><td>{name} → org + ví org; creator thành org admin. ERR_VALIDATION</td></tr>
+<tr><td><code>POST /v1/org/{id}/members</code></td><td>org admin</td><td>{phone, role, checker_level} → ERR_NOT_ORG_MEMBER, ERR_FORBIDDEN_ROLE, ERR_USER_NOT_FOUND, ERR_MEMBER_EXISTS</td></tr>
+<tr><td><code>POST /v1/org/{id}/policies</code></td><td>org admin</td><td>{name, min_amount, max_amount, tiers[]} → version mới, deactivate bản cũ cùng dải. ERR_VALIDATION</td></tr>
+<tr><td><code>POST /v1/org/{id}/topup</code></td><td>org admin</td><td>Idempotency-Key; mock bank như user topup. ERR_LIMIT_EXCEEDED</td></tr>
+<tr><td><code>POST /v1/org/{id}/transactions</code></td><td>org maker</td><td>{receiver_phone, amount, note} + Idempotency-Key → 202 {ref_code, status=pending sau khi tới WAIT_APPROVAL}; ERR_NO_POLICY, ERR_RECEIVER_NOT_FOUND, ERR_INSUFFICIENT_BALANCE (soft)</td></tr>
+<tr><td><code>GET /v1/org/approvals?status=pending</code></td><td>checker</td><td>"My Tasks": request pending ở org mình, tier hiện tại khớp level mình, mình chưa act</td></tr>
+<tr><td><code>POST /v1/org/approvals/{id}/challenge</code></td><td>checker</td><td>Eligibility rồi mới phát OTP (dev: trả code). ERR_APPROVAL_NOT_FOUND, ERR_ALREADY_FINALIZED, ERR_WRONG_LEVEL, ERR_ALREADY_ACTED, ERR_OTP_COOLDOWN</td></tr>
+<tr><td><code>POST /v1/org/approvals/{id}/decide</code></td><td>checker</td><td>{action: approve|reject, otp} → cập nhật level hoặc finalize; đủ chữ ký → workflow resume. ERR_OTP_INVALID/EXPIRED/MAX_ATTEMPTS, ERR_ALREADY_FINALIZED, ERR_ALREADY_ACTED, ERR_WRONG_LEVEL, ERR_APPROVAL_EXPIRED</td></tr>
+</table>
+
+<h2>5. Test plan</h2>
+<table>
+<tr><th>ID</th><th>Test</th></tr>
+<tr><td>E08</td><td><code>TestEdge_E08_CheckerRaceSingleFinalize</code>: tier cần 1 approval, 2 checker decide đồng thời (2 goroutines, OTP riêng) → đúng 1 action finalize + workflow resume đúng 1 lần (1 ResultEvent), người sau nhận ERR_ALREADY_FINALIZED; approval_actions có đúng 1 row</td></tr>
+<tr><td>E09</td><td><code>TestEdge_E09_PolicySnapshotSurvivesPolicyChange</code>: tạo lệnh dưới policy v1 (1 chữ ký) → org admin đổi policy thành 2 chữ ký → checker duyệt → vẫn finalize theo snapshot v1; lệnh MỚI tạo sau đó cần 2 chữ ký</td></tr>
+<tr><td>E10</td><td><code>TestEdge_E10_ExpiredApprovalFailsClean</code>: request quá <code>expires_at</code> (set quá khứ) → sweeper chạy → request expired, instance failed, txn failed, ledger KHÔNG có bút toán; 2 sweeper song song không double-claim (lease)</td></tr>
+<tr><td>—</td><td>E2E 2-tier: maker chi 5tr (policy: L1×1 + L2×1) → txn pending_approval + inbox L1 thấy, L2 chưa; L1 approve → current_level=2; L2 approve → resume → tiền đi từ ví org, txn completed, timeline có WAIT_APPROVAL; reject path: L1 reject → txn failed, không bút toán; eligibility: maker tự duyệt lệnh mình → 403; checker org khác → 404; sai level → ERR_WRONG_LEVEL; Evaluate unit table-test; org topup idempotent (E01 pattern)</td></tr>
+</table>
+
+<h2>6. Rollout & risk</h2>
+<ul>
+<li><b>Resume = ResultEvent cho WAIT_APPROVAL</b> (không thêm event type mới): engine OnResult phải nới guard chấp nhận <code>waiting_approval</code> — chỉ khi step trong definition là human_approval, giữ chặt cho auto step. Duplicate finalize event vô hại nhờ guard hiện có (E06).</li>
+<li>Pause hook lỗi (không match policy lúc engine chạy — hiếm vì maker đã fail-fast) → instance fail sạch qua on_failure, không treo.</li>
+<li><code>GetOwnerStatusByWalletID</code> thay <code>GetUserStatusByWalletID</code> trong handlers — chạy lại toàn bộ test F5 để chắc không vỡ P2P.</li>
+<li>Routes /v1/org mount ở role <code>admin|all</code> (theo config F1). Mobile business gọi qua đó; dev --role=all không đổi gì.</li>
+<li>Docs 00 §5.1 mô tả bảng <code>transaction_approvals</code> — thực tế đã là <code>approval_requests</code> (doc 04 §2.3 thay thế). Không lệch thêm; ghi chú nhắc cập nhật docs 00 cho khớp 04 sau merge.</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ul><li>[x] gen-feature-plan · [ ] T1 (gen-migration) → T2 (sqlc) → T3→T8 (gen-workflow-step conventions cho engine hook, gen-api-test cho E08–E10) · [ ] fintech-review · [ ] commit <code>feat: F6 approval engine - org maker-checker, policy snapshot, human gate resume, expiry sweeper</code></li></ul>
+</div></body>
+</html>

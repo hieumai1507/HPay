@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation Plan — Vaults through the Engine (hpay-backend)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:16px 18px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.s{background:#dcfce7;color:var(--ok)}.m{background:#fef9c3;color:var(--warn)}.l{background:#fee2e2;color:var(--bad)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-backend</code> · plan</div>
+<h1>Implementation Plan — Vaults through the Engine</h1>
+<blockquote><p><b>Feature slug:</b> <code>vaults-engine</code> · <b>Phase:</b> C (backend half) · <b>Nguồn:</b> <a href="../../../../docs/architecture/04-feature-extensions.html">doc 04 §2.2 — Vaults (P2)</a>. Mobile half: <code>src/mobile/docs/plans/m6-vaults-hardening/</code>.</p></blockquote>
+
+<h2>1. Hiện trạng đã khảo sát</h2>
+<table>
+<thead><tr><th>Thành phần</th><th>Thực tế</th><th>Kết luận</th></tr></thead>
+<tbody>
+<tr><td><code>wallets.purpose</code> / <code>label</code></td><td>Đã có (<code>main</code>|<code>vault</code>, label VARCHAR(60))</td><td>✅ không cần thêm cột</td></tr>
+<tr><td><code>txn_type</code></td><td>Đã có giá trị <code>vault_move</code></td><td>✅ dùng luôn</td></tr>
+<tr><td>Service catalog</td><td><code>VAULT_SAVINGS</code> đã seed, <code>wallet_strategy='user_to_vault'</code>, <code>ledger_txn_type='vault_move'</code></td><td>✅ cấu hình sẵn</td></tr>
+<tr><td><code>planWallets</code></td><td><code>user_to_vault</code> <b>chưa hiện thực</b> — rơi vào <code>default</code> và trả lỗi</td><td>❌ phải làm</td></tr>
+<tr><td><code>wallet_owner_unique</code></td><td><code>UNIQUE (owner_type, owner_id, currency, purpose)</code> — <b>không có <code>label</code></b></td><td>❌ mỗi user chỉ tạo được <b>1</b> vault; doc 04 nói unique phải gồm <code>label</code></td></tr>
+<tr><td>Seeder <code>vaultWallet</code></td><td>Đã query theo <code>label</code></td><td>⚠️ giả định nhiều vault — mâu thuẫn constraint hiện tại</td></tr>
+<tr><td>API</td><td>Không có endpoint vault nào</td><td>❌ phải làm</td></tr>
+</tbody>
+</table>
+
+<h2>2. Scope &amp; Non-goals</h2>
+<h3>Ships</h3>
+<ul>
+<li>Nới <code>wallet_owner_unique</code> để một user có nhiều vault (phân biệt bằng <code>label</code>).</li>
+<li><code>planWallets</code> hỗ trợ chiều <b>nạp vào</b> và <b>rút về</b> giữa ví <code>main</code> và một vault chỉ định.</li>
+<li>API: liệt kê vault, tạo vault. Nạp/rút đi qua đúng bộ 3 API engine với <code>service_code=VAULT_SAVINGS</code> — không có endpoint tiền riêng.</li>
+</ul>
+<h3>Non-goals (defer)</h3>
+<ul>
+<li><b>Round-up</b> (doc 04 ghi là stretch): cần thêm step <code>ROUND_UP</code> optional trong workflow definition — tách plan riêng.</li>
+<li>Mục tiêu tiết kiệm (<code>target_amount</code>) chỉ là cột hiển thị; không có logic khoá/ép buộc.</li>
+<li>Lãi suất / kỳ hạn — ngoài phạm vi.</li>
+</ul>
+
+<h2>3. Task breakdown</h2>
+<table>
+<thead><tr><th>#</th><th>Task</th><th>Files</th><th>Size</th></tr></thead>
+<tbody>
+<tr><td>T1</td><td>Migration 000008: đổi <code>wallet_owner_unique</code> thành <code>(owner_type, owner_id, currency, purpose, label)</code>; thêm <code>target_amount BIGINT</code> cho vault</td><td><code>db/migrations/000008_*.up/down.sql</code></td><td><span class="tag m">M</span></td></tr>
+<tr><td>T2</td><td>Queries: <code>ListUserVaults</code>, <code>CreateVaultWallet</code>, <code>GetVaultWalletForUser</code> (có điều kiện owner — AuthZ tầng SQL)</td><td><code>internal/store/queries/wallets.sql</code></td><td><span class="tag s">S</span></td></tr>
+<tr><td>T3</td><td><code>planWallets</code>: strategy <code>user_to_vault</code> đọc <code>extra_params.vault_id</code> + <code>extra_params.direction</code> (<code>deposit</code>|<code>withdraw</code>) và dựng đúng cặp ví</td><td><code>internal/transfer/service.go</code></td><td><span class="tag m">M</span></td></tr>
+<tr><td>T4</td><td>Module <code>internal/vault</code>: list/create + validate label, chặn tạo trùng label</td><td><code>internal/vault/*.go</code></td><td><span class="tag m">M</span></td></tr>
+<tr><td>T5</td><td>Routes <code>GET /v1/vaults</code>, <code>POST /v1/vaults</code> + <code>ERR_*</code> vào errmap + openapi</td><td><code>internal/api/*.go</code>, <code>api/openapi.yaml</code></td><td><span class="tag m">M</span></td></tr>
+<tr><td>T6</td><td>Tests: nạp/rút cân sổ, rút quá số dư vault bị chặn, vault của người khác không truy cập được, nhiều vault cùng user</td><td><code>test/integration/vault_test.go</code></td><td><span class="tag l">L</span></td></tr>
+</tbody>
+</table>
+
+<h2>4. API changes</h2>
+<pre><code>GET  /v1/vaults                    → [{id, label, balance, target_amount, created_at}]
+POST /v1/vaults {label, target_amount?}   → 201 {id, label, balance:0}
+
+# Nạp/rút KHÔNG có endpoint riêng — đi qua engine:
+POST /v1/transactions/request
+  { "service_code": "VAULT_SAVINGS", "amount": 200000,
+    "extra_params": { "vault_id": "...", "direction": "deposit" } }
+POST /v1/transactions/confirm  { transaction_id, pin }
+</code></pre>
+<p>Mã lỗi mới: <code>ERR_VAULT_NOT_FOUND</code>, <code>ERR_VAULT_LABEL_TAKEN</code>, <code>ERR_VAULT_DIRECTION_INVALID</code>. Rút vượt số dư vault dùng lại <code>ERR_INSUFFICIENT_BALANCE</code>.</p>
+
+<h2>5. Test plan</h2>
+<table>
+<thead><tr><th>Test</th><th>Khẳng định</th></tr></thead>
+<tbody>
+<tr><td><code>TestVault_DepositMovesMoneyAndBalances</code></td><td>main giảm, vault tăng, tổng ledger của user không đổi, 2 bút toán</td></tr>
+<tr><td><code>TestVault_WithdrawReturnsToMain</code></td><td>chiều ngược lại cân đúng</td></tr>
+<tr><td><code>TestVault_WithdrawOverBalanceRejected</code></td><td>rút quá số dư vault → <code>ERR_INSUFFICIENT_BALANCE</code>, không có bút toán nào</td></tr>
+<tr><td><code>TestVault_ForeignVaultRejected</code></td><td>truyền <code>vault_id</code> của user khác → từ chối (điều kiện owner nằm trong SQL, không tin handler)</td></tr>
+<tr><td><code>TestVault_MultipleVaultsPerUser</code></td><td>tạo 2 vault khác label thành công (chứng minh T1)</td></tr>
+<tr><td>Invariant</td><td>sau mọi test, <code>balance = SUM(ledger_entries)</code> cho mọi ví</td></tr>
+</tbody>
+</table>
+
+<h2>6. Rollout &amp; risk</h2>
+<ul>
+<li><b>Đổi UNIQUE constraint</b> là thay đổi schema có thể fail nếu dữ liệu hiện tại đã vi phạm — nhưng constraint mới <b>lỏng hơn</b> constraint cũ nên luôn an toàn.</li>
+<li><code>label</code> đang <b>nullable</b>: hai ví <code>main</code> cùng user đều có <code>label IS NULL</code>, mà trong Postgres <code>NULL</code> không bằng nhau ⇒ UNIQUE sẽ <b>không còn chặn</b> tạo trùng ví main. Phải bù bằng partial unique index cho <code>purpose='main'</code>.</li>
+<li>Không có endpoint chuyển tiền riêng ⇒ vault thừa hưởng nguyên OfferGuard + auth matrix + idempotency của engine, không mở đường tắt.</li>
+<li>Rollback: migration down khôi phục constraint cũ (chấp nhận mất vault thứ 2 trở đi nếu đã tạo).</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ol>
+<li><code>impact()</code> trên <code>planWallets</code> trước khi sửa.</li>
+<li><b>gen-migration</b> → T1 → <code>make migrate-verify</code> (E18).</li>
+<li><code>make sqlc</code> → T2; <b>scaffold-module</b> → T4.</li>
+<li>T3 → T5 → cập nhật <code>openapi.yaml</code> + <code>check-openapi-sync.py</code>.</li>
+<li><b>gen-api-test</b> → T6.</li>
+<li><code>detect_changes()</code> → <b>fintech-review</b> phải <code>READY</code> → PR.</li>
+</ol>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-backend · 2026-07-23</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"}});</script>
+</body></html>

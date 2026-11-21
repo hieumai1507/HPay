@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>HPay — Business Wallet</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mp-base.css">
+</head>
+<body>
+<div class="board">
+
+<!-- ═══════════ 1. ACCOUNT ═══════════ -->
+<div class="slot"><div class="label">17 · Tài khoản</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="content" style="gap:16px;padding-top:16px">
+    <div style="display:flex;gap:14px;align-items:center">
+      <span class="avatar" style="background:linear-gradient(135deg,#7C3AED,#4F46E5);width:64px;height:64px;font-size:22px">HM</span>
+      <div style="flex:1"><div class="h2">Hiếu Mai</div><div class="cap mono">0912 ••• 507</div>
+      <span class="chip success" style="margin-top:4px"><span class="dot"></span>Đã xác minh · Hạn mức 100M/ngày</span></div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="field-label" style="padding-top:12px">VÍ DOANH NGHIỆP</div>
+      <div class="list-item"><span style="width:44px;height:44px;border-radius:12px;background:#312E81;display:flex;align-items:center;justify-content:center;color:#fff;font:700 12px Inter">DEH</span><div class="li-main"><div class="li-title">DEH Corp</div><div class="li-sub">Vai trò: Checker · Level 1</div></div><span class="chip warning"><span class="dot"></span>3 lệnh chờ</span></div>
+      <div class="list-item"><span style="width:44px;height:44px;border-radius:12px;background:#9A3412;display:flex;align-items:center;justify-content:center;color:#fff;font:700 12px Inter">SBX</span><div class="li-main"><div class="li-title">Sandbox Studio</div><div class="li-sub">Vai trò: Maker</div></div><span style="color:var(--n300)">›</span></div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="field-label" style="padding-top:12px">BẢO MẬT</div>
+      <div class="list-item"><span style="font-size:20px;width:32px">🔑</span><div class="li-main"><div class="li-title">Đổi mật khẩu</div></div><span style="color:var(--n300)">›</span></div>
+      <div class="list-item"><span style="font-size:20px;width:32px">🫆</span><div class="li-main"><div class="li-title">Mở khóa bằng Face ID</div></div><span style="width:46px;height:28px;border-radius:99px;background:var(--brand-600);position:relative"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:99px;background:#fff"></span></span></div>
+      <div class="list-item"><span style="font-size:20px;width:32px">📱</span><div class="li-main"><div class="li-title">Thiết bị đăng nhập</div><div class="li-sub">2 thiết bị hoạt động</div></div><span style="color:var(--n300)">›</span></div>
+    </div>
+    <div class="btn ghost" style="color:var(--danger-600);margin-top:auto;margin-bottom:12px">Đăng xuất</div>
+  </div>
+  <div class="tabbar">
+    <div class="tab"><span class="ico">🏠</span>Trang chủ</div>
+    <div class="tab"><span class="ico">🧾</span>Lịch sử</div>
+    <div class="tab"><span class="ico">⊞</span>QR</div>
+    <div class="tab active"><span class="ico">👤</span>Tài khoản</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 2. MAKER: TẠO LỆNH ═══════════ -->
+<div class="slot"><div class="label">18 · Maker — Tạo lệnh chi</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Tạo lệnh chi · DEH Corp</div></div>
+  <div class="content" style="gap:16px">
+    <div class="hero" style="padding:16px 18px;border-radius:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">
+        <div><div style="font:600 12px Inter;opacity:.8">Ví doanh nghiệp</div><div class="money" style="font:700 22px/30px Inter">842.500.000 ₫</div></div>
+        <span style="font:600 11px Inter;background:rgba(255,255,255,.16);padding:5px 10px;border-radius:99px">MAKER</span>
+      </div>
+    </div>
+    <div>
+      <div class="field-label">Chi cho</div>
+      <div class="input"><span class="ph">SĐT hoặc tên đối tác…</span></div>
+    </div>
+    <div>
+      <div class="field-label">Số tiền</div>
+      <div class="input focus" style="height:64px"><span class="money" style="font:700 24px Inter">45.000.000</span><span style="margin-left:auto;color:var(--n500)">₫</span></div>
+    </div>
+    <div>
+      <div class="field-label">Nội dung chi</div>
+      <div class="input"><span>Thanh toán hợp đồng #HD-2607</span></div>
+    </div>
+    <div class="card" style="background:var(--brand-50);box-shadow:none;padding:14px 16px">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><span>🛃</span><span style="font:600 13px Inter;color:var(--n700)">Lệnh này cần phê duyệt theo chính sách</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between"><span class="cap">Level 1 · từ 10M</span><span style="font:600 13px Inter">1 chữ ký Checker L1</span></div>
+        <div style="display:flex;justify-content:space-between"><span class="cap">Level 2 · từ 40M</span><span style="font:600 13px Inter">1 chữ ký Checker L2</span></div>
+      </div>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Gửi lệnh chờ duyệt</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 3. MAKER: TRẠNG THÁI LỆNH ═══════════ -->
+<div class="slot"><div class="label">19 · Maker — Trạng thái lệnh</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Lệnh chi #OD-0142</div></div>
+  <div class="content" style="gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0">
+      <div class="display money" style="font-size:32px">45.000.000 ₫</div>
+      <div class="cap">tới <b style="color:var(--n900)">Cty TNHH Vật liệu Xanh</b></div>
+      <span class="chip warning"><span class="dot"></span>Chờ duyệt · 1/2 chữ ký</span>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="field-label" style="margin-bottom:14px">TIẾN TRÌNH PHÊ DUYỆT</div>
+      <div class="timeline">
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line done"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Bạn đã tạo lệnh</div><div class="li-sub">08/07 · 09:12</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot done">✓</div><div class="tl-line"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px">Level 1 — Trần Quang đã duyệt</div><div class="li-sub">08/07 · 09:26 · OTP ✓</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot active">●</div><div class="tl-line"></div></div><div class="tl-body"><div class="li-title" style="font-size:14px;color:var(--brand-600)">Level 2 — chờ 1 chữ ký</div><div class="li-sub">Đã thông báo cho 2 checker · hết hạn sau 22h</div></div></div>
+        <div class="tl-step"><div class="tl-rail"><div class="tl-dot wait"></div></div><div class="tl-body" style="padding-bottom:0"><div class="li-title" style="font-size:14px;color:var(--n500)">Thực hiện chuyển tiền</div></div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Nội dung</span><span style="font:500 14px Inter">Thanh toán hợp đồng #HD-2607</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Chính sách</span><span style="font:500 14px Inter">Chi lớn · v3</span></div>
+    </div>
+    <div class="btn ghost" style="color:var(--danger-600)">Hủy lệnh</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 4. CHECKER: INBOX ═══════════ -->
+<div class="slot"><div class="label">20 · Checker — Hàng chờ duyệt</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Chờ tôi duyệt</div><span class="chip danger" style="margin-left:auto">3</span></div>
+  <div class="content" style="gap:12px">
+    <div class="card" style="border-left:4px solid var(--warning-600)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div class="cap">DEH Corp · #OD-0142</div><div class="money" style="font:700 22px/30px Inter">45.000.000 ₫</div></div>
+        <span class="chip warning"><span class="dot"></span>1/2 đã ký</span>
+      </div>
+      <div class="li-sub" style="margin-bottom:12px">Chi: Cty TNHH Vật liệu Xanh · Thanh toán HĐ #HD-2607<br>Tạo bởi <b>Hiếu Mai</b> · 32 phút trước · hết hạn sau 22h</div>
+      <div style="display:flex;gap:8px">
+        <div class="btn" style="flex:1;height:42px;font-size:14px">Xem & duyệt</div>
+        <div class="btn ghost" style="width:100px;height:42px;font-size:14px;color:var(--danger-600)">Từ chối</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div class="cap">DEH Corp · #OD-0139</div><div class="money" style="font:700 22px/30px Inter">12.800.000 ₫</div></div>
+        <span class="chip warning"><span class="dot"></span>0/1 đã ký</span>
+      </div>
+      <div class="li-sub" style="margin-bottom:12px">Chi: Văn phòng phẩm Q3 · Tạo bởi <b>Lan Phương</b> · 2 giờ trước</div>
+      <div style="display:flex;gap:8px">
+        <div class="btn" style="flex:1;height:42px;font-size:14px">Xem & duyệt</div>
+        <div class="btn ghost" style="width:100px;height:42px;font-size:14px;color:var(--danger-600)">Từ chối</div>
+      </div>
+    </div>
+    <div class="card" style="opacity:.75">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="cap">Sandbox Studio · #OD-0021</div><div class="money" style="font:700 22px/30px Inter">7.500.000 ₫</div></div>
+        <span class="chip neutral">Đã ký ✓ chờ L2</span>
+      </div>
+      <div class="li-sub" style="margin-top:6px">Bạn đã duyệt lúc 08:47 · đang chờ level tiếp theo</div>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 5. CHECKER: CHI TIẾT LỆNH ═══════════ -->
+<div class="slot"><div class="label">21 · Checker — Chi tiết lệnh</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Duyệt lệnh #OD-0142</div></div>
+  <div class="content" style="gap:14px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div class="display money" style="font-size:34px">45.000.000 ₫</div>
+      <div class="cap">DEH Corp → <b style="color:var(--n900)">Cty TNHH Vật liệu Xanh</b></div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Người tạo</span><span style="font:500 14px Inter">Hiếu Mai (Maker)</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Nội dung</span><span style="font:500 14px Inter">Thanh toán HĐ #HD-2607</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Tài khoản nhận</span><span class="mono">GreenMat ••• 2214</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Số dư sau chi</span><span class="money" style="font:600 14px Inter">797.500.000 ₫</span></div>
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div class="field-label" style="margin-bottom:10px">CHỮ KÝ</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+        <span class="avatar" style="background:#0891B2;width:34px;height:34px;font-size:12px">TQ</span>
+        <div style="flex:1"><div style="font:600 13.5px Inter">Trần Quang · L1</div><div class="cap" style="font-size:12px">09:26 · OTP ✓</div></div>
+        <span style="color:var(--success-600);font-weight:700">✓</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="avatar" style="background:var(--brand-600);width:34px;height:34px;font-size:12px">BẠN</span>
+        <div style="flex:1"><div style="font:600 13.5px Inter">Bạn · Checker L2</div><div class="cap" style="font-size:12px">Chữ ký cuối cùng — lệnh sẽ thực hiện ngay</div></div>
+        <span class="chip warning"><span class="dot"></span>Chờ</span>
+      </div>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px;display:flex;flex-direction:column;gap:10px">
+      <div class="btn">Duyệt lệnh · nhận OTP</div>
+      <div class="btn ghost" style="color:var(--danger-600)">Từ chối (nêu lý do)</div>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 6. CHECKER: OTP + KẾT QUẢ ═══════════ -->
+<div class="slot"><div class="label">22 · Checker — OTP & hoàn tất</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Xác nhận phê duyệt</div></div>
+  <div class="content" style="gap:22px">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;background:var(--n100);box-shadow:none;padding:12px 16px">
+      <span class="cap" style="color:var(--n700)">#OD-0142 · Vật liệu Xanh</span><span class="money" style="font:700 15px Inter">45.000.000 ₫</span>
+    </div>
+    <div>
+      <div class="h2" style="margin-bottom:6px">Nhập OTP để ký duyệt</div>
+      <div class="cap">Mã đã gửi tới số điện thoại của bạn. Chữ ký này có giá trị pháp lý trong tổ chức.</div>
+    </div>
+    <div class="otp-row">
+      <div class="otp-box">3</div><div class="otp-box">9</div><div class="otp-box">1</div>
+      <div class="otp-box active"></div><div class="otp-box"></div><div class="otp-box"></div>
+    </div>
+    <div class="cap" style="text-align:center">Gửi lại mã sau <b style="color:var(--n900)">01:12</b></div>
+    <div class="card" style="border:1.5px solid var(--success-50);display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px;margin-top:8px">
+      <span style="width:56px;height:56px;border-radius:99px;background:var(--success-600);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 12px 24px -8px rgba(22,163,74,.45)">✓</span>
+      <div class="h2" style="text-align:center">Đã duyệt — lệnh đang thực hiện</div>
+      <div class="cap" style="text-align:center">Bạn là chữ ký cuối. Hệ thống đang chuyển 45.000.000 ₫, maker và bạn sẽ nhận thông báo khi hoàn tất.</div>
+      <span class="chip info"><span class="dot"></span>Đang xử lý</span>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 7. CONFLICT STATE ═══════════ -->
+<div class="slot"><div class="label">23 · Lệnh đã bị xử lý (conflict)</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Duyệt lệnh #OD-0139</div></div>
+  <div class="content" style="justify-content:center;align-items:center;gap:18px">
+    <span style="width:80px;height:80px;border-radius:99px;background:var(--n100);display:flex;align-items:center;justify-content:center;font-size:34px">🤝</span>
+    <div style="text-align:center">
+      <div class="h2" style="margin-bottom:6px">Lệnh này vừa được duyệt xong</div>
+      <div class="body" style="color:var(--n500)">Checker <b style="color:var(--n900)">Trần Quang</b> đã ký trước bạn vài giây.<br>Không cần thêm chữ ký nào nữa.</div>
+    </div>
+    <span class="chip success"><span class="dot"></span>Đã duyệt đủ · đang thực hiện</span>
+    <div class="btn secondary" style="width:100%;margin-top:12px">Về hàng chờ (còn 2 lệnh)</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 8. LOCKED / IDLE ═══════════ -->
+<div class="slot"><div class="label">24 · Khóa khi idle</div>
+<div class="screen" style="background:linear-gradient(180deg,#0B1220,#111C33)">
+  <div class="statusbar" style="color:#fff"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="content" style="justify-content:center;align-items:center;gap:22px">
+    <span class="avatar" style="background:linear-gradient(135deg,#7C3AED,#4F46E5);width:72px;height:72px;font-size:24px">HM</span>
+    <div style="text-align:center;color:#fff">
+      <div class="h2" style="color:#fff;margin-bottom:6px">Chào lại, Hiếu</div>
+      <div style="font:400 14px/20px Inter;color:#94A3B8">Phiên đã khóa để bảo vệ số dư của bạn</div>
+    </div>
+    <span style="width:76px;height:76px;border-radius:24px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:36px;border:1.5px solid rgba(255,255,255,.14)">🫆</span>
+    <div style="font:600 14px Inter;color:#fff">Mở khóa bằng Face ID</div>
+    <div style="font:500 13px Inter;color:#64748B;margin-top:16px">Dùng mật khẩu</div>
+  </div>
+  <div class="homebar" style="background:#fff"></div>
+</div></div>
+
+</div>
+</body>
+</html>

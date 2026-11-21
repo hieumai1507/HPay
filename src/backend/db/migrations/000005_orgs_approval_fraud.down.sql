@@ -1,0 +1,20 @@
+-- Drop dependents before their parents so FK constraints don't block the down.
+DROP TABLE IF EXISTS ai_function_settings;
+DROP TABLE IF EXISTS ai_keys;
+DROP TABLE IF EXISTS reconciliation_items;
+DROP TABLE IF EXISTS reconciliation_runs;
+DROP TABLE IF EXISTS bank_statements;
+DROP TABLE IF EXISTS fraud_flags;
+DROP TABLE IF EXISTS kyc_requests;
+DROP TABLE IF EXISTS approval_actions;
+DROP TABLE IF EXISTS approval_requests;
+DROP TABLE IF EXISTS approval_policy_tiers;
+DROP TABLE IF EXISTS approval_policies;
+DROP TABLE IF EXISTS org_members;
+DROP TABLE IF EXISTS organizations;
+DROP TYPE IF EXISTS recon_result;
+DROP TYPE IF EXISTS flag_status;
+DROP TYPE IF EXISTS org_role;
+DROP TYPE IF EXISTS approval_decision;
+DROP TYPE IF EXISTS approval_status;
+DROP TYPE IF EXISTS approval_subject;

@@ -1,0 +1,190 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Solution Architecture — M2 Auth & KYC (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.65;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+</style></head><body><div class="wrap">
+<h1>🏗 Solution Architecture — M2 Auth &amp; KYC</h1>
+
+<h2>1. Context — vị trí M2 và điều hướng trong ứng dụng</h2>
+<pre class="mermaid">
+flowchart TD
+  subgraph APP["hpay-mobile (M2)"]
+    subgraph ROUTER["expo-router navigation stack"]
+      ob["(auth)/onboarding\nGiới thiệu app"] --> lg["(auth)/login\nForm đăng nhập"]
+      ob --> rg["(auth)/register\nForm đăng ký"]
+      rg --> otp["(auth)/otp\nXác thực mã 6 số"]
+      
+      intro["(kyc)/intro\nHướng dẫn KYC"] --> cap_id["(kyc)/capture-id\nChụp CCCD (viền chữ nhật)"]
+      cap_id --> cap_selfie["(kyc)/capture-selfie\nChụp chân dung (viền oval)"]
+      cap_selfie --> upload["Upload kyc/submit"]
+      upload --> st["(kyc)/status\nTrạng thái hồ sơ"]
+    end
+    
+    subgraph STATE["State & Store Management"]
+      ss["stores/session\naccessToken, user profile"]
+      sec["SecureStore\nrefresh_token, kyc_drafts"]
+      dev["stores/device\ndeviceId"]
+    end
+    
+    subgraph SEC_FUNC["Client Security Services"]
+      idle["IdleMonitor\nAppState check & lock timer"] --> bio["LocalBiometrics\nexpo-local-authentication"]
+      privacy["PrivacyOverlay\nApp Switcher mask view"]
+      root["RootCheck\nexpo-device heuristics"]
+    end
+  end
+  
+  lg & otp -->|"POST /v1/auth/*"| be_auth["Backend F2 Auth"]
+  upload -->|"POST /v1/kyc/submit"| be_kyc["Backend F8 KYC"]
+  st -->|"GET /v1/kyc/status"| be_kyc
+</pre>
+
+<h2>2. Main flow — Các luồng nghiệp vụ chi tiết</h2>
+
+<h3>A. Đăng ký &amp; Xác thực OTP (Simulated OTP Flow)</h3>
+<p>Do backend thực hiện việc tạo người dùng và sinh JWT trực tiếp tại endpoint <code>/v1/auth/register</code>, app client thiết kế luồng nhập thông tin → xác thực OTP giả lập phía client → gửi API đăng ký. Thiết kế này vừa đảm bảo trải nghiệm người dùng cuối có OTP vừa khớp hợp đồng API với backend.</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant RG as register.tsx
+  participant OTP as otp.tsx
+  participant API as api/client
+  participant SS as session store
+  participant BE as Backend (/register)
+
+  U->>RG: Nhập Số điện thoại, Họ tên, Mật khẩu
+  RG->>RG: Validate form (Zod)
+  RG->>OTP: Điều hướng kèm payload thông tin đăng ký
+  Note over OTP: Kích hoạt bộ đếm ngược 120s
+  U->>OTP: Nhập mã OTP 6 số (e.g. 123456)
+  OTP->>API: Gọi apiRequest("/v1/auth/register", payload)
+  API->>BE: HTTP POST /v1/auth/register
+  BE-->>API: 201 Created (user profile & token pair)
+  API-->>OTP: Trả về thành công
+  OTP->>SS: setSession(accessToken, user) & lưu refresh_token vào SecureStore
+  OTP->>SS: Chuyển màn hình dựa vào user.kyc_status (nếu none -> kyc/intro, ngược lại -> home)
+</pre>
+
+<h3>B. Luồng KYC, Client-Side Heuristic và Resume Upload (M10/M11)</h3>
+<p>Quy trình chụp giấy tờ CCCD, ảnh chân dung, thực hiện kiểm tra chất lượng ảnh thô trước khi upload và cơ chế khôi phục/tải lên tiếp khi gặp sự cố gián đoạn kết nối mạng.</p>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant ID as capture-id.tsx
+  participant SF as capture-selfie.tsx
+  participant DR as kyc-draft store
+  participant API as api/client
+  participant BE as Backend (/kyc/submit)
+
+  U->>ID: Chụp ảnh mặt trước CCCD
+  Note over ID: M10: Chạy Heuristic check (độ sáng & mờ)<br/>Dựa trên dung lượng file và metadata
+  alt Ảnh không đạt chuẩn (quá tối / quá mờ)
+    ID-->>U: Hiển thị toast cảnh báo và bắt buộc chụp lại
+  else Ảnh đạt chuẩn
+    ID->>DR: Lưu cục bộ URI ảnh CCCD vào Draft State
+    ID->>SF: Điều hướng sang Chụp Selfie
+  end
+
+  U->>SF: Chụp chân dung trong khung oval
+  Note over SF: M10: Chạy Heuristic check Selfie
+  SF->>DR: Lưu cục bộ URI ảnh Selfie vào Draft State
+  
+  SF->>API: Thực thi upload multipart/form-data (CCCD + Selfie)
+  alt M11: Mất kết nối mạng khi đang upload
+    API-->>SF: Trả về NetworkError
+    SF->>DR: Giữ nguyên URI ảnh trong SecureStore/Draft
+    SF-->>U: Hiển thị lỗi kết nối kèm nút "Thử lại"
+    U->>SF: Nhấn "Thử lại"
+    SF->>API: Đọc URI từ Draft và upload lại
+  end
+
+  API->>BE: POST /v1/kyc/submit
+  BE-->>API: 202 Accepted (Verifying workflow started)
+  API-->>SF: Success
+  SF->>DR: Xóa sạch bản nháp (Clear Drafts)
+  SF->>SF: Điều hướng sang (kyc)/status (chế độ poll 3s)
+</pre>
+
+<h2>3. State — Vòng đời trạng thái của người dùng</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Unauthenticated : Chưa đăng nhập
+  Unauthenticated --> Registering : Điền form đăng ký
+  Registering --> OTPVerification : Xác thực mã OTP
+  OTPVerification --> Authenticated : Đăng ký thành công / Đăng nhập thẳng
+  
+  state Authenticated {
+    [*] --> KycCheck : Kiểm tra kyc_status
+    KycCheck --> KycIntro : kyc_status === none & chưa skip trong session
+    KycCheck --> MainHome : kyc_status !== none hoặc đã nhấn "Để sau"
+    
+    state KycFlow {
+      KycIntro --> CapturingID : Bắt đầu xác minh
+      CapturingID --> CapturingSelfie : CCCD đạt chuẩn
+      CapturingSelfie --> Uploading : Selfie đạt chuẩn
+      Uploading --> KycStatusScreen : Upload thành công
+    }
+    
+    state KycStatusScreen {
+      [*] --> PendingPoll : kyc_status === pending
+      PendingPoll --> Verified : AI duyệt thành công
+      PendingPoll --> ManualReview : Chuyển duyệt thủ công
+      PendingPoll --> Rejected : Bị từ chối
+      
+      Rejected --> KycIntro : Nhấn "Xác minh lại"
+    }
+  }
+
+  Authenticated --> IdleLocked : Không thao tác > 5 phút / background > 5 phút
+  IdleLocked --> Authenticated : Vân tay/Khuôn mặt hoặc Passcode thành công
+</pre>
+
+<h2>4. Data model delta — Trạng thái lưu trữ client-side</h2>
+<pre class="mermaid">
+erDiagram
+  ZUSTAND_SESSION_STORE {
+    string accessToken "In-memory token"
+    object userProfile "User { id, phone, kyc_status, full_name }"
+    string status "authenticated | unauthenticated | bootstrapping"
+    string logoutReason "user | refresh_expired | refresh_revoked"
+    boolean kycSkippedInSession "Trạng thái người dùng nhấn 'Để sau'"
+  }
+
+  SECURE_STORE {
+    string refresh_token "Key: hpay_refresh_token"
+    string device_id "Key: hpay_device_id"
+    string kyc_draft_id_uri "Key: kyc_draft_id_uri (Đường dẫn mặt trước CCCD)"
+    string kyc_draft_selfie_uri "Key: kyc_draft_selfie_uri (Đường dẫn ảnh chân dung)"
+    string last_active_time "Key: last_active_time (Cho Idle Lock)"
+  }
+</pre>
+
+<h2>5. Decisions &amp; trade-offs — Các quyết định kỹ thuật</h2>
+<table>
+<tr><th>Quyết định</th><th>Giải pháp thay thế</th><th>Lý do &amp; Đánh giá đánh đổi</th></tr>
+<tr><td>Simulate OTP flow phía client trong lúc đăng ký</td><td>Bắt backend đổi API</td><td>Backend đã hoàn thiện F2. Việc giả lập đảm bảo FE có giao diện OTPInput chất lượng cao đúng spec thiết kế mà không làm xáo trộn API contract-first đã đóng băng.</td></tr>
+<tr><td>Heuristic kiểm tra chất lượng ảnh thô qua dung lượng và độ phân giải hình ảnh</td><td>Gửi ảnh lên server/AI phân tích trực tiếp</td><td>Tiết kiệm băng thông, phát hiện ngay ảnh kém chất lượng (ví dụ file quá nhỏ &lt; 50KB thường là mờ hoặc lỗi render camera) giúp tối ưu trải nghiệm chụp lại tức thời.</td></tr>
+<tr><td>AppState Overlay che màn hình bằng một View mỏng toàn màn hình thay vì chặn chụp ảnh mức native</td><td>Tích hợp thư viện Native ngăn chụp screenshot</td><td>Tương thích tối đa với Expo Go và các thiết bị Android/iOS mà không cần can thiệp cấu hình Gradle/Xcode sâu của Expo bare-workflow. Trên thiết bị thật khi release, có thể bổ sung flag bảo mật sau.</td></tr>
+</table>
+
+<h2>6. Invariants touched (index.html §8)</h2>
+<table>
+<tr><th>Bất biến</th><th>M2 tuân thủ bằng cách</th></tr>
+<tr><td>Chuyển tiền luôn cần PIN/OTP, Biometrics chỉ để mở khóa app</td><td>Mã mở khóa sinh trắc học chỉ dùng trong <code>useLocalUnlock</code> để đóng màn hình Idle Lock 5 phút. Không bao giờ lưu trữ credential chuyển tiền hoặc tự động ký giao dịch qua biometrics.</td></tr>
+<tr><td>Không ghi log token/OTP ra console</td><td>Tắt hoàn toàn việc in mã OTP nhập và token trong <code>console.log</code> bằng cấu hình strip-logs của Babel ở chế độ build production.</td></tr>
+</table>
+
+<footer style="margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px">hpay-mobile · docs/plans/m2-auth-kyc · 18/07/2026</footer>
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{fontFamily:'Inter',fontSize:'13px'}});</script></body></html>

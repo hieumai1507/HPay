@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution Architecture — Maker Status &amp; Checker Signatures (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-mobile</code> · plan · solution architecture</div>
+<h1>Solution Architecture — Maker Status &amp; Checker Signatures</h1>
+<blockquote><p>Song hành với <a href="./implementation-plan.html">implementation-plan.html</a>. Cả 2 màn đọc chung 1 nguồn dữ liệu — <code>GET /v1/org/approvals/{id}</code> — chỉ khác cách trình bày (timeline cho maker, list chữ ký cho checker).</p></blockquote>
+
+<h2>1. Context</h2>
+<pre class="mermaid">
+flowchart LR
+  D["disburse.tsx\n(maker tạo lệnh)"] -->|"push order-status?id="| M["order-status.tsx\n(mới — timeline)"]
+  L["approvals.tsx\n(checker inbox)"] -->|"push approval-detail?id="| C["approval-detail.tsx\n(bổ sung khối CHỮ KÝ)"]
+  M --> H["useApprovalDetail(id)"]
+  C --> H
+  H -->|"GET /v1/org/approvals/:id"| API["hpay-backend\nApprovalHandler.Detail"]
+</pre>
+
+<h2>2. Main flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant Maker as Maker (order-status.tsx)
+  participant Checker as Checker (approval-detail.tsx)
+  participant Hook as useApprovalDetail(id)
+  participant API as GET /v1/org/approvals/{id}
+
+  Maker->>Hook: mount với id vừa tạo
+  Checker->>Hook: mount với id từ inbox
+  Hook->>API: fetch
+  API-->>Hook: {status, current_level, signatures[], signatures_required, ...}
+  Hook-->>Maker: render timeline theo current_level + signatures
+  Hook-->>Checker: render khối CHỮ KÝ theo signatures[]
+</pre>
+
+<h2>3. State — timeline suy ra từ status + current_level, không lưu state riêng</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> StepDone: signature.level < current_level
+  [*] --> StepActive: signature.level == current_level AND status = pending
+  [*] --> StepWaiting: signature.level > current_level
+  StepDone --> [*]
+  StepActive --> [*]: chip "Chờ duyệt · x/y chữ ký"
+  StepWaiting --> [*]: mờ, chưa tới lượt
+  [*] --> Approved: status = approved
+  [*] --> Rejected: status = rejected
+  [*] --> Expired: status = expired
+</pre>
+
+<h2>4. Data model delta</h2>
+<p>Không có — dùng nguyên response của <code>GET /v1/org/approvals/{id}</code> (xem <a href="../../../../hpay-backend/docs/plans/approval-detail-endpoint/solution-architecture.html">solution-architecture backend</a> §4).</p>
+
+<h2>5. Decisions &amp; trade-offs</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>1 hook (<code>useApprovalDetail</code>) dùng chung cho cả 2 màn</td><td>2 hook riêng cho maker/checker</td><td>Cùng 1 DTO, cùng endpoint — tách hook chỉ tăng chi phí bảo trì không cần thiết</td></tr>
+<tr><td>Timeline dựng từ <code>current_level</code> + <code>signatures[]</code>, không phải state UI riêng</td><td>Lưu progress trong local state, cập nhật thủ công</td><td>Server luôn là nguồn sự thật; tránh timeline UI lệch với trạng thái thật khi có race giữa 2 checker (E08)</td></tr>
+<tr><td>Không xây màn OTP-success/conflict riêng (frame 22/23) lần này</td><td>Xây đủ cả 4 frame cùng lúc</td><td>Đúng phạm vi user yêu cầu ("chi tiết hơn" cho 2 màn maker-status/checker-result đang có); frame 22/23 là 2 màn hoàn toàn mới, để lần sau tránh PR quá lớn</td></tr>
+</tbody>
+</table>
+
+<h2>6. Invariants touched</h2>
+<p>Không invariant tài chính nào ở tầng mobile — chỉ hiển thị dữ liệu đọc; luồng duyệt/từ chối (OTP + <code>useDecideApproval</code>) giữ nguyên không đổi.</p>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-mobile + hpay-backend · 2026-07-24</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter"}});</script>
+</body></html>

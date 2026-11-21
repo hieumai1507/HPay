@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F2 Auth & Users — Implementation Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}li{color:var(--n700);margin:4px 0 4px 20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../f1-foundation/implementation-plan.html">← F1</a> · f2-auth · <a href="solution-architecture.html">solution-architecture →</a></div>
+<h1>F2 Auth & Users — Implementation Plan</h1>
+
+<h2>1. Scope & non-goals</h2>
+<table>
+<tr><th>Ships</th><th>Không làm ở F2</th></tr>
+<tr><td>Đăng ký/đăng nhập user (argon2id), JWT access 15' + refresh 30d <b>rotation theo family + theft detection</b>, device binding trong token, OTP service (hash SHA-256, TTL 120s, max 3 attempts, cooldown 30s), rate-limit middleware (Redis fixed window), audit log, bảng admin_users (login admin để F sau dùng), error contract <code>ERR_*</code></td>
+<td>Tạo ví khi đăng ký (F3 kèm backfill), KYC (F8), admin login handler (A-phase cần mới mở), biometric (client-side), 2FA admin</td></tr>
+</table>
+
+<h2>2. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th></tr>
+<tr><td>T1</td><td>Migration 000009: refresh_tokens (family_id, token_hash, used/revoked), admin_users + admin_role, audit_logs (actor_id NOT NULL + SYSTEM_ACTOR uuid cố định)</td><td>db/migrations/000009_auth.*</td><td>M</td></tr>
+<tr><td>T2</td><td>Queries sqlc cột tường minh (tránh nullable-uuid): users, refresh_tokens, otp, audit</td><td>internal/store/queries/auth.sql</td><td>M</td></tr>
+<tr><td>T3</td><td><code>internal/auth</code>: password (argon2id), jwt (HS256), refresh token opaque + SHA-256, OTP core thuần (check được unit-test), service (Register/Login/Refresh/Logout/OTP)</td><td>internal/auth/*.go</td><td>L</td></tr>
+<tr><td>T4</td><td>API: errmap chuẩn, middleware RequireAuth + RateLimit, handlers /v1/auth/*</td><td>internal/api/*</td><td>M</td></tr>
+<tr><td>T5</td><td>Unit tests: password, jwt, OTP (E11), rotation decision</td><td>internal/auth/*_test.go</td><td>M</td></tr>
+<tr><td>T6</td><td>CI: sqlc generate trước test/build; REQUIRED_EDGE_IDS="E11"; config JWT_SECRET</td><td>ci.yml, config.go, .env.example</td><td>S</td></tr>
+</table>
+
+<h2>3. Schema changes</h2>
+<p>000009_auth (up/down): 3 bảng + 1 enum. <code>refresh_tokens.family_id</code> là chuỗi rotation — 1 login = 1 family; refresh dùng lại token đã used ⇒ revoke cả family (theft detection). <code>audit_logs</code> append-only theo quy ước (không trigger — khối lượng ghi cao, enforce bằng quyền + review).</p>
+
+<h2>4. API changes</h2>
+<table>
+<tr><th>Endpoint</th><th>Body → Response</th><th>Lỗi</th></tr>
+<tr><td><code>POST /v1/auth/register</code></td><td>phone, password, full_name (+ X-Device-Id) → user + token pair</td><td>ERR_VALIDATION, ERR_PHONE_TAKEN</td></tr>
+<tr><td><code>POST /v1/auth/login</code></td><td>phone, password (+ X-Device-Id) → token pair</td><td>ERR_INVALID_CREDENTIALS (không phân biệt sai user/pass), ERR_ACCOUNT_LOCKED, ERR_RATE_LIMITED (5/phút/IP)</td></tr>
+<tr><td><code>POST /v1/auth/refresh</code></td><td>refresh_token → token pair mới (rotation)</td><td>ERR_INVALID_TOKEN, ERR_TOKEN_EXPIRED, ERR_TOKEN_REUSED (theft → revoke family)</td></tr>
+<tr><td><code>POST /v1/auth/logout</code></td><td>refresh_token → revoke family</td><td>—</td></tr>
+</table>
+<p>openapi.yaml cập nhật đủ 4 endpoint + schemas.</p>
+
+<h2>5. Test plan</h2>
+<table>
+<tr><th>ID</th><th>Test</th></tr>
+<tr><td>E11</td><td><code>TestEdge_E11_OTPBruteForce</code>: sai 3 lần → challenge vô hiệu vĩnh viễn kể cả nhập đúng lần 4</td></tr>
+<tr><td>—</td><td>password: roundtrip + sai pass + hash không trùng giữa 2 lần (salt)</td></tr>
+<tr><td>—</td><td>jwt: issue/parse roundtrip, expired bị từ chối, sai method bị từ chối</td></tr>
+<tr><td>—</td><td>rotation: used token → quyết định REUSE (pure func), expired → EXPIRED</td></tr>
+<tr><td>—</td><td>Integration login/refresh flow đầy đủ: nợ sang F3 khi testutil harness (testcontainers) dựng cùng ledger</td></tr>
+</table>
+
+<h2>6. Rollout & risk</h2>
+<ul>
+<li>JWT_SECRET bắt buộc trong env — fail-fast khi thiếu; đổi secret = mọi access token cũ chết sau ≤15' (chấp nhận).</li>
+<li>Code bắt đầu phụ thuộc sqlc gen: dev phải <code>go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest</code> rồi <code>make sqlc</code> trước build lần đầu — ghi vào README. CI đã tự generate.</li>
+<li>OTP dev-mode: log code ra console khi APP_ENV=dev (không bao giờ ở env khác).</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ul>
+<li>[x] gen-feature-plan · [ ] T1→T6 · [ ] fintech-review · [ ] commit <code>feat: F2 auth - argon2id, JWT refresh rotation with theft detection, OTP service</code></li>
+</ul>
+</div></body>
+</html>

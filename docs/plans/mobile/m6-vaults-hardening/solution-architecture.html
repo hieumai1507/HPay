@@ -1,0 +1,125 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution Architecture — M6 Vaults &amp; Hardening (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-mobile</code> · plan · solution architecture</div>
+<h1>Solution Architecture — M6 Vaults &amp; Hardening</h1>
+<blockquote><p>Song hành với <a href="./implementation-plan.html">implementation-plan.html</a>. Toàn bộ sơ đồ là mermaid.</p></blockquote>
+
+<h2>1. Context</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph APP["📱 hpay-mobile"]
+    VL["Vaults list\n(app/(main)/vaults)"]
+    VD["Vault detail"]
+    HK["useVaultQueries\n+ useIdempotencyKey + polling"]
+    SEC["useSecureScreen()\nexpo-screen-capture"]
+    KD["kyc-draft store\nloadDraft on mount"]
+  end
+  API["hpay-backend"]
+  VL --> HK --> API
+  VD --> HK
+  SEC -.bọc.-> VD
+  SEC -.bọc.-> KD
+</pre>
+
+<h2>2. Main flow — nạp tiền vào hũ</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant S as Vault detail
+  participant H as useVaultQueries
+  participant A as API
+
+  U->>S: nhập số tiền → "Bỏ vào hũ"
+  S->>H: deposit({vaultId, amount})
+  Note over H: amount là BigInt (M06)<br/>Idempotency-Key sinh 1 lần/luồng (M01)
+  H->>A: POST /transactions/request (VAULT_SAVINGS, direction=deposit)
+  A-->>H: {transaction_id, auth_required}
+  H->>U: hỏi PIN theo auth_required
+  U->>H: PIN
+  H->>A: POST /transactions/confirm
+  H->>A: poll trạng thái (backoff 1s→2s→4s, M02/M03)
+  A-->>H: completed
+  H->>S: invalidate danh sách hũ + số dư → UI cập nhật
+</pre>
+
+<h2>3. State — khôi phục draft KYC (M11)</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Mount: vào luồng KYC
+  Mount --> Loading: loadDraft()
+  Loading --> HasDraft: SecureStore có ảnh
+  Loading --> Empty: không có
+  HasDraft --> Prefilled: điền sẵn ảnh đã chụp
+  Empty --> Capturing
+  Prefilled --> Capturing: chụp lại nếu muốn
+  Capturing --> Saved: saveDraft() sau mỗi ảnh
+  Saved --> Submitted: submit thành công
+  Submitted --> Cleared: clearDraft()
+  Cleared --> [*]
+</pre>
+
+<h2>4. Data model delta</h2>
+<p>Không có state mới phía client ngoài kiểu dữ liệu hũ sinh từ OpenAPI.</p>
+<pre class="mermaid">
+erDiagram
+  Vault {
+    string id
+    string label
+    bigint balance
+    bigint target_amount
+  }
+  VaultMove {
+    string direction "deposit | withdraw"
+    bigint amount
+    string vault_id
+  }
+  Vault ||--o{ VaultMove : receives
+</pre>
+
+<h2>5. Decisions &amp; trade-offs</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>Nạp/rút dùng lại engine 3 bước</td><td>Endpoint vault riêng</td><td>Vault thừa hưởng nguyên OfferGuard, auth matrix, idempotency; không mở đường tiền thứ hai</td></tr>
+<tr><td>Không hiển thị RoundUpToggle</td><td>Hiện sẵn, disable</td><td>Backend chưa có step <code>ROUND_UP</code>; một công tắc không làm gì gây hiểu nhầm là tính năng đã chạy</td></tr>
+<tr><td><code>useSecureScreen()</code> theo màn</td><td>Bật toàn app</td><td>Chặn chụp toàn app cản người dùng lưu biên lai hợp lệ; chỉ khoá nơi có số dư/OTP/ảnh giấy tờ</td></tr>
+<tr><td>Bọc <code>expo-screen-capture</code> trong try/catch</td><td>Gọi thẳng</td><td>Module cần native build; Expo Go sẽ ném lỗi và làm chết màn hình nếu không bắt</td></tr>
+<tr><td><code>loadDraft</code> ở <code>_layout</code> của luồng KYC</td><td>Gọi trong từng màn capture</td><td>Một điểm nạp duy nhất, tránh 2 màn cùng ghi đè state</td></tr>
+</tbody>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<thead><tr><th>Invariant</th><th>Cách giữ</th></tr></thead>
+<tbody>
+<tr><td>M06 — tiền không bao giờ qua float</td><td>Dùng lại <code>parseAmountToBigInt</code> + <code>stringifyWithBigInt</code> của client hiện có</td></tr>
+<tr><td>M01 — double-tap không tạo 2 giao dịch</td><td><code>useIdempotencyKey</code> sinh một key cho cả luồng nạp/rút; nút disable khi đang gửi</td></tr>
+<tr><td>M02/M03 — timeout không kết luận thất bại</td><td>Dùng <code>pollUntilSettled</code> sẵn có thay vì coi hết giờ là lỗi</td></tr>
+<tr><td>Biometric chỉ mở khoá app</td><td>Nạp/rút vẫn hỏi PIN/OTP theo <code>auth_required</code> server trả về</td></tr>
+<tr><td>Không log dữ liệu nhạy cảm</td><td>Không log số dư hũ hay đường dẫn ảnh KYC</td></tr>
+</tbody>
+</table>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-mobile · 2026-07-23</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter"}});</script>
+</body></html>

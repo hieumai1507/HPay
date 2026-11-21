@@ -1,0 +1,45 @@
+# Secrets (giữ .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dữ liệu runtime / PII
+src/backend/data/
+**/e2e/.auth/
+
+# Build artifacts
+*.exe
+*.test
+bin/
+dist/
+coverage.out
+tmp/
+.gotmp/
+src/backend/internal/store/gen/
+
+# Node / Expo
+node_modules/
+.expo/
+playwright-report/
+test-results/
+
+# Python
+__pycache__/
+*.pyc
+
+# GitNexus index (sinh lại bằng `node .gitnexus/run.cjs analyze`)
+.gitnexus/
+
+# Nghiên cứu skill bên ngoài (clone ngoài repo, phòng khi copy vào)
+hpay-skills-research/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+
+# Tai lieu tham khao he khac (D9: giu ngoai repo)
+docs/reference/external/

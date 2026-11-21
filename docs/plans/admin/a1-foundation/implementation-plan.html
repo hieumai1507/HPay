@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A1 Foundation — Implementation Plan (hpay-admin)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0E90A3;--brand-50:#E6FAFD;--ok:#16A34A;--ok-50:#ECFDF3;--warn:#D97706;--warn-50:#FFFBEB;--bad:#DC2626;--bad-50:#FEF2F2;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}h2{font-size:20px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:15px;font-weight:700;margin:24px 0 8px}p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.warn{border-left:4px solid var(--warn);background:var(--warn-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:var(--ok-50);color:var(--ok)}
+.tag-m{background:var(--warn-50);color:var(--warn)}.tag-l{background:var(--bad-50);color:var(--bad)}
+.mermaid{margin:20px 0;background:#fff;border:1px solid var(--n200);border-radius:12px;padding:16px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>🏗 Implementation Plan — A1 Foundation <span class="tag">hpay-admin</span></h1>
+<p>Phase khởi tạo toàn bộ codebase cho <b>HPay Admin (hpay-admin)</b> — ứng dụng SPA dành cho nhân viên vận hành nội bộ. Kết nối trực tiếp tới <code>/v1/admin/*</code> API (JWT audience=admin). Được xây dựng bằng <b>Vite + React 18 + TypeScript + React Router v7</b>, thiết kế theo mockups A1–A10.</p>
+
+<h2>1. Scope &amp; non-goals</h2>
+<h3>Ships trong A1</h3>
+<ul>
+  <li><b>Scaffold Vite</b>: khởi tạo project với TypeScript, React, TailwindCSS <i>không</i> dùng — dùng vanilla CSS tokens giống mobile, nhất quán thiết kế.</li>
+  <li><b>Design system</b>: <code>src/ui/tokens.css</code> — CSS variables từ design spec (màu brand #0E90A3/#1ECBE1, sidebar dark #0B1220, v.v.), components: <code>Button</code>, <code>Badge</code>, <code>Table</code>, <code>Sidebar</code>, <code>Topbar</code>.</li>
+  <li><b>Layout shell</b>: Sidebar (collapsible) + Topbar + main content area — dùng cho mọi page.</li>
+  <li><b>Routing</b>: React Router v7 với lazy routes, protected route wrapper (<code>RequireAdmin</code> kiểm JWT).</li>
+  <li><b>Auth flow</b>: Trang <code>/login</code> gọi <code>POST /v1/admin/auth/login</code> → lưu JWT vào <code>sessionStorage</code> (không persist qua tab — admin không nhớ session). Auto-refresh không cần: admin logout khi đóng tab.</li>
+  <li><b>API client</b>: fetch wrapper typed (<code>src/api/client.ts</code>) tự động inject Authorization header từ store, map error codes (<code>src/api/errors.ts</code>). Gen types từ <code>openapi.yaml</code> qua <code>npm run gen:api</code>.</li>
+  <li><b>RBAC store</b>: Zustand store <code>useAdminStore</code> lưu <code>{token, role}</code>, expose <code>can()</code> helper kiểm quyền (<code>risk_officer</code>, <code>kyc_reviewer</code>, <code>superadmin</code>).</li>
+  <li><b>Placeholder pages</b>: Dashboard (số liệu tĩnh), KYC, Fraud, Workflow, Recon, Orgs, Audit — chỉ render shell, data thật sẽ fill ở A2-A4.</li>
+  <li><b>404 / Error boundary</b> toàn cục.</li>
+</ul>
+<h3>Non-goals A1</h3>
+<ul>
+  <li>Data thật từ API (A2-A4 làm).</li>
+  <li>Charts/graphs thật (A2).</li>
+  <li>Dark mode toggle (sidebar đã dark, main area sáng — như mockup).</li>
+</ul>
+
+<h2>2. Stack</h2>
+<table>
+<tr><th>Layer</th><th>Công nghệ</th><th>Lý do</th></tr>
+<tr><td>Build</td><td>Vite 5 + TypeScript 5</td><td>HMR nhanh, ESM native</td></tr>
+<tr><td>UI</td><td>React 18 + Vanilla CSS</td><td>Nhất quán với mobile (không Tailwind — đã quy định trong master-plan)</td></tr>
+<tr><td>Routing</td><td>React Router v7 (Data Router)</td><td>Lazy loading, nested routes, loader/action pattern</td></tr>
+<tr><td>State</td><td>Zustand 4</td><td>Đồng nhất với mobile</td></tr>
+<tr><td>Data fetching</td><td>TanStack Query v5</td><td>Đồng nhất với mobile; cache + background refetch</td></tr>
+<tr><td>Icons</td><td>Lucide React</td><td>Tree-shakeable, consistent stroke style</td></tr>
+<tr><td>Type gen</td><td>ts-node script (giống mobile)</td><td>Tái dùng <code>gen-api.ts</code> từ mobile, trỏ tới cùng openapi.yaml</td></tr>
+</table>
+
+<h2>3. Cấu trúc thư mục</h2>
+<pre><code>src/admin/
+├── index.html
+├── vite.config.ts
+├── tsconfig.json
+├── package.json
+├── scripts/
+│   ├── gen-api.ts          # copy từ mobile, trỏ ../hpay-backend/api/openapi.yaml
+│   └── tsconfig.json
+├── src/
+│   ├── api/
+│   │   ├── client.ts       # fetch wrapper với auth header
+│   │   ├── schema.d.ts     # generated types
+│   │   └── errors.ts       # mã lỗi → message Vi
+│   ├── stores/
+│   │   └── admin.ts        # useAdminStore: token + role + can()
+│   ├── ui/
+│   │   ├── tokens.css      # CSS variables từ design spec
+│   │   ├── Layout.tsx      # Sidebar + Topbar shell
+│   │   ├── Sidebar.tsx
+│   │   ├── Topbar.tsx
+│   │   ├── Table.tsx       # generic sortable table component
+│   │   ├── Badge.tsx       # status chip (success/warning/danger/info/neutral)
+│   │   ├── Button.tsx
+│   │   └── index.ts
+│   ├── features/
+│   │   └── auth/
+│   │       └── LoginPage.tsx
+│   ├── pages/              # placeholder pages (filled A2-A4)
+│   │   ├── DashboardPage.tsx
+│   │   ├── KYCPage.tsx
+│   │   ├── FraudPage.tsx
+│   │   ├── WorkflowPage.tsx
+│   │   ├── ReconPage.tsx
+│   │   ├── OrgsPage.tsx
+│   │   └── AuditPage.tsx
+│   ├── router.tsx          # React Router config với lazy imports
+│   ├── App.tsx
+│   └── main.tsx
+└── docs/
+    └── plans/
+        ├── a1-foundation/  # tài liệu này
+        ├── a2-dashboard-kyc/
+        ├── a3-workflow-fraud/
+        └── a4-recon-orgs-audit/
+</code></pre>
+
+<h2>4. Tasks</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files chính</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td>Scaffold Vite + TS + React 18, cấu hình <code>vite.config.ts</code>, <code>tsconfig.json</code>, path alias <code>@/</code></td><td><code>vite.config.ts</code>, <code>package.json</code></td><td><span class="tag">S</span></td><td>—</td></tr>
+<tr><td>T2</td><td>Copy <code>gen-api.ts</code> từ mobile, chạy <code>npm run gen:api</code> để sinh <code>schema.d.ts</code></td><td><code>scripts/</code>, <code>src/api/schema.d.ts</code></td><td><span class="tag">S</span></td><td>T1</td></tr>
+<tr><td>T3</td><td>API client + error map (<code>client.ts</code> fetch wrapper inject JWT, <code>errors.ts</code>)</td><td><code>src/api/</code></td><td><span class="tag">S</span></td><td>T2</td></tr>
+<tr><td>T4</td><td>Zustand store <code>useAdminStore</code>: <code>token</code>, <code>role</code>, <code>can(permission)</code></td><td><code>src/stores/admin.ts</code></td><td><span class="tag">S</span></td><td>—</td></tr>
+<tr><td>T5</td><td>CSS design tokens (<code>tokens.css</code>) + reset; import trong <code>main.tsx</code></td><td><code>src/ui/tokens.css</code></td><td><span class="tag">S</span></td><td>—</td></tr>
+<tr><td>T6</td><td>UI components: <code>Sidebar</code>, <code>Topbar</code>, <code>Layout</code> (shell đúng như mockup — sidebar dark, main sáng, badge count)</td><td><code>src/ui/</code></td><td><span class="tag tag-m">M</span></td><td>T5</td></tr>
+<tr><td>T7</td><td>Generic <code>Table</code> component: column config, sortable header, row click, pagination props</td><td><code>src/ui/Table.tsx</code></td><td><span class="tag tag-m">M</span></td><td>T5</td></tr>
+<tr><td>T8</td><td><code>Badge</code>, <code>Button</code>, shared primitives (Input, Modal shell)</td><td><code>src/ui/</code></td><td><span class="tag">S</span></td><td>T5</td></tr>
+<tr><td>T9</td><td>Auth: <code>LoginPage</code> → <code>POST /v1/admin/auth/login</code> → set store → redirect. <code>RequireAdmin</code> HOC kiểm token.</td><td><code>src/features/auth/</code></td><td><span class="tag tag-m">M</span></td><td>T3,T4</td></tr>
+<tr><td>T10</td><td>React Router config: lazy routes, <code>RequireAdmin</code> wrapper, 404, Error boundary</td><td><code>src/router.tsx</code>, <code>src/App.tsx</code></td><td><span class="tag">S</span></td><td>T9</td></tr>
+<tr><td>T11</td><td>Placeholder pages (shell layout chỉ — tiêu đề + skeleton): Dashboard, KYC, Fraud, Workflow, Recon, Orgs, Audit</td><td><code>src/pages/</code></td><td><span class="tag">S</span></td><td>T6,T10</td></tr>
+<tr><td>T12</td><td>Typecheck + ESLint config + verify build (<code>npm run build</code>) sạch</td><td><code>.eslintrc</code></td><td><span class="tag">S</span></td><td>T11</td></tr>
+</table>
+
+<h2>5. Architecture flow</h2>
+<pre class="mermaid">
+flowchart LR
+  browser[Browser] --> login[/login]
+  login --> |POST /v1/admin/auth/login| api[Backend API]
+  api --> |JWT aud=admin| store[useAdminStore\ntoken + role]
+  store --> shell[Layout Shell\nSidebar + Topbar]
+  shell --> dash[Dashboard]
+  shell --> kyc[KYC Queue]
+  shell --> fraud[Fraud Monitor]
+  shell --> wf[Workflow Monitor]
+  shell --> recon[Đối soát]
+  shell --> orgs[Orgs & Policy]
+  shell --> audit[Audit Log]
+</pre>
+
+<h2>6. Design tokens quan trọng</h2>
+<div class="note">
+  <b>Palette từ mockup (sidebar dark):</b><br>
+  <code>--sidebar-bg: #0B1220</code> · <code>--sidebar-text: #94A3B8</code> · <code>--sidebar-active: #1ECBE1</code><br>
+  <code>--brand: #0E90A3</code> · <code>--brand-600: #0B7181</code> (button pressed)<br>
+  <code>--main-bg: #F9FAFB</code> · <code>--card-bg: #FFFFFF</code><br>
+  Badge colors tái dùng từ mobile: success <code>#16A34A</code>, warning <code>#D97706</code>, danger <code>#DC2626</code>, info <code>#0891B2</code>
+</div>
+
+<h2>7. Verification</h2>
+<pre><code>npm run typecheck    # tsc --noEmit
+npm run lint         # eslint .
+npm run build        # vite build — không warning
+npx vite preview     # thử tay: login → xem sidebar → navigate pages
+</code></pre>
+
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body>
+</html>

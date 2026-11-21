@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Implementation Plan — M2 Auth & KYC (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16A34A;--warn:#D97706;--bad:#DC2626;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.65;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.bad-note{border-left-color:var(--bad);background:#FEF2F2}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:#ECFDF3;color:var(--ok)}
+</style></head><body><div class="wrap">
+<h1>📋 Implementation Plan — M2 Auth &amp; KYC <span class="tag">mobile</span></h1>
+<p>Phase xây dựng luồng Đăng nhập, Đăng ký, xác thực OTP và luồng KYC danh tính người dùng của <code>hpay-mobile</code>. Dependency backend: <b>F2 (Auth) + F8 (KYC)</b> — đã hoàn thành trên backend.</p>
+
+<h2>1. Scope &amp; non-goals</h2>
+<h3>Ships</h3>
+<ul>
+  <li><b>Flow Đăng nhập &amp; Đăng ký:</b>
+    <ul>
+      <li><code>Onboarding</code>: 3 slide giới thiệu giá trị cốt lõi, nút Tạo tài khoản và Đăng nhập.</li>
+      <li><code>Register</code>: Form nhập Số điện thoại (+84), Họ tên, Mật khẩu có thanh đo độ mạnh (strength meter 4 mức), checkbox đồng ý điều khoản. Validate bằng react-hook-form + zod.</li>
+      <li><code>OTP screen</code>: Component <code>OTPInput</code> gồm 6 ô số tự động chuyển tiếp/xóa lùi, hỗ trợ paste chuỗi OTP. Đồng hồ đếm ngược 120s chặn nút gửi lại cho tới khi hết cooldown.</li>
+      <li><code>Login</code>: Form Số điện thoại + Mật khẩu. Hỗ trợ hiển thị thông báo lỗi chi tiết từ backend (tài khoản bị khóa <code>ERR_ACCOUNT_LOCKED</code>, sai thông tin <code>ERR_INVALID_CREDENTIALS</code>) và thông báo phiên đăng nhập bị hủy (M05).</li>
+    </ul>
+  </li>
+  <li><b>Flow KYC danh tính:</b>
+    <ul>
+      <li><code>KYC Intro</code>: Màn hình hướng dẫn chi tiết các bước xác minh, cảnh báo về chất lượng ánh sáng, góc chụp. Hỗ trợ nút "Bắt đầu xác minh" và "Để sau" (bỏ qua KYC trong phiên hiện tại để xem trang Home nhưng bị giới hạn giao dịch).</li>
+      <li><code>KYC Capture ID &amp; Selfie</code>: Tích hợp <code>expo-camera</code>. Hiển thị khung overlay chuẩn (khung viền CMND/CCCD đối với camera sau và hình oval đối với camera trước).</li>
+      <li><b>Heuristic kiểm tra ảnh phía client (M10):</b> Heuristic kiểm tra độ sáng và độ mờ sơ bộ trước khi upload. Nếu ảnh không đạt yêu cầu (ví dụ: mờ/tối dựa trên kích thước/dung lượng hoặc thông số cảm biến), nhắc nhở người dùng chụp lại ngay.</li>
+      <li><b>KYC Draft &amp; Network drop recovery (M11):</b> Lưu trữ cục bộ URI ảnh CMND và Selfie đã chụp vào bộ nhớ. Nếu rớt mạng giữa chừng khi upload, giữ trạng thái draft và hiển thị nút "Thử lại" để tải lên tiếp mà không bắt chụp lại từ đầu.</li>
+      <li><code>KYC Status</code>: Hiển thị 3 trạng thái dựa trên API <code>/v1/kyc/status</code>:
+        <ul>
+          <li><code>pending</code>: Màn hình chờ kiểm tra bởi AI (tự động poll 3s/lần cập nhật).</li>
+          <li><code>verified</code> / <code>auto_approved</code>: Màn hình thông báo thành công + nâng hạn mức 100M VND/ngày.</li>
+          <li><code>manual_review</code>: Thông báo hồ sơ cần chuyên viên duyệt thủ công (chờ 1-2 giờ).</li>
+          <li><code>rejected</code>: Thông báo bị từ chối kèm lý do từ hệ thống và nút xác minh lại.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><b>Client Security:</b>
+    <ul>
+      <li><code>Screen privacy (M07)</code>: Che phủ nội dung nhạy cảm của app bằng một view mặt nạ (privacy mask screen) khi app chuyển sang chế độ nền (background/inactive) trên iOS/Android.</li>
+      <li><code>Local Biometric Lock</code>: Tích hợp <code>expo-local-authentication</code>. Nếu app chuyển sang background quá 5 phút, khi quay lại (active) bắt buộc mở khóa bằng vân tay/khuôn mặt hoặc passcode.</li>
+      <li><code>Jailbreak/Root detection</code>: Kiểm tra thiết bị có bị can thiệp hệ thống bằng <code>expo-device</code> heuristics, hiển thị cảnh báo nhỏ trong Account/Home nhưng không hard-block người dùng.</li>
+    </ul>
+  </li>
+</ul>
+<h3>Non-goals</h3>
+<ul>
+  <li>Màn hình Home, Nạp tiền, Chuyển tiền (M3).</li>
+  <li>Flow Request Money / QR nhận tiền (M4).</li>
+  <li>Flow Business Wallet (maker/checker) (M5).</li>
+</ul>
+
+<h2>2. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td>Xây dựng UI Onboarding + Đăng nhập + Đăng ký (Validate form, Strength meter)</td><td><code>app/(auth)/onboarding.tsx</code>, <code>app/(auth)/login.tsx</code>, <code>app/(auth)/register.tsx</code></td><td>M</td><td>M1 skeleton</td></tr>
+<tr><td>T2</td><td>Xây dựng OTPInput + Màn hình xác thực OTP (Simulate flow đăng ký trước khi gọi API)</td><td><code>app/(auth)/otp.tsx</code>, <code>src/features/auth/components/OTPInput.tsx</code></td><td>M</td><td>T1</td></tr>
+<tr><td>T3</td><td>Xây dựng màn hình KYC Intro và khung camera chụp ảnh CCCD/Selfie với expo-camera</td><td><code>app/(kyc)/intro.tsx</code>, <code>app/(kyc)/capture-id.tsx</code>, <code>app/(kyc)/capture-selfie.tsx</code>, <code>src/features/kyc/components/KYCPhotoFrame.tsx</code></td><td>L</td><td>T1, T2</td></tr>
+<tr><td>T4</td><td>Cài đặt client-side heuristic check (M10) và lưu trữ cục bộ KYC Draft (M11)</td><td><code>src/features/kyc/helpers/photo-validator.ts</code>, <code>src/features/kyc/stores/kyc-draft.ts</code></td><td>M</td><td>T3</td></tr>
+<tr><td>T5</td><td>Thiết kế màn hình KYC Status kèm logic polling API `/v1/kyc/status`</td><td><code>app/(kyc)/status.tsx</code>, <code>src/features/kyc/hooks/useKycStatus.ts</code></td><td>M</td><td>T3, T4</td></tr>
+<tr><td>T6</td><td>Cài đặt AppState privacy mask (M07) và 5-phút Biometric Idle Lock</td><td><code>app/_layout.tsx</code>, <code>src/stores/security.ts</code></td><td>M</td><td>T1</td></tr>
+<tr><td>T7</td><td>Viết tests kiểm thử các edge cases M07, M08, M10, M11 và unit test form/OTP</td><td><code>src/features/auth/__tests__/*</code>, <code>src/features/kyc/__tests__/*</code></td><td>L</td><td>T1–T6</td></tr>
+</table>
+
+<h2>3. Schema changes</h2>
+<p><b>None</b> — client-only phase.</p>
+
+<h2>4. API changes</h2>
+<p>Tiêu thụ các endpoint có sẵn của Backend:</p>
+<ul>
+  <li><code>POST /v1/auth/register</code>: Đăng ký thành viên</li>
+  <li><code>POST /v1/auth/login</code>: Đăng nhập</li>
+  <li><code>POST /v1/kyc/submit</code>: Đẩy ảnh CCCD + Selfie dưới dạng multipart/form-data</li>
+  <li><code>GET /v1/kyc/status</code>: Lấy trạng thái KYC và AI Score/Reasons hiện tại</li>
+</ul>
+
+<h2>5. Test plan</h2>
+<table>
+<tr><th>Edge</th><th>Test (jest)</th><th>Nội dung</th></tr>
+<tr><td>M07</td><td><code>TestEdge_M07_AppBackground_PrivacyOverlay</code></td><td>Kiểm tra khi AppState chuyển sang background/inactive, view phủ bảo mật hiển thị; ẩn đi khi active lại dưới 5 phút</td></tr>
+<tr><td>M08</td><td><code>TestEdge_M08_DeepLink_PendingAuth</code></td><td>Nếu app nhận deep link duyệt lệnh chi khi chưa đăng nhập, lưu đường dẫn đích vào store, điều hướng đúng sau khi login thành công</td></tr>
+<tr><td>M10</td><td><code>TestEdge_M10_KYCImageHeuristic_Validation</code></td><td>Kiểm tra heuristic nhận dạng ảnh mờ/tối (dựa trên mock size/quality) từ chối ảnh không đạt chuẩn và đưa cảnh báo chính xác</td></tr>
+<tr><td>M11</td><td><code>TestEdge_M11_KYCUpload_NetworkDropResume</code></td><td>Mô phỏng rớt mạng khi gọi submit KYC -> lưu draft cục bộ; khi kết nối lại, nhấn Thử lại sẽ submit tiếp dùng URI cũ</td></tr>
+</table>
+
+<h2>6. Rollout &amp; risk</h2>
+<ul>
+  <li><b>Quyền truy cập Camera:</b> Việc người dùng từ chối cấp quyền camera sẽ block flow chụp KYC. Thiết kế UI hiển thị thông báo rõ ràng kèm nút mở Settings thiết bị để cấp lại quyền.</li>
+  <li><b>Thiết bị không có Biometric:</b> Nếu điện thoại không hỗ trợ vân tay/khuôn mặt, hệ thống tự động fallback sử dụng passcode/mật khẩu đăng nhập để mở khóa Idle Lock 5 phút.</li>
+  <li><b>Offline draft:</b> URI ảnh lưu nháp trong SecureStore/AsyncStorage có thể bị xóa nếu bộ nhớ tạm của OS bị dọn dẹp. Cần lưu kèm mốc thời gian để xóa bản nháp quá 24 giờ.</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ol>
+  <li>Khởi tạo gen-feature-plan (file này + solution-architecture.html) -> <b>chờ người dùng duyệt</b></li>
+  <li>Tạo các màn hình và logic Auth (Onboarding, Login, Register, OTP)</li>
+  <li>Tạo các màn hình và logic KYC (Intro, Camera Capture ID/Selfie, Heuristics, Status)</li>
+  <li>Tích hợp Client Security (Privacy screen, Local Biometric Lock, Root warning)</li>
+  <li>Viết và chạy Jest tests cho các Edge cases M07/M08/M10/M11</li>
+  <li>Kiểm tra typecheck, linting và chạy kiểm thử: <code>npm run typecheck && npm run lint && npm test</code></li>
+  <li>Đưa báo cáo kết quả và commit code lên Git.</li>
+</ol>
+<footer style="margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px">hpay-mobile · docs/plans/m2-auth-kyc · 18/07/2026</footer>
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body></html>

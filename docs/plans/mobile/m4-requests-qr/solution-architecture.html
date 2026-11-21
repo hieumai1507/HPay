@@ -1,0 +1,102 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Solution Architecture — M4 Request Money · Split Bill · QR · Account (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0E90A3;--brand-50:#E6FAFD;--accent:#1ECBE1;--ok:#16A34A;--ok-50:#ECFDF3;--warn:#D97706;--warn-50:#FFFBEB;--bad:#DC2626;--bad-50:#FEF2F2;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.65;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0;margin-left:20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700;background:#ECFDF3;color:var(--ok)}
+.tag-m{background:var(--warn-50);color:var(--warn)}
+.mermaid{margin:20px 0;background:#fff;border:1px solid var(--n200);border-radius:12px;padding:16px}
+</style></head><body><div class="wrap">
+
+<h1>🏗 Solution Architecture — M4 <span class="tag">mobile</span></h1>
+
+<h2>1. Cấu trúc thư mục mới</h2>
+<pre><code>app/(main)/
+├── requests/
+│   ├── _layout.tsx      # Stack cho flow requests
+│   ├── index.tsx        # Inbox 2 tab: cần tôi trả / tôi đã gửi
+│   ├── create.tsx       # Tạo yêu cầu (receiver lookup tái dùng từ transfer)
+│   ├── [id].tsx         # Detail (kèm split siblings nếu thuộc split group)
+│   ├── pay.tsx          # Prefill confirm → pay → Processing (tái dùng watcher)
+│   ├── split.tsx        # Chia đều / tùy chỉnh
+│   └── split-group.tsx  # Theo dõi split group
+├── account.tsx          # Account thật (thay placeholder)
+└── qr.tsx               # [GATED backend] QR nhận tiền
+
+src/features/money-request/   # hooks.ts + __tests__/
+src/features/account/         # hooks users/me, settings binding
+src/lib/split.ts              # largest-remainder BigInt (pure, unit-tested)</code></pre>
+
+<h2>2. Data flow — Pay request (tái dùng hạ tầng transfer)</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant UI as Pay screen
+  participant Q as TanStack Query
+  participant API as api client (interceptors)
+  participant BE as backend
+  UI->>UI: vào màn → sinh Idempotency-Key (1 lần)
+  UI->>Q: mutate pay(id)
+  Q->>API: POST /v1/money-requests/{id}/pay (Idempotency-Key)
+  API->>BE: + Authorization, X-Device-Id, X-Request-Id
+  alt 202 async
+    BE-->>API: ref_code
+    UI->>UI: Processing — TransactionWatcher poll 1s→2s→4s
+  else ERR_REQUEST_EXPIRED / _CANCELLED / _ALREADY_PAID
+    UI->>UI: dừng an toàn, toast trạng thái mới, invalidate inbox
+  end
+</pre>
+<div class="note"><b>Nguyên tắc:</b> pay request = transfer có nguồn gốc request. Không nhân bản flow — <code>pay.tsx</code> tái dùng component confirm/processing của transfer với dữ liệu prefill khóa cứng (không cho sửa số tiền), vẫn qua PIN theo auth matrix doc 02 (biometric chỉ mở app).</div>
+
+<h2>3. Split — tiền không đi qua float</h2>
+<p><code>src/lib/split.ts</code>: <code>splitEven(total: bigint, n: number): bigint[]</code> — chia phần nguyên, dư rải largest-remainder (+1 minor unit từ đầu danh sách). Custom mode: validate <code>sum(parts) === total</code> bằng BigInt. Preview client chỉ để hiển thị — server tính lại và là nguồn chân lý (<code>split_group_id</code> từ response 201).</p>
+
+<h2>4. State</h2>
+<table>
+<tr><th>Loại</th><th>Nơi giữ</th></tr>
+<tr><td>Inbox/sent/detail/split group</td><td>TanStack Query — key <code>['money-requests', …]</code>, invalidate sau pay/decline/cancel; inbox refetch on focus</td></tr>
+<tr><td>Draft tạo request / split</td><td>Local state màn hình (mất khi thoát — chấp nhận v1); amount string→BigInt qua <code>src/lib/money.ts</code> sẵn có</td></tr>
+<tr><td>Account settings (ẩn số dư, biometric)</td><td>Zustand store hiện có — persist non-sensitive; token vẫn SecureStore</td></tr>
+</table>
+
+<h2>5. QR <span class="tag tag-m">GATED — backend m4-api-support</span></h2>
+<pre class="mermaid">
+flowchart LR
+  me["GET /v1/users/me/qr<br/>payload + signature + expires_at"] --> render["Render QR<br/>(react-native-qrcode-svg)"]
+  scan["expo-camera scan"] --> resolve["POST /v1/qr/resolve<br/>verify HMAC server-side"] --> prefill["Prefill transfer receiver<br/>(masked info từ API, KHÔNG từ QR thô)"]
+  scan -.->|invalid/expired| reject["Toast QR không hợp lệ"]
+</pre>
+<p>Cache payload QR trong Query với <code>staleTime &lt; expires_at</code>.</p>
+
+<h2>6. Rebrand token mapping (chỉ file design sản phẩm)</h2>
+<table>
+<tr><th>Token</th><th>Cũ</th><th>Mới</th><th>Dùng cho</th></tr>
+<tr><td><code>brand.400</code> (mới)</td><td>—</td><td><code>#1ECBE1</code></td><td>Accent, hero, gradient BalanceCard, icon active</td></tr>
+<tr><td><code>brand.600</code></td><td><code>#0B5FFF</code></td><td><code>#0E90A3</code></td><td>Primary button, link (AA trên trắng)</td></tr>
+<tr><td><code>brand.700</code></td><td><code>#0A4FD6</code></td><td><code>#0B7181</code></td><td>Pressed</td></tr>
+<tr><td><code>brand.50</code></td><td><code>#EBF1FF</code></td><td><code>#E6FAFD</code></td><td>Chip/badge nền</td></tr>
+</table>
+<p>Đồng bộ: <code>src/mobile/src/ui/tokens.ts</code> + <code>docs/design/ui-design-spec.html</code> (bảng token) + <code>design/mockups/mp-base.css</code> và biến màu trong mockup — admin A1 sau này đọc từ đó. Không đổi style trang docs khác.</p>
+
+<h2>7. Rủi ro</h2>
+<table>
+<tr><th>Rủi ro</th><th>Giảm thiểu</th></tr>
+<tr><td>Race pay vs cancel/expire (E19)</td><td>Server là gate; client map ERR_* → dừng an toàn + invalidate; test riêng</td></tr>
+<tr><td>FlashList đổi hành vi scroll history</td><td>Giữ cursor logic nguyên vẹn, chỉ đổi renderer; test M12</td></tr>
+<tr><td>Rebrand chạm mọi màn</td><td>Chỉ đổi qua tokens.ts — không hardcode màu ở component (convention từ M1)</td></tr>
+</table>
+
+</div><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body></html>

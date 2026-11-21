@@ -1,0 +1,122 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation Plan — Wire Action Pipeline (hpay-backend)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:16px 18px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.s{background:#dcfce7;color:var(--ok)}.m{background:#fef9c3;color:var(--warn)}.l{background:#fee2e2;color:var(--bad)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo <code>hpay-backend</code> · plan</div>
+<h1>Implementation Plan — Wire Action Pipeline</h1>
+<blockquote><p><b>Feature slug:</b> <code>action-pipeline-wiring</code> · <b>Nguồn:</b> <a href="../../../../docs/architecture/06-service-engine-api-consolidation.html">doc 06 Task 2</a> + <a href="../../../../docs/design/mockups/07-admin-offer-service.html">mockup 07 (Action Priority column)</a>. Đây là dọn nợ kỹ thuật, không phải tính năng mới — code đã tồn tại, chỉ chưa được nối vào workflow definition nào.</p></blockquote>
+
+<h2>1. Hiện trạng đã khảo sát</h2>
+<table>
+<thead><tr><th>Thành phần</th><th>Thực tế</th><th>Kết luận</th></tr></thead>
+<tbody>
+<tr><td><code>ActionPipeline</code> (<code>internal/workflow/handlers/action_pipeline.go</code>)</td><td>Code đầy đủ: đọc <code>services.actions</code>, so <code>action_priority</code> với phase suy ra từ tên step (<code>phaseOf</code>: tên chứa "AFTER_GL" → after_gl, ngược lại before_gl), gọi gateway cho action type "Directional Integration", ghi nhận (không post lại) cho "GL Posting"</td><td>✅ logic đúng, không cần sửa</td></tr>
+<tr><td>Đăng ký handler</td><td><code>RegisterActionPipeline</code> được gọi ở <code>cmd/server/main.go</code> (production) nhưng <b>không có trong test harness</b> (<code>test/integration/helpers_test.go</code>)</td><td>❌ phải thêm, nếu không mọi test dùng <code>p2p_transfer</code>/<code>org_disbursement</code> sẽ treo vì step không có handler</td></tr>
+<tr><td><code>workflow_definitions.p2p_transfer</code> (hiện tại v2, thêm bởi plan <code>round-up-vault</code>)</td><td>VALIDATE → FRAUD_CHECK → MOVE_FUNDS → CONFIRM → ROUND_UP</td><td>❌ không có step nào tên khớp handler <code>action_pipeline</code></td></tr>
+<tr><td><code>workflow_definitions.org_disbursement</code> v1</td><td>VALIDATE → FRAUD_CHECK → WAIT_APPROVAL → MOVE_FUNDS → CONFIRM</td><td>❌ tương tự</td></tr>
+<tr><td>Service catalog (migration 000003 + mockup 07)</td><td><code>action_priority</code>: P2P_TRANSFER/MONEY_REQUEST/TOPUP_BANK/ORG_DISBURSEMENT = <code>before_gl</code>; VAULT_SAVINGS = <code>after_gl</code>. Chỉ <code>P2P_TRANSFER.actions</code> có nội dung thật (<code>gl_posting</code> + <code>bank_gateway_notify</code>, cái sau <code>required:false</code>); 4 service còn lại <code>actions='[]'</code></td><td>✅ vì actions rỗng, wiring cho 4 service kia hoàn toàn no-op ngay khi merge — rủi ro chỉ nằm ở P2P_TRANSFER</td></tr>
+</tbody>
+</table>
+
+<h2>2. Scope &amp; Non-goals</h2>
+<h3>Ships</h3>
+<ul>
+<li>Thêm 2 step slot vào <code>p2p_transfer</code> (version 3): <code>ACTIONS_BEFORE_GL</code> (trước <code>MOVE_FUNDS</code>) và <code>ACTIONS_AFTER_GL</code> (sau <code>MOVE_FUNDS</code>, trước <code>CONFIRM</code>) — cả 2 dùng handler <code>action_pipeline</code>; <code>phaseOf</code> đọc đúng tên step để suy ra phase, service nào cấu hình phase nào thì step đó chạy thật, còn lại tự skip.</li>
+<li><code>org_disbursement</code> (version 2): chỉ thêm <code>ACTIONS_BEFORE_GL</code> — service duy nhất dùng definition này (ORG_DISBURSEMENT) chỉ có <code>action_priority='before_gl'</code>, thêm <code>ACTIONS_AFTER_GL</code> lúc này là thiết kế cho trường hợp giả định chưa xảy ra.</li>
+<li>Đăng ký <code>RegisterActionPipeline</code> vào test harness với <code>gateway.NewMock()</code> — khớp với hành vi production ngoài môi trường <code>production</code>.</li>
+<li>Test xác nhận actions thật sự chạy (gọi gateway) cho P2P_TRANSFER, và test xác nhận 4 service actions rỗng vẫn hoàn tất bình thường (regression, không phá timeline hiện có).</li>
+</ul>
+<h3>Non-goals (defer)</h3>
+<ul>
+<li>Bật <code>bank_gateway_notify</code> thật ngoài mock — đó là hạ tầng gateway thật, ngoài phạm vi việc "wire vào definition".</li>
+<li>Đổi giá trị <code>action_priority</code> hiện có của bất kỳ service nào.</li>
+<li>UI Admin "Action Pipeline Builder" (5-tab, doc 06 Tab 3) — chỉ backend runtime.</li>
+</ul>
+
+<h2>3. Task breakdown</h2>
+<table>
+<thead><tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends on</th></tr></thead>
+<tbody>
+<tr><td>T1</td><td>Migration 000010: <code>p2p_transfer</code> v3 (thêm 2 step), <code>org_disbursement</code> v2 (thêm 1 step); tắt <code>is_active</code> của các version cũ tương ứng</td><td><code>db/migrations/000010_wire_action_pipeline.up/down.sql</code></td><td><span class="tag m">M</span></td><td>—</td></tr>
+<tr><td>T2</td><td>Test harness: đăng ký <code>RegisterActionPipeline(reg, pool, gateway.NewMock())</code> trong <code>newEnv</code></td><td><code>test/integration/helpers_test.go</code></td><td><span class="tag s">S</span></td><td>—</td></tr>
+<tr><td>T3</td><td>Sửa lại các assertion đếm step timeline đã hard-code (<code>TestP2PTransferEndToEnd</code> hiện expect 5, giờ thành 7)</td><td><code>test/integration/transfer_test.go</code></td><td><span class="tag s">S</span></td><td>T1</td></tr>
+<tr><td>T4</td><td>Test mới: P2P_TRANSFER thật sự gọi gateway mock cho <code>bank_gateway_notify</code> (kiểm tra qua mock ghi log/counter), 4 service actions rỗng vẫn <code>completed</code> bình thường</td><td><code>test/integration/action_pipeline_test.go</code> (mới, tách khỏi unit test có sẵn cùng tên trong <code>internal/workflow/handlers</code>)</td><td><span class="tag l">L</span></td><td>T1–T3</td></tr>
+</tbody>
+</table>
+
+<h2>4. Schema changes</h2>
+<pre><code>-- 000010_wire_action_pipeline.up.sql
+UPDATE workflow_definitions SET is_active = false WHERE name = 'p2p_transfer' AND version = 2;
+INSERT INTO workflow_definitions (name, version, steps, is_active) VALUES (
+  'p2p_transfer', 3, '[
+    {"name":"VALIDATE","type":"auto","handler":"validator","retry":3,"timeout_ms":5000,"on_failure":"fail"},
+    {"name":"FRAUD_CHECK","type":"auto","handler":"fraud","retry":2,"timeout_ms":10000,"on_failure":"fail"},
+    {"name":"ACTIONS_BEFORE_GL","type":"auto","handler":"action_pipeline","retry":2,"timeout_ms":10000,"on_failure":"fail"},
+    {"name":"MOVE_FUNDS","type":"auto","handler":"wallet","retry":3,"timeout_ms":5000,"on_failure":"compensate","config":{"compensatable":true}},
+    {"name":"ACTIONS_AFTER_GL","type":"auto","handler":"action_pipeline","retry":2,"timeout_ms":10000,"on_failure":"fail"},
+    {"name":"CONFIRM","type":"auto","handler":"confirmer","retry":3,"timeout_ms":5000,"on_failure":"fail"},
+    {"name":"ROUND_UP","type":"auto","handler":"round_up","retry":3,"timeout_ms":5000,"on_failure":"fail"}
+  ]'::jsonb, true
+);
+
+UPDATE workflow_definitions SET is_active = false WHERE name = 'org_disbursement' AND version = 1;
+INSERT INTO workflow_definitions (name, version, steps, is_active) VALUES (
+  'org_disbursement', 2, '[
+    {"name":"VALIDATE","type":"auto","handler":"validator","retry":3,"timeout_ms":5000,"on_failure":"fail"},
+    {"name":"FRAUD_CHECK","type":"auto","handler":"fraud","retry":2,"timeout_ms":10000,"on_failure":"fail"},
+    {"name":"ACTIONS_BEFORE_GL","type":"auto","handler":"action_pipeline","retry":2,"timeout_ms":10000,"on_failure":"fail"},
+    {"name":"WAIT_APPROVAL","type":"human_approval","retry":0,"timeout_ms":86400000,"on_failure":"fail"},
+    {"name":"MOVE_FUNDS","type":"auto","handler":"wallet","retry":3,"timeout_ms":5000,"on_failure":"compensate","config":{"compensatable":true}},
+    {"name":"CONFIRM","type":"auto","handler":"confirmer","retry":3,"timeout_ms":5000,"on_failure":"fail"}
+  ]'::jsonb, true
+);
+</code></pre>
+<p><b>Vì sao <code>ACTIONS_BEFORE_GL</code> đứng trước <code>WAIT_APPROVAL</code> trong <code>org_disbursement</code>:</b> "before GL" nghĩa là trước khi tiền di chuyển (<code>MOVE_FUNDS</code>), không nhất thiết trước approval — nhưng chạy trước approval tránh gọi 3rd-party action cho một lệnh chi lương chưa được duyệt. Nếu action đó fail cứng, saga fail sớm trước khi tốn một vòng WAIT_APPROVAL 24h.</p>
+
+<h2>5. Test plan</h2>
+<table>
+<thead><tr><th>Case</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td>Pipeline thật sự chạy cho P2P_TRANSFER</td><td><code>TestActionPipelineWiring_P2PCallsGateway</code> — dùng <code>gateway.Mock</code> đếm số lần <code>Call</code>, assert đúng 1 lần cho <code>bank_gateway_notify</code> ở step <code>ACTIONS_BEFORE_GL</code> (action_priority của P2P_TRANSFER trong seed là <code>before_gl</code>, xem §1); <code>ACTIONS_AFTER_GL</code> phải báo <code>skipped_phase_before_gl</code>, không gọi gateway lần nào</td></tr>
+<tr><td>4 service actions rỗng không bị ảnh hưởng</td><td><code>TestActionPipelineWiring_EmptyActionsStillCompletes</code> — chạy P2P qua <code>e.svc.Transfer</code> (MONEY_REQUEST/TOPUP_BANK dùng chung path) vẫn <code>completed</code>, timeline đủ 7 bước</td></tr>
+<tr><td>Regression toàn bộ suite hiện có</td><td><code>go test ./test/integration/...</code> xanh hết, đặc biệt các test liên quan <code>org_disbursement</code> (approval_test.go) và vault (dùng chung p2p_transfer)</td></tr>
+</tbody>
+</table>
+
+<h2>6. Rollout &amp; risk</h2>
+<ul>
+<li><b>Rủi ro chính:</b> nếu tương lai ai đó set <code>required:true</code> cho một after_gl integration action và gateway đó lỗi, step sẽ <code>RetryableError</code> rồi có thể fail cứng sau <code>MOVE_FUNDS</code> đã post — giống caveat đã ghi nhận ở plan <code>round-up-vault</code> cho <code>ROUND_UP</code>. Không sửa <code>failInstance</code> trong plan này.</li>
+<li><b>Rollback:</b> tắt <code>is_active</code> của v3/v2, bật lại definition cũ — an toàn vì action hiện tại đều <code>required:false</code> hoặc rỗng.</li>
+<li><b>Không cần feature flag</b> — 4/5 service có <code>actions=[]</code> nên wiring gần như no-op ngay khi merge; chỉ P2P_TRANSFER có hành vi mới quan sát được (1 lệnh gọi HTTP tới mock/gateway).</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ol>
+<li><code>gen-migration</code> → T1</li>
+<li>Thủ công → T2, T3</li>
+<li><code>gen-api-test</code> cho T4</li>
+<li><code>fintech-review</code> trước khi commit</li>
+</ol>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-backend · 2026-07-24</footer>
+</div></body></html>

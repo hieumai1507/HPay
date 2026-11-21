@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "expo-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/mobile", "run", "web"],
+      "port": 8081
+    },
+    {
+      "name": "hpay-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src/admin", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "hpay-backend-local",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "src\\backend\\scripts\\dev-local.bat"],
+      "port": 8080
+    },
+    {
+      "name": "hpay-backend-cloud-api",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "src\\backend\\scripts\\dev-cloud-api.bat"],
+      "port": 8080
+    }
+  ]
+}

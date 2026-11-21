@@ -1,0 +1,259 @@
+package integration
+
+// m3-api-support (docs/plans/m3-api-support): receiver lookup, counterparty
+// enrichment, /users/me txn_limit, timeline failure_code. These endpoints kill
+// every client-side workaround the mobile M3 plan would otherwise need.
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
+	"github.com/hieumai1507/hpay-backend/internal/api"
+	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
+	"github.com/hieumai1507/hpay-backend/internal/user"
+	"github.com/hieumai1507/hpay-backend/internal/wallet"
+)
+
+// "Test User" (testutil fixture name) masked per the locked format.
+const maskedFixtureName = "Test U***"
+
+func TestHistory_CounterpartyMaskedAndDirection(t *testing.T) {
+	e := newEnv(t, "")
+	ctx := context.Background()
+	senderID, _, senderPhone := e.userWithMoney(t, 2_000_000)
+	receiverID, _, receiverPhone := e.userWithMoney(t, 0)
+
+	if _, err := e.svc.Transfer(ctx, senderID, receiverPhone, 500_000, "m3", uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	e.drain(t)
+
+	now, maxID := time.Now().Add(time.Minute), uuid.Max
+
+	// Sender view: p2p is OUT with the receiver's masked identity; topup has no counterparty.
+	rows, err := e.wsvc.History(ctx, senderID, now, maxID, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawP2P, sawTopup bool
+	for _, r := range rows {
+		switch r.Type {
+		case "p2p":
+			sawP2P = true
+			if r.Direction != "out" {
+				t.Errorf("sender p2p direction: want out, got %s", r.Direction)
+			}
+			if r.CounterpartyName == nil || *r.CounterpartyName != maskedFixtureName {
+				t.Errorf("counterparty_name: want %q, got %v", maskedFixtureName, r.CounterpartyName)
+			}
+			wantPhone := user.MaskPhone(receiverPhone)
+			if r.CounterpartyPhone == nil || *r.CounterpartyPhone != wantPhone {
+				t.Errorf("counterparty_phone: want %q, got %v", wantPhone, r.CounterpartyPhone)
+			}
+		case "topup":
+			sawTopup = true
+			if r.CounterpartyName != nil || r.CounterpartyPhone != nil {
+				t.Errorf("topup must have nil counterparty (system wallet), got %v/%v", r.CounterpartyName, r.CounterpartyPhone)
+			}
+		}
+	}
+	if !sawP2P || !sawTopup {
+		t.Fatalf("expected both p2p and topup rows, got p2p=%v topup=%v", sawP2P, sawTopup)
+	}
+
+	// Receiver view: same txn is IN with the sender's masked identity.
+	rows, err = e.wsvc.History(ctx, receiverID, now, maxID, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, r := range rows {
+		if r.Type != "p2p" {
+			continue
+		}
+		found = true
+		if r.Direction != "in" {
+			t.Errorf("receiver p2p direction: want in, got %s", r.Direction)
+		}
+		wantPhone := user.MaskPhone(senderPhone)
+		if r.CounterpartyPhone == nil || *r.CounterpartyPhone != wantPhone {
+			t.Errorf("receiver counterparty_phone: want %q, got %v", wantPhone, r.CounterpartyPhone)
+		}
+	}
+	if !found {
+		t.Fatal("receiver history missing the p2p txn")
+	}
+}
+
+func TestDetail_CounterpartyMasked(t *testing.T) {
+	e := newEnv(t, "")
+	ctx := context.Background()
+	senderID, _, _ := e.userWithMoney(t, 1_000_000)
+	_, _, receiverPhone := e.userWithMoney(t, 0)
+
+	res, err := e.svc.Transfer(ctx, senderID, receiverPhone, 200_000, "detail", uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.drain(t)
+
+	v, err := e.wsvc.Detail(ctx, senderID, res.RefCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Direction != "out" || v.CounterpartyName == nil || *v.CounterpartyName != maskedFixtureName {
+		t.Fatalf("detail: direction=%s counterparty=%v, want out/%q", v.Direction, v.CounterpartyName, maskedFixtureName)
+	}
+}
+
+// TestTimeline_FailureCode: locked receiver fails MOVE_FUNDS ("... not active
+// at posting time") → public timeline carries ERR_ACCOUNT_INACTIVE, never the
+// raw internal error text.
+func TestTimeline_FailureCode(t *testing.T) {
+	e := newEnv(t, "")
+	ctx := context.Background()
+	senderID, _, _ := e.userWithMoney(t, 2_000_000)
+	receiverID, _, receiverPhone := e.userWithMoney(t, 0)
+
+	res, err := e.svc.Transfer(ctx, senderID, receiverPhone, 300_000, "failure code", uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE users SET status='locked' WHERE id=$1`, receiverID); err != nil {
+		t.Fatal(err)
+	}
+	e.drain(t)
+
+	var txnID uuid.UUID
+	if err := e.pool.QueryRow(ctx, `SELECT id FROM transactions WHERE ref_code=$1`, res.RefCode).Scan(&txnID); err != nil {
+		t.Fatal(err)
+	}
+	tl, err := e.svc.TimelineFor(ctx, txnID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tl.InstanceStatus != "failed" && tl.InstanceStatus != "compensated" {
+		t.Fatalf("instance: want failed/compensated, got %s", tl.InstanceStatus)
+	}
+	if tl.FailureCode != "ERR_ACCOUNT_INACTIVE" {
+		t.Fatalf("failure_code: want ERR_ACCOUNT_INACTIVE, got %q", tl.FailureCode)
+	}
+
+	// Completed transfers must NOT carry a failure code.
+	res2, err := e.svc.Transfer(ctx, senderID, receiverPhoneActive(t, e), 100_000, "ok", uuid.NewString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.drain(t)
+	if err := e.pool.QueryRow(ctx, `SELECT id FROM transactions WHERE ref_code=$1`, res2.RefCode).Scan(&txnID); err != nil {
+		t.Fatal(err)
+	}
+	tl2, err := e.svc.TimelineFor(ctx, txnID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tl2.FailureCode != "" {
+		t.Fatalf("completed txn must have no failure_code, got %q", tl2.FailureCode)
+	}
+}
+
+func receiverPhoneActive(t *testing.T, e *env) string {
+	t.Helper()
+	_, _, phone := e.userWithMoney(t, 0)
+	return phone
+}
+
+// --- handler-level: /v1/users/lookup + /v1/users/me ------------------------
+
+func userRouter(t *testing.T, e *env, asUser uuid.UUID) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	h := api.NewUserHandler(e.pool)
+	auth := func(c *gin.Context) { c.Set("user_id", asUser.String()); c.Next() }
+	r.GET("/v1/users/lookup", auth, h.Lookup)
+	r.GET("/v1/users/me", auth, h.Me)
+	return r
+}
+
+func TestLookup_MaskedAndUniform404(t *testing.T) {
+	e := newEnv(t, "")
+	ctx := context.Background()
+	callerID, _, callerPhone := e.userWithMoney(t, 0)
+	targetID, _, targetPhone := e.userWithMoney(t, 0)
+	r := userRouter(t, e, callerID)
+
+	get := func(phone string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/v1/users/lookup?phone="+phone, nil)
+		r.ServeHTTP(w, req)
+		return w
+	}
+
+	// found → masked name only
+	w := get(targetPhone)
+	if w.Code != http.StatusOK {
+		t.Fatalf("lookup existing: want 200, got %d (%s)", w.Code, w.Body)
+	}
+	var body struct {
+		Found      bool   `json:"found"`
+		MaskedName string `json:"masked_name"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Found || body.MaskedName != maskedFixtureName {
+		t.Fatalf("want found + %q, got %+v", maskedFixtureName, body)
+	}
+
+	// missing, locked, and self all answer the SAME 404 (anti-enumeration)
+	if w := get("0900000000"); w.Code != http.StatusNotFound {
+		t.Fatalf("missing user: want 404, got %d", w.Code)
+	}
+	if _, err := e.pool.Exec(ctx, `UPDATE users SET status='locked' WHERE id=$1`, targetID); err != nil {
+		t.Fatal(err)
+	}
+	if w := get(targetPhone); w.Code != http.StatusNotFound {
+		t.Fatalf("locked user: want 404, got %d", w.Code)
+	}
+	if w := get(callerPhone); w.Code != http.StatusNotFound {
+		t.Fatalf("self lookup: want 404, got %d", w.Code)
+	}
+}
+
+func TestUsersMe_TxnLimitMatchesTier(t *testing.T) {
+	e := newEnv(t, "")
+	ctx := context.Background()
+	userID, _, _ := e.userWithMoney(t, 0)
+	r := userRouter(t, e, userID)
+
+	for _, tier := range []store.KycStatus{
+		store.KycStatusNone, store.KycStatusPending, store.KycStatusManualReview,
+		store.KycStatusVerified, store.KycStatusAutoApproved, store.KycStatusRejected,
+	} {
+		if _, err := e.pool.Exec(ctx, `UPDATE users SET kyc_status=$1 WHERE id=$2`, tier, userID); err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/users/me", nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("me(%s): want 200, got %d", tier, w.Code)
+		}
+		var body struct {
+			TxnLimit int64 `json:"txn_limit"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if want := wallet.TxnLimit(tier); body.TxnLimit != want {
+			t.Errorf("txn_limit(%s): want %d (server truth), got %d", tier, want, body.TxnLimit)
+		}
+	}
+}

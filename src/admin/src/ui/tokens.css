@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HPay Admin design tokens — palette from mockups A1–A10 */
+:root {
+  /* brand */
+  --brand: #0e90a3;
+  --brand-600: #0b7181;
+  --brand-50: #e6fafd;
+  --accent: #1ecbe1;
+
+  /* sidebar */
+  --sidebar-bg: #0b1220;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #1ecbe1;
+  --sidebar-hover: #1e293b;
+
+  /* surfaces */
+  --main-bg: #f9fafb;
+  --card-bg: #ffffff;
+
+  /* neutrals */
+  --n900: #111827;
+  --n700: #374151;
+  --n500: #6b7280;
+  --n200: #e5e7eb;
+  --n100: #f3f4f6;
+  --n50: #f9fafb;
+
+  /* status */
+  --success: #16a34a;
+  --success-50: #ecfdf3;
+  --warning: #d97706;
+  --warning-50: #fffbeb;
+  --danger: #dc2626;
+  --danger-50: #fef2f2;
+  --info: #0891b2;
+  --info-50: #e0f7fa;
+
+  /* typography */
+  --font-sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* layout */
+  --sidebar-w: 232px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h: 56px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--n900);
+  background: var(--main-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}

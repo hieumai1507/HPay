@@ -1,0 +1,91 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation Plan — Checker OTP Result &amp; Conflict Screens (hpay-mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+h3{font-size:16px;font-weight:600;margin:24px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:16px 18px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.s{background:#dcfce7;color:var(--ok)}.m{background:#fef9c3;color:var(--warn)}.l{background:#fee2e2;color:var(--bad)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../../../docs/index.html">← HPay Docs</a> · repo hpay-mobile + hpay-backend · plan</div>
+<h1>Implementation Plan — Checker OTP Result &amp; Conflict Screens</h1>
+<blockquote><p><b>Feature slug:</b> <code>approval-result-screens</code> · Nguồn: <a href="../../../../docs/design/mockups/03-business.html">mockup 03-business.html frame 22 &amp; 23</a>. Đi cùng <code>src/backend/docs/plans/approval-cancel/</code> (nút "Hủy lệnh" trên màn maker) trong cùng đợt việc, nhưng 2 phần độc lập nhau — màn kết quả checker không cần backend mới, chỉ trình bày lại dữ liệu <code>DecideResult</code>/mã lỗi đã có.</p></blockquote>
+
+<h2>1. Hiện trạng đã khảo sát</h2>
+<table>
+<thead><tr><th>Thành phần</th><th>Thực tế</th><th>Kết luận</th></tr></thead>
+<tbody>
+<tr><td><code>approval-detail.tsx: handleOtpSubmit</code></td><td>Duyệt/từ chối xong chỉ hiện <code>Alert.alert</code> rồi <code>router.back()</code> — không phân biệt "bạn là chữ ký cuối" (frame 22) hay chỉ mới ghi nhận 1 chữ ký (còn chờ thêm)</td><td>❌ thay bằng state kết quả full-screen trong cùng component</td></tr>
+<tr><td>Xung đột 2 checker cùng ký (E08)</td><td>Backend đã trả <code>ERR_ALREADY_FINALIZED</code>/<code>ERR_ALREADY_ACTED</code> (409), <code>src/lib/errors.ts</code> đã có message Việt cho 2 mã này — nhưng mobile chỉ hiện <code>Alert.alert</code> thường, không phải màn "conflict" riêng như frame 23</td><td>❌ bắt riêng 2 mã này, chuyển sang state conflict thay vì Alert</td></tr>
+<tr><td><code>order-status.tsx</code> nút "Hủy lệnh"</td><td>Placeholder <code>Alert</code> "chưa khả dụng"</td><td>❌ nối vào <code>POST /v1/org/approvals/{id}/cancel</code> (backend plan riêng)</td></tr>
+</tbody>
+</table>
+
+<h2>2. Scope &amp; Non-goals</h2>
+<h3>Ships</h3>
+<ul>
+<li><code>approval-detail.tsx</code>: sau khi <code>useDecideApproval</code> thành công, thay nội dung màn (không phải Alert) bằng 1 trong 2 state kết quả: "Đã duyệt — lệnh đang thực hiện" (nếu <code>DecideResult.Status==='approved'</code>, tức bạn là chữ ký cuối) hoặc "Đã ghi nhận chữ ký — còn chờ N người nữa" (nếu vẫn <code>pending</code>); từ chối → "Đã từ chối lệnh".</li>
+<li>Khi <code>useDecideApproval</code> lỗi với mã <code>ERR_ALREADY_FINALIZED</code>/<code>ERR_ALREADY_ACTED</code>: hiện state conflict (frame 23) — "Lệnh này vừa được xử lý xong", chip "Đã xử lý xong · đang thực hiện" (hoặc phù hợp trạng thái thật lấy lại từ <code>refetch</code>), nút "Về hàng chờ (còn N lệnh)" dùng số từ <code>useApprovalInbox</code>.</li>
+<li><code>order-status.tsx</code>: nút "Hủy lệnh" gọi API thật qua <code>useCancelApproval</code>, có xác nhận (Alert 2 lựa chọn) trước khi gọi vì đây là hành động không thể hoàn tác.</li>
+<li>Thêm <code>'cancelled'</code> vào type <code>ApprovalDetail.status</code>, <code>STATUS_LABEL</code>/<code>STATUS_CHIP</code> map (2 file), <code>buildTimeline</code> (bước cuối "Bạn đã hủy lệnh").</li>
+</ul>
+<h3>Non-goals (defer)</h3>
+<ul>
+<li>Push/realtime khi có chữ ký mới trong lúc đang xem — vẫn theo model pull hiện có.</li>
+<li>Tách thành route riêng cho từng state (success/conflict) — dùng state cục bộ trong cùng screen, tránh phức tạp hoá điều hướng cho nội dung có thể biểu diễn bằng conditional render.</li>
+</ul>
+
+<h2>3. Task breakdown</h2>
+<table>
+<thead><tr><th>#</th><th>Task</th><th>Files</th><th>Size</th></tr></thead>
+<tbody>
+<tr><td>T1</td><td><code>useCancelApproval()</code> mutation gọi <code>POST /v1/org/approvals/{id}/cancel</code>, invalidate detail + by-ref query</td><td><code>src/queries/useOrgQueries.ts</code></td><td><span class="tag s">S</span></td></tr>
+<tr><td>T2</td><td>Thay flow Alert bằng 2 state kết quả (success/conflict) trong <code>handleOtpSubmit</code></td><td><code>app/(main)/org/approval-detail.tsx</code></td><td><span class="tag l">L</span></td></tr>
+<tr><td>T3</td><td>Nối nút "Hủy lệnh" thật + xác nhận trước khi gọi; thêm <code>cancelled</code> vào status map/timeline</td><td><code>app/(main)/org/order-status.tsx</code></td><td><span class="tag m">M</span></td></tr>
+<tr><td>T4</td><td>Test: state success khi là chữ ký cuối vs chưa đủ; state conflict khi lỗi <code>ERR_ALREADY_FINALIZED</code>/<code>ERR_ALREADY_ACTED</code>; <code>buildTimeline</code> với status <code>cancelled</code></td><td><code>app/(main)/org/__tests__/*.test.tsx</code></td><td><span class="tag m">M</span></td></tr>
+</tbody>
+</table>
+
+<h2>4. Schema changes</h2>
+<p>Không — chỉ tiêu thụ dữ liệu/mã lỗi đã có sẵn ở backend (cộng thêm <code>cancel</code> từ plan riêng).</p>
+
+<h2>5. API changes</h2>
+<p>Không đổi backend trong phạm vi feature này ngoài <code>approval-cancel</code> (plan riêng).</p>
+
+<h2>6. Test plan</h2>
+<table>
+<thead><tr><th>Case</th><th>Test</th></tr></thead>
+<tbody>
+<tr><td>Chữ ký cuối → approved</td><td>copy "Đã duyệt — lệnh đang thực hiện"</td></tr>
+<tr><td>Chưa đủ chữ ký → pending</td><td>copy "còn chờ N người nữa" với N tính đúng</td></tr>
+<tr><td>Conflict khi đã finalize</td><td>bắt <code>isApiError(e) && e.code==='ERR_ALREADY_FINALIZED'</code> → state conflict, không phải Alert</td></tr>
+<tr><td>Timeline với status cancelled</td><td>bước cuối "Bạn đã hủy lệnh", dot rejected</td></tr>
+</tbody>
+</table>
+
+<h2>7. Rollout &amp; risk</h2>
+<p>Rủi ro thấp — chỉ đổi cách trình bày kết quả của luồng approve/reject/cancel đã có, không đổi request/response contract nào khác ngoài <code>cancel</code> (đã tách plan riêng).</p>
+
+<h2>8. Execution checklist</h2>
+<ol>
+<li>Thủ công → T1–T3</li>
+<li>Test + <code>npm run typecheck</code> + <code>npm run lint</code> → T4</li>
+</ol>
+
+<footer>HPay · plan sinh bởi skill <code>gen-feature-plan</code> · repo hpay-mobile + hpay-backend · 2026-07-24</footer>
+</div></body></html>

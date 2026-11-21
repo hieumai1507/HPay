@@ -1,0 +1,210 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Feature Extensions v2.1 — học từ TMDS Wallet &amp; MoMo, giữ hồn &quot;ví Mỹ&quot;</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200);letter-spacing:-.01em}
+h3{font-size:16.5px;font-weight:600;margin:26px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top;min-width:120px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+a{color:var(--brand)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../index.html">← HPay Docs</a></div>
+<h1 id="feature-extensions-v21-hoc-tu-tmds-wallet-momo-giu-hon-vi-my">Feature Extensions v2.1 — học từ TMDS Wallet &amp; MoMo, giữ hồn "ví Mỹ"</h1>
+<blockquote>
+<p>Nguồn tham khảo: TMDS Wallet Flow Overview (ví retail production tại Thái Lan — engine 3 bước, GL, settlement, 18 nhóm tính năng) và các pattern của MoMo/Venmo/Cash App/Revolut. <strong>Nguyên tắc: core logic HPay giữ nguyên</strong> (workflow engine event-driven, double-entry ledger, maker-checker human-in-the-loop, outbox, idempotency). Doc này chỉ bổ sung, không thay thế thiết kế ở doc 00/01.</p>
+</blockquote>
+<h2 id="1-anh-gia-tmds-lay-gi-bo-gi">1. Đánh giá TMDS — lấy gì, bỏ gì</h2>
+<table>
+<thead>
+<tr>
+<th>Pattern TMDS</th>
+<th>Nhận xét</th>
+<th>Quyết định</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Engine 3 bước Request→Confirm→Verify, <code>transactionTrail</code> xuyên suốt</td>
+<td>Cùng triết lý với DEH docs trước. Workflow engine của ta tổng quát hơn (N bước cấu hình được, có human gate)</td>
+<td><strong>Giữ engine của ta.</strong> Chỉ học invariant: sau <code>completed</code> trạng thái BẤT BIẾN, muốn hoàn phải reversal</td>
+</tr>
+<tr>
+<td>Trạng thái <code>processing</code> (mã 9999 — đối tác chậm) + cron recovery replay</td>
+<td>Rất thực tế: lỗi async không phải failed, mà là "recoverable"</td>
+<td><strong>Lấy.</strong> Thêm txn status <code>processing_async</code> + job <code>recover_stuck</code> quét instance kẹt, replay step (idempotent sẵn)</td>
+</tr>
+<tr>
+<td>Void/Reversal = bút toán đảo passive, không đi qua engine; operator bắt buộc qua maker-checker</td>
+<td>Khớp ledger immutable của ta</td>
+<td><strong>Lấy.</strong> Chuẩn hóa flow reversal: swap Dr/Cr từ ledger gốc, thêm cột <code>transactions.reversal_of</code></td>
+</tr>
+<tr>
+<td>Maker-checker cho <strong>18 loại thao tác admin</strong> (adjustment, lock user, đổi config…), không chỉ giao dịch</td>
+<td>Đây là insight lớn nhất: approval engine là hạ tầng chung, không phải tính năng của riêng org wallet</td>
+<td><strong>Lấy.</strong> Generalize <code>transaction_approvals</code> → <code>approval_requests(subject_type, subject_id)</code>: dùng cho org txn, admin reversal, khóa tài khoản, đổi policy</td>
+</tr>
+<tr>
+<td>Offer factory: fee/tax/discount catalogue + distribution rules</td>
+<td>Ta đang hardcode fee=0</td>
+<td><strong>Lấy bản gọn:</strong> bảng <code>fee_policies</code> (fixed + % + min/max theo txn_type + tier KYC). Bỏ tax/distribution phức tạp</td>
+</tr>
+<tr>
+<td>RTP — Request to Pay 2 giai đoạn (tạo yêu cầu → người trả thanh toán qua engine)</td>
+<td>Chính là "Request" của Venmo và "nhắc nợ" của MoMo</td>
+<td><strong>Lấy — tính năng chủ lực mới</strong> (§2.1)</td>
+</tr>
+<tr>
+<td>1 codebase deploy 3 MODE (mobile/admin/ppin) quyết định routes + queue consumer</td>
+<td>Elegant cho modular monolith</td>
+<td><strong>Lấy.</strong> <code>HPay serve --role=api\|worker\|admin\|all</code> — demo scale-out không tách code</td>
+</tr>
+<tr>
+<td>Runtime config reload qua Redis pub/sub tới mọi pod</td>
+<td>Ops story tốt</td>
+<td><strong>Lấy bản gọn:</strong> bảng <code>app_configs</code> + feature flags, endpoint refresh</td>
+</tr>
+<tr>
+<td>Notification 4 mức ưu tiên/kênh</td>
+<td>Hay nhưng ta chỉ cần 2 mức</td>
+<td>Lấy ý: asynq queue <code>critical</code> (OTP) vs <code>default</code></td>
+</tr>
+<tr>
+<td>Biometric chỉ để login, KHÔNG xác thực giao dịch</td>
+<td>Nguyên tắc auth đúng đắn</td>
+<td><strong>Lấy nguyên tắc</strong>, ghi vào 02-mobile (sửa auth matrix)</td>
+</tr>
+<tr>
+<td>GL settlement biller→aggregator→bank, SFTP, PromptPay rails, Node-RED, DipChip agent</td>
+<td>Đặc thù ngân hàng Thái / hệ đối tác thật</td>
+<td><strong>Bỏ.</strong> Ngoài scope portfolio, không có đối tác thật để tích hợp</td>
+</tr>
+<tr>
+<td>Sails.js/MongoDB/AngularJS, 200 collections, cron scheduler ngoài</td>
+<td>Legacy stack</td>
+<td><strong>Bỏ</strong> — stack ta đã chốt hiện đại hơn</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-tinh-nang-moi-giu-vibe-vi-my">2. Tính năng mới (giữ vibe ví Mỹ)</h2>
+<h3 id="21-request-money-xin-tien-nhac-no-p1-chu-luc">2.1. Request Money — "Xin tiền / Nhắc nợ" (P1 ⭐ chủ lực)</h3>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> pending : requester tạo yêu cầu\n(push + inbox badge, TTL 72h)
+  pending --> paid : payer trả qua engine P2P\n(gắn transaction_id)
+  pending --> declined : payer từ chối
+  pending --> canceled : requester hủy
+  pending --> expired : quá 72h (cron quét)
+  paid --> [*]
+  declined --> [*]
+  canceled --> [*]
+  expired --> [*]
+  note right of paid : Split Bill = N requests\ncùng split_group_id —\ntheo dõi ai đã trả
+</pre>
+<p>Venmo Request + MoMo nhắc nợ, chạy trên hạ tầng sẵn có — Stage 1 tạo yêu cầu, Stage 2 người trả thanh toán qua đúng workflow <code>p2p_transfer</code> hiện hữu:</p>
+<pre><code class="language-sql">CREATE TYPE money_request_status AS ENUM ('pending','paid','declined','expired','canceled');
+CREATE TABLE money_requests (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requester_id   UUID NOT NULL REFERENCES users(id),
+    payer_id       UUID NOT NULL REFERENCES users(id),
+    amount         BIGINT NOT NULL CHECK (amount &gt; 0),
+    note           VARCHAR(255),
+    split_group_id UUID,                              -- NULL nếu không phải chia bill
+    status         money_request_status NOT NULL DEFAULT 'pending',
+    transaction_id UUID REFERENCES transactions(id),  -- gắn khi paid
+    expires_at     TIMESTAMPTZ NOT NULL,              -- mặc định 72h
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT no_self_request CHECK (requester_id &lt;&gt; payer_id)
+);
+</code></pre>
+<p>Kèm <strong>Split Bill</strong>: chọn N người + tổng tiền → chia đều/tùy chỉnh → sinh N money_requests cùng <code>split_group_id</code>, màn theo dõi ai đã trả. UI: inbox badge, swipe để trả nhanh, avatar stack kiểu Venmo.</p>
+<h3 id="22-vaults-hu-tiet-kiem-p2-momo-tui-than-tai-revolut-vault">2.2. Vaults — hũ tiết kiệm (P2, MoMo "Túi Thần Tài" / Revolut Vault)</h3>
+<p>Schema wallets đã sẵn <code>owner_type+owner_id+currency</code> unique — nới thành nhiều ví/user bằng cột <code>purpose</code>:</p>
+<pre><code class="language-sql">ALTER TABLE wallets ADD COLUMN purpose VARCHAR(20) NOT NULL DEFAULT 'main';  -- main | vault
+ALTER TABLE wallets ADD COLUMN label   VARCHAR(60);                          -- &quot;Du lịch Đà Lạt 🏔&quot;
+-- unique đổi thành (owner_type, owner_id, currency, purpose, label)
+</code></pre>
+<p>Chuyển main↔vault là transaction type <code>vault_move</code> chạy qua engine như thường (2 bút toán, cùng invariants). Stretch: round-up — mỗi giao dịch chi lẻ tự bỏ phần làm tròn vào vault (thêm 1 step <code>ROUND_UP</code> optional trong definition — đúng chỗ khoe engine cấu hình được).</p>
+<h3 id="23-approval-engine-tong-quat-hoa-p1-nang-cap-kien-truc">2.3. Approval engine tổng quát hóa (P1 — nâng cấp kiến trúc)</h3>
+<p>Đổi <code>transaction_approvals</code> → <code>approval_requests</code> với <code>subject_type</code> (<code>org_transaction</code> | <code>admin_reversal</code> | <code>account_lock</code> | <code>policy_change</code>), giữ nguyên policy snapshot + evaluate + OTP. Admin muốn reversal/khóa tài khoản → tạo request → admin khác duyệt (đúng nguyên tắc TMDS: Maker ≠ Checker cả trong nội bộ vận hành). Màn admin "My Tasks" = hàng đợi chờ mình duyệt.</p>
+<h3 id="24-fee-engine-gon-p1">2.4. Fee engine gọn (P1)</h3>
+<pre><code class="language-sql">CREATE TABLE fee_policies (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    txn_type    txn_type NOT NULL,
+    kyc_tier    kyc_status,                 -- NULL = mọi tier
+    fixed_fee   BIGINT NOT NULL DEFAULT 0,
+    percent_bp  INT NOT NULL DEFAULT 0,     -- basis points (25 = 0,25%)
+    min_fee     BIGINT NOT NULL DEFAULT 0,
+    max_fee     BIGINT,
+    is_active   BOOLEAN NOT NULL DEFAULT true,
+    version     INT NOT NULL DEFAULT 1
+);
+</code></pre>
+<p>Fee tính ở step VALIDATE, hiển thị preview trước confirm (học UX enquiry-trước của TMDS), ghi bút toán fee về ví <code>SYSTEM_FEE</code>. Đổi fee qua admin → phải qua approval request (§2.3).</p>
+<h3 id="25-scheduled-recurring-transfer-p2-cash-app-style">2.5. Scheduled &amp; recurring transfer (P2, Cash App style)</h3>
+<p>Bảng <code>scheduled_transfers(user_id, receiver, amount, cron_expr, next_run_at)</code> + asynq scheduler tạo transaction chạy workflow như thường. Khoe được: cron → engine → idempotency (key = schedule_id + run_date, không bao giờ chạy đôi).</p>
+<h3 id="26-trang-thai-processing_async-recovery-p1">2.6. Trạng thái processing_async + recovery (P1)</h3>
+<p>Thêm vào enum <code>txn_status</code> giá trị <code>processing_async</code>; job <code>recover_stuck</code> (asynq, 5 phút/lần) quét <code>workflow_instances</code> ở <code>running</code>/<code>compensating</code> quá ngưỡng → replay step hiện tại (handler idempotent sẵn — E04/E06 đã cover). Map với màn Workflow Monitor "kẹt &gt; 5 phút" trong admin.</p>
+<h3 id="27-deploy-role-p1-chi-phi-0">2.7. Deploy role (P1, chi phí ~0)</h3>
+<p><code>HPay serve --role=api|worker|admin|all</code>: <code>api</code> chỉ mount HTTP public, <code>worker</code> chỉ consume streams + asynq, <code>admin</code> mount admin API + cron endpoints, <code>all</code> cho dev. Demo: chạy 1 lệnh ra 3 process phân vai — trả lời được câu phỏng vấn "monolith này scale thế nào".</p>
+<h3 id="28-qr-co-so-tien-payment-link-p2-momovenmo">2.8. QR có số tiền + payment link (P2, MoMo/Venmo)</h3>
+<p>QR v2: payload ký HMAC gồm <code>user_id + amount + note + exp</code>. Kèm link <code>HPay.app/pay/&lt;token&gt;</code> share qua chat — mở app vào thẳng màn confirm.</p>
+<h2 id="3-khong-lam-va-vi-sao">3. Không làm (và vì sao)</h2>
+<p>Tích hợp biller/telco thật, settlement đa tầng biller→aggregator→bank, SFTP đối soát với bank thật, agent DipChip onboarding, lì xì theo mùa vụ, mini-app ecosystem kiểu MoMo — đều cần đối tác thật hoặc lệch khỏi định vị "ví P2P + business wallet sạch kiểu Mỹ". Portfolio ăn điểm ở độ sâu kỹ thuật của core, không phải độ rộng tính năng.</p>
+<h2 id="4-tac-ong-len-tai-lieu-hien-co">4. Tác động lên tài liệu hiện có</h2>
+<table>
+<thead>
+<tr>
+<th>Doc</th>
+<th>Thay đổi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00-backend-design-v2-base.md</code></td>
+<td>Giữ nguyên. Schema delta nằm ở doc này, merge vào migration khi code</td>
+</tr>
+<tr>
+<td><code>01-backend-solution-architecture.md</code></td>
+<td>Thêm edge case E19 (money request hết hạn đúng lúc trả), E20 (recovery replay đụng step đang chạy — cần lease/lock theo instance)</td>
+</tr>
+<tr>
+<td><code>02-mobile-solution-architecture.md</code></td>
+<td>Auth matrix sửa theo nguyên tắc TMDS: biometric CHỈ mở khóa app; chuyển tiền = PIN/OTP. Thêm màn: Request Money (3), Split Bill (2), Vaults (2)</td>
+</tr>
+<tr>
+<td><code>03-admin-solution-architecture.md</code></td>
+<td>Thêm "My Tasks" (approval requests queue), reversal qua maker-checker thay vì action trực tiếp ở Fraud dialog</td>
+</tr>
+<tr>
+<td><code>design/ui-design-spec.md</code></td>
+<td>+7 màn mobile (Request/Split/Vault), +1 màn admin (My Tasks); component mới: <code>RequestCard</code>, <code>SplitAvatarStack</code>, <code>VaultCard</code></td>
+</tr>
+<tr>
+<td>Roadmap</td>
+<td>P1 (§2.1, 2.3, 2.4, 2.6, 2.7) vào tuần 3–4; P2 (§2.2, 2.5, 2.8) sau tuần 5 nếu còn thời gian</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5-iem-phong-van-moi-co-uoc-tu-vong-nay">5. Điểm phỏng vấn mới có được từ vòng này</h2>
+<ol>
+<li>"Em đọc kiến trúc 2 hệ ví production (corporate wallet + retail wallet Thái) và <strong>chọn lọc có phê phán</strong>: lấy invariant và pattern vận hành, bỏ đặc thù đối tác."</li>
+<li>"Approval engine của em là hạ tầng dùng chung: từ duyệt chi doanh nghiệp đến reversal của admin — cùng một state machine, cùng policy snapshot."</li>
+<li>"Trạng thái <code>processing_async</code> + recovery job: em phân biệt lỗi terminal với lỗi recoverable — hệ thống tiền không được phép 'quên' giao dịch đang lơ lửng."</li>
+</ol>
+<footer>HPay docs · sinh tự động từ <code>architecture/04-feature-extensions.md</code> bằng <code>tools/build-html.py</code></footer>
+</div><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter",fontSize:"13px"}});</script>
+</body></html>

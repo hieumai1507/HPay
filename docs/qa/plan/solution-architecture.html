@@ -1,0 +1,151 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solution Architecture — Manual QA Excel Test-Case Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:20px;font-weight:700;margin:40px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:5px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:13.5px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 13px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:10px 13px;border-top:1px solid var(--n100);vertical-align:top;min-width:90px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../../index.html">← HPay Docs</a> · qa · plan · solution architecture</div>
+<h1>Solution Architecture — Manual QA Excel Test-Case Suite</h1>
+<blockquote><p>Song hành với <a href="./implementation-plan.html">implementation-plan.html</a>. Trọng tâm ở đây: cấu trúc dữ liệu (thư mục/file/cột), luồng dữ liệu từ nguồn (functional-overview + master-plan) vào Excel, và luồng thực thi mà Claude sẽ dùng ở giai đoạn sau — <b>không có code nào chạy trong tài liệu này</b>, chỉ mô tả thiết kế.</p></blockquote>
+
+<h2>1. Context — nguồn dữ liệu → bộ Excel → người/Claude thực thi</h2>
+<pre class="mermaid">
+flowchart LR
+  FO["functional-overview.vi.html\nmảng FEATURES — 28 chức năng\n4 nhóm: personal/business/admin/platform"] -->|"1 dòng ≥ 1 test case/feature"| GEN["Giai đoạn sau (chưa làm):\nsinh 5 file .xlsx theo schema"]
+  MP["master-plan.html / .txt\n37 edge ID: E01-E20, M01-M12, A01-A07"] -->|"1 dòng/ID + cột Related Edge ID chéo"| GEN
+  GEN --> F1["01-personal-user.xlsx"]
+  GEN --> F2["02-business-maker-checker.xlsx"]
+  GEN --> F3["03-admin-ops.xlsx"]
+  GEN --> F4["04-platform-crosscutting.xlsx"]
+  GEN --> F5["05-edge-cases.xlsx"]
+  F1 & F2 --> PARTIAL["Claude: PARTIAL\n(API verify + để trống UI cho người)"]
+  F3 --> AUTOWEB["Claude: AUTO-WEB\n(Browser tool trên hpay-admin)"]
+  F4 --> AUTOAPI["Claude: AUTO-API\n(curl trực tiếp backend)"]
+  F5 --> MIX["Claude: mix AUTO-API/AUTO-WEB/HUMAN\ntheo prefix E/A/M"]
+  PARTIAL --> HUM["👤 Người: xác nhận phần UI mobile\n+ mọi case HUMAN (camera/biometric)"]
+</pre>
+
+<h2>2. Cấu trúc thư mục</h2>
+<pre class="mermaid">
+flowchart TB
+  ROOT["D:\\hpay\\docs\\qa\\"]
+  ROOT --> PLAN["plan\\\nimplementation-plan.html\nsolution-architecture.html\n(2 file này — lượt hiện tại)"]
+  ROOT --> TC["test-cases\\\n(giai đoạn SAU khi duyệt — CHƯA tạo)"]
+  TC --> X1["01-personal-user.xlsx"]
+  TC --> X2["02-business-maker-checker.xlsx"]
+  TC --> X3["03-admin-ops.xlsx"]
+  TC --> X4["04-platform-crosscutting.xlsx"]
+  TC --> X5["05-edge-cases.xlsx"]
+  X1 -.-> SH1["sheet: Test Cases\nsheet: Read Me"]
+  X5 -.-> SH5["sheet: Test Cases\nsheet: Read Me"]
+</pre>
+
+<h2>3. Luồng thực thi mẫu — AUTO-API (ví dụ sheet 04, idempotency)</h2>
+<pre class="mermaid">
+sequenceDiagram
+  actor Claude
+  participant XL as 04-platform-crosscutting.xlsx
+  participant BE as hpay-backend API
+
+  Claude->>XL: Đọc dòng TC-PLT-005\n(Steps + Test Data + Expected Result)
+  Claude->>BE: POST /v1/transactions/transfer\nIdempotency-Key: X (lần 1)
+  BE-->>Claude: 202 {refCode: R1}
+  Claude->>BE: POST /v1/transactions/transfer\nIdempotency-Key: X (lần 2, giả lập bấm lại)
+  BE-->>Claude: 202 {refCode: R1} — CÙNG refCode
+  Claude->>Claude: So response 2 lần == Expected Result?
+  Claude->>XL: Ghi Actual Result + Status=Pass/Fail\n+ Executed By=Claude (auto) + Last Run Date
+</pre>
+
+<h2>4. Luồng thực thi mẫu — AUTO-WEB (ví dụ sheet 03, admin duyệt My Tasks)</h2>
+<pre class="mermaid">
+sequenceDiagram
+  actor Claude
+  participant XL as 03-admin-ops.xlsx
+  participant BR as Browser tool
+  participant ADM as hpay-admin (dev server)
+
+  Claude->>XL: Đọc dòng TC-ADM-016 (My Tasks — admin B duyệt)
+  Claude->>BR: preview_start hpay-admin, navigate /tasks
+  BR->>ADM: render danh sách chờ duyệt
+  Claude->>BR: computer click "Duyệt" trên request của admin A
+  BR->>ADM: gọi API duyệt, cập nhật UI
+  Claude->>BR: read_page / get_page_text xác nhận toast "Đã duyệt"
+  Claude->>BR: screenshot → lưu làm Evidence
+  Claude->>XL: Ghi Actual Result + Status + Evidence path
+</pre>
+
+<h2>5. Luồng thực thi mẫu — PARTIAL (ví dụ sheet 01, chuyển P2P trên mobile)</h2>
+<pre class="mermaid">
+flowchart LR
+  C["Claude"] -->|"curl API transfer trực tiếp\n(bỏ qua UI mobile)"| BE["Backend: kiểm tra\ntiền đã trừ/cộng đúng,\nstate machine đúng,\nkhông tạo giao dịch đôi"]
+  BE -->|"đúng"| P["Ghi phần backend:\nStatus tạm = Blocked\n(chờ người xác nhận UI)"]
+  P --> H["👤 Người: mở app thật,\nlàm lại đúng thao tác qua UI,\nxác nhận màn hình/animation/thông báo đúng"]
+  H -->|"UI đúng"| DONE["Status → Pass"]
+  H -->|"UI sai"| FAIL["Status → Fail + Notes mô tả lệch"]
+</pre>
+
+<h2>6. Data model — quan hệ giữa các thực thể</h2>
+<pre class="mermaid">
+erDiagram
+  FEATURE ||--o{ TEST_CASE : "có 1..n test case"
+  EDGE_ID ||--o{ TEST_CASE : "được tham chiếu bởi (cột J)"
+  EDGE_ID ||--|| EDGE_CASE_ROW : "có đúng 1 dòng chốt trong sheet 05"
+  TEST_CASE }o--|| EXECUTOR_TYPE : "gán 1 trong 4 nhãn"
+  TEST_CASE {
+    string test_id PK
+    string feature
+    string role_actor
+    string test_type
+    string priority
+    string related_edge_id FK
+    string executor
+    string status
+  }
+  EDGE_ID {
+    string id PK
+    string source_repo
+    string automated_test_name
+  }
+</pre>
+
+<h2>7. Decisions &amp; trade-offs</h2>
+<table>
+<thead><tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr></thead>
+<tbody>
+<tr><td>Đặt bộ Excel + plan trong <code>hpay-docs</code>, không phải 1 trong 3 repo code</td><td>Đặt trong <code>hpay-backend</code> (repo "nặng" nhất) theo đúng khuôn <code>docs/plans/&lt;feature&gt;/</code> đã dùng cho mọi feature khác</td><td>Test case chạm cả 3 repo trong cùng 1 kịch bản (vd. ký duyệt: mobile UI của checker + API backend); nhét vào 1 repo code sẽ khiến 2 repo còn lại "không biết" bộ test tồn tại. <code>hpay-docs</code> đã đóng vai trò index liên-repo sẵn.</td></tr>
+<tr><td>5 file, khớp đúng 4 nhóm vai trò + 1 sheet edge-case riêng</td><td>Gộp hết vào 1 file nhiều sheet, hoặc chia theo repo code (3 file: backend/mobile/admin)</td><td>Chia theo repo code sẽ làm vỡ tính năng xuyên-repo (1 chức năng thường chạm ≥2 repo) — chia theo vai trò nghiệp vụ (giống functional-overview) giữ đúng góc nhìn người dùng cuối, dễ đối chiếu ngược tài liệu gốc. 5 file riêng thay vì 1 file nhiều sheet để mỗi role-owner (QA mobile, QA admin...) mở đúng 1 file cần, không phải kéo qua nhiều sheet.</td></tr>
+<tr><td>Sheet 05 edge-case tách riêng, không chỉ dựa vào cột Related Edge ID ở sheet 01-04</td><td>Chỉ dùng cột J, không có sheet riêng — tra cứu bằng filter</td><td>Nhiều edge case (race condition, đa-actor, timing) cần mô tả kịch bản dài hơn khuôn 1 dòng "case chức năng" thông thường cho phép, và cần 1 "bảng tổng kiểm" đối chiếu đủ 37/37 ID — filter rải rác qua 4 file dễ sót.</td></tr>
+<tr><td>4 nhãn Executor cứng (AUTO-API/AUTO-WEB/PARTIAL/HUMAN) gán sẵn từ lúc thiết kế, không để "tính sau"</td><td>Không phân loại trước, Claude tự quyết lúc chạy từng case</td><td>Không có simulator mobile là giới hạn cứng đã biết trước — quyết định trước tránh Claude tự nhận "Pass" cho phần UI nó chưa từng thấy; PARTIAL luôn dừng ở Blocked chờ người, không tự suy diễn UI đúng từ response API đúng.</td></tr>
+<tr><td>Không thiết kế framework test tự động trong artifact này</td><td>Tận dụng luôn cơ hội viết script sinh + chạy test tự động cho các case AUTO-*</td><td>Ngoài phạm vi được giao — đã có nỗ lực song song khác lo phần tự động hoá (<code>TestEdge_*</code> + <code>gen-api-test</code>); trộn 2 việc sẽ làm plan phình to và khó review trong 1 lượt duyệt.</td></tr>
+</tbody>
+</table>
+
+<h2>8. Giới hạn đã biết (ghi nhận, không phải bug)</h2>
+<table>
+<thead><tr><th>Giới hạn</th><th>Ảnh hưởng</th></tr></thead>
+<tbody>
+<tr><td>Không có simulator/thiết bị Expo/React Native</td><td>Mọi case UI-mobile tối đa là PARTIAL — không bao giờ tự AUTO cho phần hiển thị</td></tr>
+<tr><td>A-series (admin edge ID) chưa có danh sách ID chính thức tập trung</td><td>Sheet 05 phần A sẽ là nguồn xác lập ID lần đầu ở giai đoạn tạo file — cần đối chiếu kỹ nội dung rải rác trong <code>src/admin/docs/plans/*</code> để không đặt sai ý nghĩa</td></tr>
+<tr><td>Số lượng case (124) là ước lượng sàn</td><td>Có thể tăng ~15-20% khi soạn chi tiết — không ảnh hưởng cấu trúc/schema, chỉ ảnh hưởng effort giai đoạn sau</td></tr>
+</tbody>
+</table>
+
+<footer>HPay Docs · plan cho bộ QA checklist thủ công · repo hpay-docs · 2026-07-29</footer>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:"neutral",flowchart:{curve:"basis"},themeVariables:{fontFamily:"Inter"}});</script>
+</body></html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F10 Hardening — Implementation Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}li{color:var(--n700);margin:4px 0 4px 20px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.warn{border-left:4px solid #D97706;background:#FFFBEB;border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="../f9-fraud-recon-reversal/implementation-plan.html">← F9</a> · f10-hardening · <a href="solution-architecture.html">solution-architecture →</a></div>
+<h1>F10 Hardening — Implementation Plan</h1>
+
+<h2>1. Scope &amp; non-goals</h2>
+<div class="note"><b>F10 không thêm feature nghiệp vụ mới</b> — nó đóng nốt các khoản nợ có chủ đích từ F1–F9 để đạt Definition of Done toàn backend (master plan §4, tuần 5): <b>(a)</b> phủ đủ edge test E01–E20 (thiếu E15, E17 — F9 đã ghi rõ trong non-goals "E15 test đầy đủ ở F10"), <b>(b)</b> k6 load test 100 TPS transfer + kết quả vào README (NFR doc 01 §5), <b>(c)</b> security scan govulncheck + trivy vào CI, <b>(d)</b> <code>cmd/seed</code> hoàn chỉnh theo skill <code>seed-demo-data</code> — nền cho demo và cho M/A phases. Phần nghiệp vụ duy nhất là <b>mock bank callback endpoint</b> — bắt buộc để E15 test được đúng ngữ nghĩa "callback đến 2 lần" (topup hiện là mock đồng bộ, không có đường callback).</div>
+<table>
+<tr><th>Ships</th><th>Không làm ở F10</th></tr>
+<tr><td>Mock bank callback endpoint <code>POST /internal/mock-bank/callback</code> (idempotent theo <code>ref_code</code>, lần 2 ghi <code>bank_statements</code> duplicate cho recon) + <code>TestEdge_E15</code>; <code>TestEdge_E17</code> Redis down (API vẫn ghi DB + outbox, healthz 503 degraded, Redis lên lại → relay tự chạy tiếp); <code>check-edge-tests.sh</code> REQUIRED đủ E01–E20; k6 script <code>scripts/loadtest/k6-transfer.js</code> + Makefile target + kết quả README; CI jobs <code>govulncheck</code> + <code>trivy</code> (image scan trên Dockerfile hiện có); <code>cmd/seed/main.go</code> idempotent đủ 7 mục của skill seed-demo-data + Makefile <code>seed</code>; sửa các finding fatal nếu scan phát hiện</td>
+<td>Bank integration thật / webhook signature verification thật (mock ký bằng shared secret env là đủ cho portfolio); tuning performance sâu nếu k6 đạt mục tiêu; account_lock executor (dời A-phases như F9 đã note); notification; thay đổi schema nghiệp vụ; chaos test ngoài E17</td></tr>
+</table>
+
+<h2>2. Task breakdown</h2>
+<table>
+<tr><th>#</th><th>Task</th><th>Files</th><th>Size</th><th>Depends</th></tr>
+<tr><td>T1</td><td><b>Mock bank callback:</b> <code>POST /internal/mock-bank/callback</code> — body {ref_code, amount, bank_ref}; guard bằng header <code>X-Mock-Bank-Secret</code> (env <code>MOCK_BANK_SECRET</code>, dev default). Lần 1: nếu topup ở status <code>created</code> (trạng thái "chờ bank" — dùng enum có sẵn, KHÔNG thêm giá trị enum; thêm hàm nội bộ <code>CreatePendingTopup</code> tạo topup <code>created</code> chưa post ledger, dùng bởi test/seed) → complete qua <code>ledger.Post</code>, transition guarded <code>WHERE status='created'</code>. Topup đồng bộ hiện tại giữ nguyên — callback tới topup đã <code>completed</code> đi thẳng nhánh duplicate; INSERT <code>bank_statements</code> row (feed recon). Lần 2 cùng <code>ref_code</code>: không đổi tiền, INSERT statement thứ 2 → recon sẽ thấy duplicate (đúng thiết kế E15/E16 của F9). Queries mới trong <code>topup.sql</code>; đăng ký router + errmap</td><td>internal/wallet/callback.go, internal/store/queries/topup.sql, internal/api/router.go, api/openapi.yaml</td><td>M</td><td>—</td></tr>
+<tr><td>T2</td><td><b>TestEdge_E15_DuplicateBankCallback</b> (integration): gọi callback 2 lần cùng ref_code → balance cộng đúng 1 lần, ledger có đúng 1 cặp bút toán, bank_statements có 2 rows, recon RunForDate đánh dấu duplicate</td><td>test/integration/wallet_test.go</td><td>M</td><td>T1</td></tr>
+<tr><td>T3</td><td><b>TestEdge_E17_RedisDownNoDataLoss</b> (integration): trỏ engine tới Redis addr chết → POST transfer vẫn 202, transaction + workflow_instance + outbox row tồn tại trong DB; healthz trả 503 degraded; trỏ lại Redis thật → relay + consumer chạy, transfer hoàn tất. Dùng helpers_test.go hiện có, không nhân bản</td><td>test/integration/redis_down_test.go, test/integration/helpers_test.go</td><td>M</td><td>—</td></tr>
+<tr><td>T4</td><td><b>check-edge-tests.sh:</b> REQUIRED mặc định = đủ E01–E20 (E18 vẫn skip vì CI migrate job cover); cập nhật <code>ci.yml</code> REQUIRED_EDGE_IDS đủ 20 mã</td><td>scripts/check-edge-tests.sh, .github/workflows/ci.yml</td><td>S</td><td>T2,T3</td></tr>
+<tr><td>T5</td><td><b>k6:</b> <code>scripts/loadtest/k6-transfer.js</code> — scenario constant-arrival-rate 100 TPS × 60s: login pool users seed sẵn → POST transfer (Idempotency-Key unique) → poll detail tới completed; thresholds p95 đọc &lt;100ms, transfer e2e &lt;2s, error rate &lt;1%. Makefile <code>loadtest</code>. Chạy trên máy bạn, kết quả dán vào README §Load test</td><td>scripts/loadtest/k6-transfer.js, Makefile, README.md</td><td>M</td><td>T7</td></tr>
+<tr><td>T6</td><td><b>Security CI:</b> job <code>vuln</code>: <code>govulncheck ./...</code>; job <code>image-scan</code>: build Dockerfile + <code>trivy image --exit-code 1 --severity HIGH,CRITICAL</code> (aquasecurity/trivy-action). Sửa finding fatal nếu có (bump deps)</td><td>.github/workflows/ci.yml</td><td>S</td><td>—</td></tr>
+<tr><td>T7</td><td><b>cmd/seed:</b> idempotent theo fixed UUIDs, đủ 7 mục skill seed-demo-data (users 0900000001–04, org DEH Corp + policy v3 + disbursement 1/2 chữ ký, workflow variety failed/compensated/processing_async, fraud flags, recon hôm qua với 3 missing_external cửa sổ 23:58–00:02, money request + split group); mọi số dư = SUM ledger từng ví, assert cuối, fail loudly; timestamps relative now(); in bảng summary. Makefile <code>seed</code></td><td>cmd/seed/main.go, Makefile</td><td>L</td><td>—</td></tr>
+<tr><td>T8</td><td><b>Docs sync:</b> README cập nhật (edge coverage 20/20, load test, security scan, seed hướng dẫn demo); plan files cập nhật nếu lệch</td><td>README.md, docs/plans/f10-hardening/*</td><td>S</td><td>T5</td></tr>
+</table>
+
+<h2>3. Schema changes</h2>
+<p><b>Không có migration mới.</b> E15 dùng bảng <code>transactions</code> (idempotent theo <code>ref_code</code> đã UNIQUE) + <code>bank_statements</code> (đã có từ F9, cho phép nhiều row cùng ref để recon bắt duplicate — xác nhận lại constraint khi code; nếu <code>bank_statements.ref_code</code> đang UNIQUE thì cần migration nới thành non-unique + index thường, sẽ chạy gen-migration và cập nhật plan này).</p>
+
+<h2>4. API changes</h2>
+<table>
+<tr><th>Endpoint</th><th>Đổi</th><th>Lỗi</th></tr>
+<tr><td><code>POST /internal/mock-bank/callback</code></td><td>Mới — mock bank notify topup; guard <code>X-Mock-Bank-Secret</code>; response {ref_code, status, duplicate:bool}</td><td><code>ERR_INVALID_CALLBACK_SECRET</code> 401 · <code>ERR_TXN_NOT_FOUND</code> 404 · <code>ERR_CALLBACK_AMOUNT_MISMATCH</code> 422</td></tr>
+</table>
+<p>openapi.yaml cập nhật trong cùng commit T1. Không endpoint nào khác đổi.</p>
+
+<h2>5. Test plan</h2>
+<table>
+<tr><th>ID</th><th>Test</th><th>Vị trí</th></tr>
+<tr><td>E15</td><td><code>TestEdge_E15_DuplicateBankCallback</code> — cộng tiền 1 lần, 2 statements, recon thấy duplicate</td><td>test/integration/wallet_test.go</td></tr>
+<tr><td>E17</td><td><code>TestEdge_E17_RedisDownNoDataLoss</code> — Redis chết: DB+outbox vẫn ghi, healthz degraded, hồi phục tự chạy tiếp</td><td>test/integration/redis_down_test.go</td></tr>
+<tr><td>—</td><td>Unit: callback secret sai/amount mismatch; seed assert balance=SUM(ledger) chính là self-test của seeder</td><td>internal/wallet/callback_test.go</td></tr>
+<tr><td>E01–E14, E16, E19, E20</td><td>Đã có từ F1–F9 — check-edge-tests.sh giờ enforce đủ danh sách trong CI</td><td>—</td></tr>
+</table>
+
+<h2>6. Rollout &amp; risk</h2>
+<ul>
+<li><b>Callback endpoint dưới <code>/internal/</code></b> — không nằm trong nhóm route user; nếu deploy thật phải chặn ở reverse proxy. Secret qua env, không hardcode.</li>
+<li><b>k6 kết quả phụ thuộc máy</b> — thresholds đặt theo NFR; nếu laptop không đạt 100 TPS, ghi số thật vào README kèm phân tích bottleneck, không sửa threshold cho "xanh".</li>
+<li><b>trivy có thể fail vì base image cũ</b> — xử lý bằng bump image/deps, là mục đích của phase này.</li>
+<li><b>Seeder chạy trên DB dev</b> — idempotent bằng fixed UUID nên re-run an toàn; không bao giờ chạy trên DB có dữ liệu thật (guard: từ chối chạy nếu <code>ENV=production</code>).</li>
+<li>Merge nửa chừng không phá gì: mọi task độc lập với runtime hiện có trừ T1 (endpoint mới, additive).</li>
+</ul>
+
+<h2>7. Execution checklist</h2>
+<ol>
+<li>gen-feature-plan ✔ (tài liệu này) → <b>chờ duyệt</b></li>
+<li>T1 code callback (+ gen-migration <b>chỉ nếu</b> bank_statements cần nới UNIQUE) → sqlc generate sạch → build</li>
+<li>T2, T3 tests (gen-api-test conventions, map E15/E17) → T4 script</li>
+<li>T6 CI security → T7 seed → T5 k6 (cần seed users trước)</li>
+<li>fintech-review → VERDICT READY → bạn chạy verify → commit</li>
+</ol>
+
+<footer style="margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px">F10 Hardening · implementation plan v1 · 18/07/2026</footer>
+</div></body>
+</html>

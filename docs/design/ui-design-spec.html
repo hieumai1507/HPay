@@ -1,0 +1,321 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>UI Design Spec — HPay (nguồn dựng Figma)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:960px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:20px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin:8px 0 6px}
+h2{font-size:21px;font-weight:700;margin:44px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--n200);letter-spacing:-.01em}
+h3{font-size:16.5px;font-weight:600;margin:26px 0 8px}
+p{margin:10px 0;color:var(--n700)}b,strong{color:var(--n900)}li{color:var(--n700);margin:4px 0}
+blockquote{border-left:4px solid var(--brand);background:var(--brand-50);margin:14px 0;padding:12px 18px;border-radius:0 12px 12px 0}blockquote p{margin:4px 0}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200);display:block;overflow-x:auto}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500);white-space:nowrap}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top;min-width:120px}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+pre{background:#0B1220;color:#E2E8F0;border-radius:14px;padding:18px 20px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+a{color:var(--brand)}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+</style></head><body><div class="wrap">
+<div class="crumb"><a href="../index.html">← HPay Docs</a></div>
+<h1 id="ui-design-spec-HPay-nguon-dung-figma">UI Design Spec — HPay (nguồn dựng Figma)</h1>
+<blockquote>
+<p>Spec này là bản thiết kế "bằng chữ" đủ chi tiết để dựng Figma file chuẩn: design tokens → components → screens. Khi code FE, dùng Figma MCP (<code>get_design_context</code>, <code>get_variable_defs</code>) đọc ngược từ Figma vào code — vì vậy <strong>tên token và component trong Figma phải đặt đúng như spec này</strong> để mapping tự động.</p>
+</blockquote>
+<h2 id="1-cau-truc-figma-file-e-xuat">1. Cấu trúc Figma file đề xuất</h2>
+<pre><code>HPay Design
+├── Page: 🎨 Foundations      # color/type/spacing variables + styles
+├── Page: 🧩 Components        # component library (2 theme: Mobile, Admin)
+├── Page: 📱 Mobile            # frames 390×844 (iPhone 15) — flow theo section
+├── Page: 🖥 Admin             # frames 1440×900 — mỗi route 1 section
+└── Page: 🔀 Flows             # prototype wiring + user journeys
+</code></pre>
+<p>Figma Variables đặt theo tên token dưới đây (collection <code>color</code>, <code>space</code>, <code>radius</code>, <code>type</code>). Component đặt tên <code>Category/Name/Variant</code> (ví dụ <code>Button/Primary/Default</code>).</p>
+<h2 id="2-design-tokens">2. Design Tokens</h2>
+<h3 id="21-mau-collection-color">2.1. Màu (collection <code>color</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Light</th>
+<th>Vai trò</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>color/brand/400</code></td>
+<td>#1ECBE1</td>
+<td>Accent chủ đạo — hero, gradient BalanceCard, icon active (không dùng làm nền nút chữ trắng)</td>
+</tr>
+<tr>
+<td><code>color/brand/600</code></td>
+<td>#0E90A3</td>
+<td>Primary (nút chính, link) — dẫn xuất đậm của brand #1ECBE1, đạt AA chữ trắng</td>
+</tr>
+<tr>
+<td><code>color/brand/700</code></td>
+<td>#0B7181</td>
+<td>Pressed</td>
+</tr>
+<tr>
+<td><code>color/brand/50</code></td>
+<td>#E6FAFD</td>
+<td>Nền badge/chip brand</td>
+</tr>
+<tr>
+<td><code>color/success/600</code></td>
+<td>#16A34A</td>
+<td>Giao dịch thành công, matched</td>
+</tr>
+<tr>
+<td><code>color/warning/600</code></td>
+<td>#D97706</td>
+<td>pending_approval, manual_review</td>
+</tr>
+<tr>
+<td><code>color/danger/600</code></td>
+<td>#DC2626</td>
+<td>failed, fraud, rejected</td>
+</tr>
+<tr>
+<td><code>color/info/600</code></td>
+<td>#0891B2</td>
+<td>processing, running</td>
+</tr>
+<tr>
+<td><code>color/neutral/900→50</code></td>
+<td>thang xám 10 bậc</td>
+<td>Text, border, nền</td>
+</tr>
+</tbody>
+</table>
+<p>Trạng thái giao dịch map cứng 1-1 với màu (dùng cả 2 FE — không tự chế):
+<code>completed=success</code>, <code>processing/running=info</code>, <code>pending_approval/manual_review=warning</code>, <code>failed/rejected/expired=danger</code>, <code>created=neutral</code>, <code>reversed/compensated=neutral+icon ↩</code>.</p>
+<h3 id="22-typography-collection-type">2.2. Typography (collection <code>type</code>)</h3>
+<p>Font: <strong>Inter</strong> (số dạng tabular-nums cho mọi con số tiền — bắt buộc, tránh nhảy cột).</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Size/Line</th>
+<th>Dùng</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type/display</code></td>
+<td>32/40 Bold</td>
+<td>Số dư ở Home</td>
+</tr>
+<tr>
+<td><code>type/h1</code></td>
+<td>24/32 SemiBold</td>
+<td>Tiêu đề màn</td>
+</tr>
+<tr>
+<td><code>type/h2</code></td>
+<td>18/26 SemiBold</td>
+<td>Section</td>
+</tr>
+<tr>
+<td><code>type/body</code></td>
+<td>15/22 Regular</td>
+<td>Mặc định</td>
+</tr>
+<tr>
+<td><code>type/caption</code></td>
+<td>13/18 Regular</td>
+<td>Meta, timestamp</td>
+</tr>
+<tr>
+<td><code>type/mono</code></td>
+<td>13/18 JetBrains Mono</td>
+<td>ref_code, JSON viewer (admin)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-spacing-radius">2.3. Spacing &amp; radius</h3>
+<p><code>space</code>: 4, 8, 12, 16, 20, 24, 32, 40. <code>radius</code>: sm 8, md 12, lg 16, full 999. Mobile card dùng <code>radius/lg</code>, admin dùng <code>radius/md</code>.</p>
+<h2 id="3-component-library-at-ten-ung-e-mcp-map">3. Component Library (đặt tên đúng để MCP map)</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Variants</th>
+<th>Ghi chú thiết kế</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Button</code></td>
+<td>Primary/Secondary/Ghost/Danger × Default/Pressed/Disabled/Loading</td>
+<td>Loading = spinner + giữ width (không nhảy layout). Nút tạo giao dịch có variant <code>Loading</code> bắt buộc trong prototype</td>
+</tr>
+<tr>
+<td><code>AmountInput</code></td>
+<td>Default/Focus/Error</td>
+<td>Số lớn giữa màn, ngăn cách nghìn, đơn vị ₫ mờ bên phải; error text dưới</td>
+</tr>
+<tr>
+<td><code>AmountDisplay</code></td>
+<td>size sm/md/display; sign +/−</td>
+<td>Tiền vào màu success + dấu +, tiền ra neutral-900 + dấu −</td>
+</tr>
+<tr>
+<td><code>StatusBadge</code></td>
+<td>8 trạng thái ở §2.1</td>
+<td>Chip nền màu-50, chữ màu-600, dot trước chữ</td>
+</tr>
+<tr>
+<td><code>TxnListItem</code></td>
+<td>in/out/pending</td>
+<td>Avatar/icon loại giao dịch, tên đối tác, note 1 dòng ellipsis, phải: AmountDisplay + StatusBadge</td>
+</tr>
+<tr>
+<td><code>TimelineStep</code></td>
+<td>done/active/failed/waiting</td>
+<td>Dùng cho txn detail (mobile, public view) và workflow monitor (admin, full view)</td>
+</tr>
+<tr>
+<td><code>OTPInput</code></td>
+<td>6 ô</td>
+<td>Auto-advance, paste cả chuỗi, đếm ngược TTL + nút resend disabled tới hết cooldown</td>
+</tr>
+<tr>
+<td><code>PolicyTierRow</code></td>
+<td>view/edit</td>
+<td>"Level 1 — cần 2 chữ ký" + stepper; dùng ở Admin policies và Mobile (view-only trong chi tiết lệnh org)</td>
+</tr>
+<tr>
+<td><code>ApprovalCard</code></td>
+<td>pending/mine-done/finalized</td>
+<td>Lệnh chờ duyệt: số tiền lớn, người tạo, đích chi, progress "1/2 đã duyệt"</td>
+</tr>
+<tr>
+<td><code>KYCPhotoFrame</code></td>
+<td>id-front/selfie × empty/preview/error</td>
+<td>Khung overlay hướng dẫn (viền CMND / oval mặt)</td>
+</tr>
+<tr>
+<td><code>DataTable</code> (admin)</td>
+<td>—</td>
+<td>Header sticky, row hover, cột số right-align tabular</td>
+</tr>
+<tr>
+<td><code>JSONViewer</code> (admin)</td>
+<td>collapsed/expanded</td>
+<td>Mono, key màu brand, copy button</td>
+</tr>
+<tr>
+<td><code>KPICard</code> (admin)</td>
+<td>default/alert</td>
+<td>Số to + delta so hôm qua</td>
+</tr>
+<tr>
+<td><code>EmptyState</code> / <code>ErrorState</code> / <code>Skeleton</code></td>
+<td>per-list</td>
+<td>Mọi list bắt buộc có đủ 3 state này trong Figma</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-mobile-screens-390844-24-frames">4. Mobile Screens (390×844) — 24 frames</h2>
+<h3 id="flow-auth-kyc-6">Flow Auth &amp; KYC (6)</h3>
+<ol>
+<li><strong>Onboarding</strong> — 3 slide value props, CTA Đăng ký.</li>
+<li><strong>Register</strong> — phone, password (strength meter), checkbox điều khoản.</li>
+<li><strong>OTP</strong> — OTPInput, đếm ngược 120s.</li>
+<li><strong>KYC Intro</strong> — 2 bước cần làm, lưu ý ánh sáng.</li>
+<li><strong>KYC Capture</strong> ×2 — camera full-screen + KYCPhotoFrame overlay, nút chụp lại/dùng ảnh.</li>
+<li><strong>KYC Status</strong> — 3 biến thể: pending (illustration + "AI đang kiểm tra"), verified, manual_review ("1–2 giờ làm việc").</li>
+</ol>
+<h3 id="flow-chinh-10">Flow chính (10)</h3>
+<ol>
+<li><strong>Home</strong> — Header chào + avatar; Card số dư (AmountDisplay display size, nút ẩn/hiện 👁 — mặc định ẨN khi mở app); 4 quick action (Nạp, Chuyển, QR, Lịch sử); "Giao dịch gần đây" 5 TxnListItem.</li>
+<li><strong>Transfer: Người nhận</strong> — search SĐT (debounce, hiện tên masked khi tìm thấy), nút scan QR, danh bạ gần đây.</li>
+<li><strong>Transfer: Số tiền</strong> — AmountInput + số dư khả dụng + note; validate hạn mức realtime (hiện "vượt hạn mức KYC tier" nếu có).</li>
+<li><strong>Transfer: Xác nhận</strong> — bảng tóm tắt (người nhận, số tiền, phí, tổng), cảnh báo nếu người nhận lần đầu; nút "Chuyển tiền" (Loading variant khi bấm — disable ngay, M01).</li>
+<li><strong>Transfer: Processing</strong> — spinner + timeline rút gọn (Đã gửi → Đang kiểm tra → Hoàn tất); copy đúng trạng thái workflow.</li>
+<li><strong>Transfer: Result</strong> — 3 biến thể: success (✓ + confetti nhẹ), failed (lý do bằng error map + nút thử lại), pending_approval ("Chờ doanh nghiệp phê duyệt").</li>
+<li><strong>Topup</strong> ×2 — nhập tiền → OTP → result (tái dùng component).</li>
+<li><strong>History</strong> — filter chips (Tất cả/Vào/Ra/Đang xử lý), list nhóm theo ngày, FlashList.</li>
+<li><strong>Txn Detail</strong> — AmountDisplay, StatusBadge, TimelineStep list (public view), ref_code mono + copy, nút "Báo cáo sự cố".</li>
+<li><strong>QR nhận tiền</strong> — QR lớn nền trắng, tên + phone masked, nút share/save.</li>
+</ol>
+<h3 id="flow-business-6">Flow Business (6)</h3>
+<ol>
+<li><strong>Org Switcher</strong> — trong Account: chọn ngữ cảnh cá nhân/tổ chức (role hiện rõ: Maker/Checker L1…).</li>
+<li><strong>Maker: Tạo lệnh chi</strong> — form người nhận + tiền + note; hiển thị PolicyTierRow (view-only) cho biết lệnh sẽ cần ai duyệt.</li>
+<li><strong>Maker: Trạng thái lệnh</strong> — ApprovalCard + progress từng level, ai đã duyệt lúc nào.</li>
+<li><strong>Checker: Approval Inbox</strong> — badge số lệnh chờ; list ApprovalCard; empty state "Không có lệnh chờ".</li>
+<li><strong>Checker: Chi tiết lệnh</strong> — đầy đủ thông tin + lịch sử actions; 2 nút Duyệt (primary) / Từ chối (danger, bắt buộc reason).</li>
+<li><strong>Checker: OTP xác nhận</strong> — OTPInput; sau khi duyệt hiện kết quả "Đã duyệt — chờ level 2" hoặc "Hoàn tất, giao dịch đang thực hiện" (M09 conflict state cũng vẽ ở đây).</li>
+</ol>
+<h3 id="khac-2">Khác (2)</h3>
+<ol>
+<li><strong>Account</strong> — profile, KYC tier + hạn mức, bảo mật (đổi pass, biometric toggle, thiết bị đăng nhập), Business Wallet entry.</li>
+<li><strong>Locked/Idle</strong> — màn biometric khi idle 5 phút.</li>
+</ol>
+<h2 id="5-admin-screens-1440900-12-frames">5. Admin Screens (1440×900) — 12 frames</h2>
+<ol>
+<li><strong>Login</strong> — email + password + (mock) 2FA.</li>
+<li><strong>Dashboard</strong> — 4 KPICard, chart volume 24h, 4 panel "cần chú ý" (§4.1 doc admin).</li>
+<li><strong>KYC Queue</strong> — 3 tab, DataTable (user, score, verdict, tuổi hồ sơ), phím tắt hint footer.</li>
+<li><strong>KYC Detail</strong> — split: trái 2 ảnh zoom được, phải info + ai_reasons checklist + form action; thanh queue navigation (J/K) trên cùng.</li>
+<li><strong>Fraud Queue</strong> — DataTable + row expand reasons; bulk select "Mark safe".</li>
+<li><strong>Fraud Detail Dialog</strong> — hệ quả chọn radio: clear / lock account / reverse — mỗi lựa chọn có mô tả hậu quả.</li>
+<li><strong>Workflow Monitor</strong> — filter bar (status, definition, stuck&gt;N phút), DataTable, cột current_step + tuổi.</li>
+<li><strong>Workflow Instance Detail</strong> — header txn info; timeline dọc TimelineStep full view; mỗi step expand JSONViewer input/output; action bar theo <code>allowed_actions</code>.</li>
+<li><strong>Recon Runs</strong> — bảng ngày, matched/mismatched badges, nút trigger run.</li>
+<li><strong>Recon Detail</strong> — KPI matched %, DataTable items filter theo result, panel "AI tóm tắt", nút Export.</li>
+<li><strong>Orgs &amp; Policies</strong> — master-detail; PolicyTierRow edit mode + banner cảnh báo policy snapshot (E09).</li>
+<li><strong>Audit Log</strong> — DataTable + filter, read-only.</li>
+</ol>
+<h2 id="6-ux-rules-chung-ap-cho-moi-screen">6. UX rules chung (áp cho mọi screen)</h2>
+<ul>
+<li>Mọi số tiền: tabular-nums, không bao giờ wrap, âm/dương có dấu rõ.</li>
+<li>Mọi list: đủ Skeleton/Empty/Error state (đã có component).</li>
+<li>Mọi action nguy hiểm: confirm dialog nêu hậu quả cụ thể, không dùng chữ chung chung "Bạn có chắc?".</li>
+<li>Mọi trạng thái async: hiển thị đúng ngôn ngữ trạng thái hệ thống (§2.1 mapping) — không sáng tác trạng thái mới ở FE.</li>
+<li>Timestamp: relative (&lt; 24h) + absolute tooltip; múi giờ Asia/Ho_Chi_Minh.</li>
+<li>Accessibility: contrast AA, touch target ≥ 44px (mobile), focus ring rõ (admin).</li>
+</ul>
+<h2 id="7-quy-trinh-lam-viec-voi-figma-mcp">7. Quy trình làm việc với Figma MCP</h2>
+<ol>
+<li>Dựng Foundations (variables đúng tên token §2) → Components (§3) → Screens (§4–5).</li>
+<li>Khi code: <code>get_variable_defs</code> → sinh <code>tokens.ts</code> / Tailwind config; <code>get_design_context</code> từng frame → dựng screen; <code>get_screenshot</code> để so khớp.</li>
+<li>Component code đặt tên trùng component Figma → dùng Code Connect map nếu cần.</li>
+</ol>
+
+<h2>8. Bổ sung v2.1 — Request Money · Split Bill · Vaults · My Tasks</h2>
+<p>Các tính năng thêm từ <a href="../architecture/04-feature-extensions.html">doc 04</a>. Mockup tương ứng: <code>mockups/06-requests-vaults.html</code> (màn 25–31 mobile + A11 admin).</p>
+<h3>Components mới</h3>
+<table>
+<thead><tr><th>Component</th><th>Variants</th><th>Ghi chú thiết kế</th></tr></thead>
+<tbody>
+<tr><td><code>RequestCard</code></td><td>incoming/outgoing × pending/paid/declined/expired</td><td>Số tiền lớn, lý do 1 dòng, countdown hết hạn; incoming có 2 nút Trả ngay / Từ chối</td></tr>
+<tr><td><code>SplitAvatarStack</code></td><td>—</td><td>Avatar chồng lệch −12px, người chưa trả opacity .45; kèm progress bar tổng đã thu</td></tr>
+<tr><td><code>VaultCard</code></td><td>progress/new</td><td>Icon emoji trong tile màu nhạt, progress bar theo % mục tiêu, số tiền tabular</td></tr>
+<tr><td><code>RoundUpToggle</code></td><td>on/off</td><td>Card giải thích kèm ví dụ tính tròn thực tế + switch</td></tr>
+<tr><td><code>TaskRow</code> (admin)</td><td>reversal/account_lock/policy_change</td><td>Chip loại theo màu danger/warning, panel chi tiết expand kèm 2 nút ký duyệt/từ chối</td></tr>
+</tbody>
+</table>
+<h3>Screens mới</h3>
+<table>
+<thead><tr><th>#</th><th>Màn</th><th>Điểm chính</th></tr></thead>
+<tbody>
+<tr><td>25</td><td>Request Money — tạo yêu cầu</td><td>Chọn người → số tiền → lý do; TTL 72h hiển thị rõ</td></tr>
+<tr><td>26</td><td>Request Inbox</td><td>2 tab "Cần tôi trả / Tôi đã gửi", badge số lượng, swipe-to-pay</td></tr>
+<tr><td>27</td><td>Trả yêu cầu</td><td>Prefill từ request → thẳng màn confirm engine P2P; xử lý case yêu cầu vừa hết hạn (E19)</td></tr>
+<tr><td>28</td><td>Split Bill — setup</td><td>Chia đều/tùy chỉnh, preview "sẽ tạo N yêu cầu"</td></tr>
+<tr><td>29</td><td>Split Bill — tracking</td><td>SplitAvatarStack + progress đã thu, nút nhắc từng người</td></tr>
+<tr><td>30</td><td>Vaults — danh sách</td><td>Hero tổng để dành (gradient xanh lá), VaultCard, RoundUpToggle</td></tr>
+<tr><td>31</td><td>Vault detail</td><td>Progress ring %, bỏ vào/rút về, lịch sử round-up; ghi chú vault_move là giao dịch có sổ cái</td></tr>
+<tr><td>A11</td><td>Admin My Tasks</td><td>Queue approval_requests (reversal/lock/policy); nguyên tắc Maker ≠ Checker hiển thị ngay trên UI</td></tr>
+</tbody>
+</table>
+
+<footer>HPay docs · sinh tự động từ <code>design/ui-design-spec.md</code> bằng <code>tools/build-html.py</code></footer>
+</div></body></html>

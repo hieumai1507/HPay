@@ -1,0 +1,153 @@
+Implementation Plan — M3 Core Screens & Flows (hpay-mobile)
+📋 Implementation Plan — M3 Core Screens & Flows mobile
+Phase xây dựng toàn bộ màn hình chính: Home (hiện số dư, quick actions, giao dịch gần đây), History (lọc theo loại, phân trang cursor), Topup (nạp tiền mock bank), P2P Transfer (chuyển khoản async qua workflow engine), và Txn Detail (timeline xem trạng thái giao dịch).
+Dependency backend: F2 (Auth) + F3 (Wallet/Topup) + F5 (Transfer/Fee) + F8 (KYC) — đã hoàn thành.
+1. Scope & non-goals
+Ships
+Home Screen:
+Header chào + avatar user (lấy tên từ session.user.full_name ).
+Balance Card: AmountDisplay size display, nút ẩn/hiện (👁) — mặc định ẨN khi mở app ( balanceVisible Zustand store, persist vào MMKV/AsyncStorage).
+4 Quick actions: Nạp tiền, Chuyển tiền, QR, Lịch sử — điều hướng tương ứng.
+"Giao dịch gần đây": 5 TxnListItem gần nhất lấy từ GET /v1/transactions , nút "Xem tất cả" → tab History.
+Pull-to-refresh refetch cả balance + recent txns.
+History Screen:
+Filter chips: Tất cả / Tiền vào / Tiền ra / Đang xử lý (client-side filter trên dữ liệu đã fetch).
+Danh sách nhóm theo ngày (section headers: "Hôm nay", "Hôm qua", "12/07/2026").
+Infinite scroll với cursor-based pagination ( next_cursor + next_cursor_id ) dùng React Query useInfiniteQuery .
+Skeleton / Empty / Error states đầy đủ (UX rule §6).
+Topup Flow (2 bước):
+AmountInput screen: Component AmountInput mới (số lớn giữa màn, ngăn cách nghìn, đơn vị ₫ mờ bên phải). Validate: > 0 và ≤ KYC limit (hiện thông báo "Vượt hạn mức").
+Result screen: Gọi POST /v1/wallets/topup (synchronous). Hiển thị kết quả thành công (✓) hoặc lỗi. Dùng useIdempotencyKey bảo vệ double-tap (M01).
+P2P Transfer Flow (4 bước):
+Chọn người nhận: Nhập SĐT (debounce 500ms), tìm kiếm tên masked khi tìm thấy. Hiện danh bạ gần đây (top 5 từ history).
+Nhập số tiền: AmountInput + hiện số dư khả dụng + trường ghi chú (note). Validate hạn mức KYC realtime. Gọi GET /v1/fees/preview để tính phí.
+Xác nhận: Tóm tắt (người nhận, số tiền, phí, tổng). Cảnh báo nếu là người nhận lần đầu. Nút "Chuyển tiền" (Loading variant, disable ngay khi bấm — M01). Gọi POST /v1/transactions/transfer → 202 Accepted .
+Processing → Result: Sau khi submit, chuyển sang màn processing có spinner + timeline rút gọn. Dùng PollingTransactionWatcher (đã có ở M1) poll GET /v1/transactions/{refCode}/timeline . Kết quả 3 biến thể: success (✓), failed (lý do + nút thử lại), timeout/processing ("Giao dịch đang được xử lý, vui lòng kiểm tra sau").
+Txn Detail Screen:
+AmountDisplay + StatusBadge + TimelineStep list (public view).
+ref_code hiển thị mono + nút copy.
+Giao dịch thông tin đầy đủ: loại, trạng thái, phí, note, thời gian.
+UI Components mới:
+AmountInput — input nhập số tiền full-screen style, live-format dùng money.ts .
+TxnListItem — item giao dịch trong list (avatar/icon + tên + note + amount + status).
+TimelineStep — step trong timeline (done/active/failed/waiting variants).
+FilterChips — nhóm chip lọc theo trạng thái/loại giao dịch.
+EmptyState / ErrorState / Skeleton — 3 states bắt buộc cho mọi list.
+BalanceCard — card hiện số dư, nút ẩn/hiện.
+Non-goals
+QR nhận tiền (M4) — tab QR giữ placeholder.
+Request Money / Split Bill (M4).
+Business Wallet maker/checker flow (M5).
+Account screen chi tiết (settings, đổi pass, biometric toggle — M4/M5).
+2. Data flow & API mapping
+graph LR
+subgraph "React Query Hooks"
+A["useWallets()"] -->|GET /v1/wallets| B["{ wallets: Wallet[] }"]
+C["useTransactions()"] -->|GET /v1/transactions?cursor&cursor_id| D["{ transactions[], next_cursor, next_cursor_id }"]
+E["useFeePreview(amount)"] -->|GET /v1/fees/preview?amount| F["{ amount, fee, total }"]
+G["useTimeline(refCode)"] -->|GET /v1/transactions/{refCode}/timeline| H["{ ref_code, txn_status, timeline }"]
+I["useTxnDetail(refCode)"] -->|GET /v1/transactions/{refCode}| J["Transaction detail"]
+end
+subgraph "React Query Mutations"
+K["useTopup()"] -->|POST /v1/wallets/topup| L["TopupResult"]
+M["useTransfer()"] -->|POST /v1/transactions/transfer| N["TransferResult (202)"]
+end
+Response shapes (from backend code analysis)
+Endpoint Key fields Notes
+GET /v1/wallets wallets[].{id, currency, purpose, label, balance} Main wallet = purpose:"main" . Balance = int64 minor units (VND).
+GET /v1/transactions transactions[].{id, ref_code, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, created_at, completed_at} Keyset pagination: next_cursor (RFC3339Nano) + next_cursor_id (UUID). Page size = 20.
+POST /v1/wallets/topup {ref_code, status, amount, new_balance, created_at, duplicate?} Sync — completes immediately. Duplicate idem-key → 200 + original.
+POST /v1/transactions/transfer {ref_code, status, amount, fee, total, created_at, duplicate?} Async — returns 202 . Client must poll timeline.
+GET /v1/fees/preview?amount {amount, fee, total} Fee based on caller's KYC tier.
+GET /v1/transactions/{refCode}/timeline {ref_code, txn_status, timeline: {instance_status, current_step, steps[]}} Steps: {step, status, attempt, finished_at?} . Settled when instance_status ∈ {completed, failed, compensated} .
+GET /v1/transactions/{refCode} Full Transaction row (owner-only, 404 otherwise) + direction, counterparty_name, counterparty_phone Dùng cho Txn Detail screen.
+GET /v1/users/lookup?phone= {found, masked_name} Backend m3-api-support. 404 = không tìm thấy; 429 = rate-limited.
+GET /v1/users/me {user:{..., kyc_status}, txn_limit} Backend m3-api-support. Nguồn duy nhất cho limit hiển thị.
+Ghi chú: GET /v1/transactions items cũng có thêm direction/counterparty_* (masked); timeline có thêm failure_code? khi failed.
+3. Task breakdown
+# Task Files Size Depends
+T1 Xây dựng API hooks layer : useWallets , useTransactions (infinite), useTopup (mutation), useTransfer (mutation), useFeePreview , useTimeline , useTxnDetail src/features/wallet/hooks/ L M1 (client, polling)
+T2 Xây dựng UI components mới : AmountInput , TxnListItem , TimelineStep , FilterChips , BalanceCard , EmptyState , ErrorState , Skeleton src/ui/ L M1 tokens
+T3 Xây dựng Home screen : balance card, quick actions, recent txns (5 items), pull-to-refresh app/(main)/home.tsx , src/features/wallet/components/ L T1, T2
+T4 Xây dựng History screen : filter chips, grouped list by date, infinite scroll cursor pagination, empty/error/skeleton app/(main)/history.tsx , src/features/wallet/components/TransactionList.tsx L T1, T2
+T5 Xây dựng Topup flow : AmountInput → Result. Mutation useTopup + idempotency key + auto-invalidate wallet balance app/(main)/topup/ (amount.tsx, result.tsx) M T1, T2
+T6 Xây dựng Transfer flow : Receiver → Amount → Confirm → Processing/Result. Debounce search, fee preview, polling timeline, 3 result variants app/(main)/transfer/ (receiver.tsx, amount.tsx, confirm.tsx, processing.tsx, result.tsx) XL T1, T2
+T7 Xây dựng Txn Detail screen : Amount + Status + Timeline steps + ref_code copy + thông tin chi tiết app/(main)/txn-detail.tsx M T1, T2
+T8 Cập nhật tab layout : icon + label tiếng Việt, badge notification count (groundwork), QR placeholder, Account placeholder app/(main)/_layout.tsx S T3
+T9 Viết unit tests : hooks (mocked fetch), components (TxnListItem render, AmountInput formatting), edge cases (M01 double-tap, M02 poll timeout, M03 partial failure copy) src/features/wallet/__tests__/ , src/ui/__tests__/ L T1–T7
+4. Edge cases (from doc 02 §6)
+Edge Scenario Handling
+M01 User double-tap nút "Chuyển tiền" hoặc "Nạp tiền" useIdempotencyKey cùng key → backend idempotent, FE disable nút ngay khi bấm (Loading variant). Mutation onMutate set isSubmitting=true .
+M02 Transfer 202 nhưng poll timeout 30s Hiện "Giao dịch đang được xử lý" (không nói "thất bại"). PollingTransactionWatcher trả {kind:'timeout'} → navigate to Result(processing).
+M03 Transfer workflow fails (e.g. fraud, balance race) Poll thấy instance_status='failed' → navigate Result(failed) + hiện failure_reason bằng error map. Nút "Thử lại" generate new idem key.
+M06 Tiền luôn là BigInt, không dùng Number/parseInt Tất cả amount fields parse qua parseAmountToBigInt → truyền xuống API dạng int64. Render qua AmountDisplay / formatAmountVND .
+E01 Idempotency-Key replay BE trả 200 + original txn → FE không tạo giao dịch mới, hiện kết quả ban đầu.
+New Balance ẩn khi mở app balanceVisible store default=false. Toggle lưu persist. AmountDisplay hiện "••••••" khi ẩn.
+5. Routing structure
+app/
+├── (main)/
+│ ├── _layout.tsx ← Tab navigator (cập nhật icons + labels)
+│ ├── home.tsx ← Home screen (thay thế placeholder)
+│ ├── history.tsx ← History screen (thay thế placeholder)
+│ ├── qr.tsx ← QR placeholder (giữ nguyên)
+│ ├── account.tsx ← Account placeholder (giữ nguyên)
+│ ├── topup/
+│ │ ├── _layout.tsx ← Stack navigator cho topup flow
+│ │ ├── amount.tsx ← Nhập số tiền nạp
+│ │ └── result.tsx ← Kết quả nạp tiền
+│ ├── transfer/
+│ │ ├── _layout.tsx ← Stack navigator cho transfer flow
+│ │ ├── receiver.tsx ← Chọn người nhận
+│ │ ├── amount.tsx ← Nhập số tiền + note
+│ │ ├── confirm.tsx ← Xác nhận giao dịch
+│ │ └── result.tsx ← Processing → Result
+│ └── txn-detail.tsx ← Chi tiết giao dịch (param: refCode)
+6. Schema changes
+None — client-only phase. Backend APIs đã sẵn sàng.
+7. API changes
+Tiêu thụ các endpoint đã có của Backend:
+GET /v1/wallets : Lấy danh sách ví (balance)
+GET /v1/transactions : Lịch sử giao dịch (cursor pagination)
+GET /v1/transactions/{refCode} : Chi tiết giao dịch
+GET /v1/transactions/{refCode}/timeline : Timeline workflow
+POST /v1/wallets/topup : Nạp tiền (sync)
+POST /v1/transactions/transfer : Chuyển khoản P2P (async 202)
+GET /v1/fees/preview?amount : Xem trước phí
+GET /v1/users/lookup?phone= : Xác nhận người nhận (masked name) — mới, backend m3-api-support
+GET /v1/users/me : KYC status + txn_limit — mới, backend m3-api-support
+Sau khi backend merge: chạy npm run gen:api để cập nhật src/api/schema.d.ts trước khi code T1.
+8. Test plan
+Edge Test (jest) Nội dung
+M01 TestEdge_M01_DoubleTapTransfer_SingleRequest Bấm nút "Chuyển tiền" 2 lần nhanh → mutation chỉ gọi 1 lần, cùng idempotency key
+M02 TestEdge_M02_TransferPollTimeout_ProcessingCopy Mock poll luôn trả "running" → timeout → hiển thị "đang xử lý" chứ không hiện "thất bại"
+M03 TestEdge_M03_TransferFailed_ErrorMapDisplay Mock poll trả "failed" → hiển thị lý do cụ thể từ error map, nút thử lại visible
+M06 TestEdge_M06_BigIntMoney_NoPrecisionLoss Kiểm tra parse/format amounts lớn (99.999.999.999 VND) qua BigInt, không mất precision
+— Test_AmountInput_LiveFormatting Nhập "1234567" → hiển thị "1.234.567", paste "50000" → "50.000"
+— Test_TxnListItem_DirectionSign Txn sender=myWallet → sign="out" (−), receiver=myWallet → sign="in" (+)
+— Test_BalanceCard_HideToggle Default ẩn (••••••), tap toggle → hiện số dư, tap lại → ẩn
+— Test_FilterChips_ClientFilter Chips Tiền vào → chỉ hiện in txns, Đang xử lý → chỉ hiện processing/running
+— Test_CursorPagination_NextPage Khi scroll đến cuối, useInfiniteQuery fetch trang tiếp theo đúng cursor
+9. Dependencies cần cài thêm
+Không cần thêm dependency mới. Toàn bộ UI dùng React Native core components + design tokens có sẵn. React Query, Zustand, expo-crypto đã có. FlashList có thể cân nhắc sau nếu list > 100 items gây lag — hiện tại dùng FlatList RN core là đủ.
+10. Rollout & risk
+Balance visibility: Mặc định ẨN khi mở app (fintech best practice). Lưu preference persist để giữ qua session.
+Receiver search: Dùng GET /v1/users/lookup?phone= (backend phase m3-api-support ) — trả {found, masked_name} , rate-limited. KHÔNG có fallback dry-run.
+Recent contacts (divergence khi implement): counterparty_phone trong history là dữ liệu ĐÃ MASKED nên không thể dùng để prefill lệnh chuyển mới. v1 dùng store session-scoped (ghi lại {phone đầy đủ do chính user nhập, masked_name} sau mỗi transfer thành công — src/features/wallet/recent-contacts.ts ). Danh bạ bền vững cần contract pay-by-counterparty-token → backlog M4.
+Offline/slow network: React Query staleTime:30s + retry 2 lần đã có. Mutation không retry (idem key bảo vệ).
+KYC limit hiển thị: Lấy txn_limit từ GET /v1/users/me (backend m3-api-support ) — KHÔNG hardcode map client-side (map cũ trong plan này đã lệch server: manual_review cũng 5M, auto_approved cũng 100M).
+Failure reason (M03): Đọc failure_code từ timeline response (backend m3-api-support ) → map qua src/lib/errors.ts .
+✅ Gap contract đã xử lý contract-first: 4 điểm trước đây định "dùng tạm" (receiver lookup, counterparty name trong history, KYC limit hardcode, failure reason) đã được bổ sung phía backend trong src/backend/docs/plans/m3-api-support/ . M3 mobile chỉ bắt đầu code phần phụ thuộc sau khi backend phase đó merge và npm run gen:api được chạy lại. Không còn workaround nào trong scope M3.
+11. Execution checklist
+Tạo kế hoạch (file này + solution-architecture.html) → chờ người dùng duyệt
+T1: Xây API hooks layer (useWallets, useTransactions, useTopup, useTransfer, useFeePreview, useTimeline)
+T2: Xây UI components (AmountInput, TxnListItem, TimelineStep, FilterChips, BalanceCard, EmptyState, ErrorState, Skeleton)
+T3: Home screen (thay placeholder, wire hooks)
+T4: History screen (filter, grouped list, infinite scroll)
+T5: Topup flow (amount → result)
+T6: Transfer flow (receiver → amount → confirm → processing → result)
+T7: Txn Detail screen
+T8: Tab layout update (icons, labels)
+T9: Unit tests cho hooks, components, edge cases
+Chạy kiểm tra: npm run typecheck && npm run lint && npm test
+Đưa báo cáo kết quả và commit code lên Git.
+hpay-mobile · docs/plans/m3-core-screens · 18/07/2026

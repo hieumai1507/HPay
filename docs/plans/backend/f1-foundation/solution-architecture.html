@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 Foundation — Solution Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-50:#EBF1FF;--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{box-sizing:border-box}body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.7;margin:0}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 28px 100px}
+.crumb{font-size:13px;margin-bottom:16px}.crumb a{color:var(--brand);text-decoration:none;font-weight:600}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em}h2{font-size:20px;font-weight:700;margin:40px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--n200)}
+p{margin:10px 0;color:var(--n700)}b{color:var(--n900)}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:14px;padding:16px;margin:14px 0;overflow-x:auto;text-align:center}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;color:var(--n500)}
+td{padding:10px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body><div class="wrap">
+<div class="crumb"><a href="implementation-plan.html">← Implementation Plan</a> · f1-foundation</div>
+<h1>F1 Foundation — Solution Architecture</h1>
+
+<h2>1. Context — F1 dựng phần nền (đậm), phần mờ là các phase sau</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph Repo["hpay-backend"]
+    main["cmd/server\n--role api|worker|admin|all"]
+    cfg["platform/config\nenv 12-factor"]
+    log["platform/logger\nslog + request_id"]
+    dbp["platform/db\npgx pool"]
+    rdc["platform/redisclient"]
+    rt["api/router\nGET /healthz"]
+    mig["db/migrations\n000001–000008 = FULL schema"]
+    q["store/queries + sqlc"]
+    future["(F2+) auth · ledger · engine · approval…"]:::dim
+  end
+  ci["GitHub Actions\nlint · sqlc vet · migrate↑↓↑ · test · build"]
+  dc["docker-compose\npg16 · redis7 · app"]
+  main --> cfg & log & rt
+  rt --> dbp & rdc
+  mig --> ci
+  dc -.local dev.-> main
+  classDef dim fill:#F3F4F6,color:#9CA3AF,stroke:#E5E7EB
+</pre>
+
+<h2>2. Main flow — boot theo role</h2>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant OS as Process start
+  participant CF as config
+  participant PG as pgx pool
+  participant RD as redis
+  participant HTTP as Gin HTTP
+  participant WK as workers (F4+)
+  OS->>CF: load env (.env / environment)
+  CF-->>OS: Config{role, ports, dsn...} — fail-fast nếu thiếu key bắt buộc
+  OS->>PG: pgxpool.New + Ping (timeout 5s)
+  OS->>RD: redis.NewClient + Ping
+  alt role = api | admin | all
+    OS->>HTTP: mount routes theo role + /healthz
+  end
+  alt role = worker | all
+    OS->>WK: (F1: log "no consumers registered" — placeholder)
+  end
+  Note over OS: SIGTERM → graceful shutdown:\nHTTP drain 10s → close pools
+</pre>
+
+<h2>3. State — chưa có lifecycle mới ở F1</h2>
+<p>F1 không thêm state machine nào (schema định nghĩa enum nhưng transition logic thuộc F3–F6). Bỏ qua stateDiagram theo đúng quy định "nếu có".</p>
+
+<h2>4. Data model — toàn bộ schema F1 (ER)</h2>
+<pre class="mermaid">
+erDiagram
+  users ||--o{ org_members : "là thành viên"
+  organizations ||--o{ org_members : "có"
+  users ||--o{ wallets : "sở hữu (owner)"
+  organizations ||--o{ wallets : "sở hữu (owner)"
+  wallets ||--o{ ledger_entries : "bút toán"
+  transactions ||--|{ ledger_entries : "sinh ≥2"
+  transactions ||--o| transactions : "reversal_of"
+  workflow_definitions ||--o{ workflow_instances : "version"
+  transactions ||--|| workflow_instances : "1-1"
+  workflow_instances ||--o{ step_executions : "log"
+  organizations ||--o{ approval_policies : "định nghĩa"
+  approval_policies ||--o{ approval_requests : "snapshot từ"
+  approval_requests ||--o{ approval_actions : "chữ ký"
+  users ||--o{ approval_actions : "checker"
+  users ||--o{ otp_challenges : ""
+  users ||--o{ kyc_requests : ""
+  transactions ||--o{ fraud_flags : ""
+  reconciliation_runs ||--o{ reconciliation_items : ""
+  bank_statements ||--o{ reconciliation_items : "khớp"
+  users ||--o{ money_requests : "requester/payer"
+  money_requests ||--o| transactions : "paid_txn"
+  users {
+    uuid id PK
+    varchar phone UK
+    kyc_status kyc_status
+    account_status status
+  }
+  wallets {
+    uuid id PK
+    owner_type owner_type
+    uuid owner_id
+    varchar system_code UK
+    bigint balance "CHECK >= 0"
+    varchar purpose "main|vault"
+    varchar label
+    bigint version
+  }
+  transactions {
+    uuid id PK
+    varchar ref_code UK
+    varchar idempotency_key UK
+    txn_type type
+    txn_status status "incl processing_async"
+    bigint amount "CHECK > 0"
+    bigint fee
+    uuid reversal_of FK
+  }
+  ledger_entries {
+    bigint id PK
+    uuid transaction_id FK
+    uuid wallet_id FK
+    entry_direction direction
+    bigint amount "CHECK > 0"
+    bigint balance_after
+  }
+  workflow_instances {
+    uuid id PK
+    uuid definition_id FK
+    uuid transaction_id FK "UNIQUE"
+    wf_status status
+    jsonb context
+  }
+  approval_requests {
+    uuid id PK
+    approval_subject subject_type "org_txn|reversal|account_lock|policy_change"
+    uuid subject_id
+    jsonb policy_snapshot
+    approval_status status
+    timestamptz expires_at
+  }
+  money_requests {
+    uuid id PK
+    uuid requester_id FK
+    uuid payer_id FK
+    bigint amount "CHECK > 0"
+    uuid split_group_id
+    money_request_status status
+    uuid paid_txn_id FK
+    timestamptz expires_at
+  }
+</pre>
+
+<h2>5. Decisions & trade-offs</h2>
+<table>
+<tr><th>Quyết định</th><th>Phương án khác</th><th>Vì sao</th></tr>
+<tr><td>Gộp delta 04§2 vào migrations gốc (approval_requests tổng quát ngay từ đầu)</td><td>Làm transaction_approvals rồi migrate sang sau</td><td>Repo chưa có môi trường nào chạy — không có lý do giữ schema sẽ vứt đi; đỡ 1 lần churn</td></tr>
+<tr><td>Trigger DB chặn UPDATE/DELETE ledger_entries</td><td>Chỉ dựa vào review + quyền app user</td><td>Bất biến quan trọng nhất nên enforce ở tầng sâu nhất; test được ngay trong CI</td></tr>
+<tr><td>Bảng auth (refresh_tokens, admin_users, audit_logs) để F2</td><td>Gộp luôn F1</td><td>Đúng ranh giới phase; F2 sẽ dùng gen-migration đúng quy trình — demo luôn skill hoạt động</td></tr>
+<tr><td>go.sum sinh ở máy dev/CI (sandbox không có Go)</td><td>Chờ có toolchain mới scaffold</td><td>Không chặn tiến độ; CI là chốt compile thật</td></tr>
+</table>
+
+<h2>6. Invariants touched</h2>
+<table>
+<tr><th>Bất biến (index.html §8)</th><th>F1 đảm bảo bằng</th></tr>
+<tr><td>Tiền là BIGINT</td><td>Mọi cột amount/balance/fee trong 8 migrations là BIGINT + CHECK</td></tr>
+<tr><td>Ledger chỉ INSERT</td><td>Trigger <code>ledger_entries_append_only</code> + test trong CI migrate job</td></tr>
+<tr><td>Retry không tạo giao dịch đôi</td><td>UNIQUE <code>idempotency_key</code> có mặt từ migration đầu</td></tr>
+<tr><td>Event không mất/không sớm</td><td>Bảng outbox + partial index sẵn sàng cho relay (F4)</td></tr>
+</table>
+</div>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',themeVariables:{fontFamily:'Inter',fontSize:'13px'}});</script>
+</body>
+</html>

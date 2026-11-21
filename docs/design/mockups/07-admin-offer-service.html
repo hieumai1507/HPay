@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>HPay Admin — Service Catalog &amp; Offer Factory</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mp-base.css">
+</head>
+<body>
+<div class="board" style="flex-direction:column">
+
+<!-- ═══════════ A11. SERVICE CATALOG ═══════════ -->
+<div class="slot"><div class="label">A11 · Service Catalog Manager</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị Sản phẩm</div>
+    <div class="item active">📦 Danh mục Dịch vụ</div>
+    <div class="item">🏷️ Offer Factory</div>
+    <div class="item">🏢 Tổ chức &amp; Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">Danh mục Dịch vụ (Service Catalog)</span>
+      <div class="toolbar"><span class="search">🔍 Tìm mã, tên dịch vụ…</span><span class="fbtn primary">+ Thêm dịch vụ</span></div>
+    </div>
+    <div class="page">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>Mã Dịch vụ</th><th>Tên Dịch vụ</th><th>Category</th><th>Ưu tiên</th><th>Kênh</th><th>Trạng thái</th><th class="num">Offer dùng</th><th>Thao tác</th></tr>
+          <tr><td class="mono" style="font-weight:600">P2P_TRANSFER</td><td>Chuyển tiền P2P Ví-đến-Ví</td><td><span class="chip info">transfer</span></td><td>before_gl</td><td>Mobile / Web</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td class="num">6</td><td style="color:var(--brand-600);font-weight:600">Sửa →</td></tr>
+          <tr><td class="mono" style="font-weight:600">MONEY_REQUEST</td><td>Xin tiền &amp; Split Bill</td><td><span class="chip info">payment</span></td><td>before_gl</td><td>Mobile</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td class="num">4</td><td style="color:var(--brand-600);font-weight:600">Sửa →</td></tr>
+          <tr style="background:var(--warning-50)"><td class="mono" style="font-weight:600">TOPUP_BANK</td><td>Nạp tiền qua Ngân hàng Liên kết</td><td><span class="chip info">wallet</span></td><td>before_gl</td><td>Mobile</td><td><span class="chip warning"><span class="dot"></span>Bảo trì (Maintenance)</span></td><td class="num">5</td><td style="color:var(--brand-600);font-weight:600">Mở lại →</td></tr>
+          <tr><td class="mono" style="font-weight:600">ORG_DISBURSEMENT</td><td>Chi lương &amp; Thưởng doanh nghiệp</td><td><span class="chip info">org</span></td><td>before_gl</td><td>Web Admin</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td class="num">2</td><td style="color:var(--brand-600);font-weight:600">Sửa →</td></tr>
+          <tr><td class="mono" style="font-weight:600">VAULT_SAVINGS</td><td>Hũ tiết kiệm &amp; Round-up</td><td><span class="chip info">wallet</span></td><td>after_gl</td><td>Mobile</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td class="num">3</td><td style="color:var(--brand-600);font-weight:600">Sửa →</td></tr>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="cap">5 Dịch vụ hệ thống · Chế độ Maintenance Mode cho phép khóa khẩn cấp từng API</span><div class="toolbar"><span class="fbtn">← Trước</span><span class="fbtn">Sau →</span></div></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A12. OFFER FACTORY LIST ═══════════ -->
+<div class="slot"><div class="label">A12 · Offer Factory List</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị Sản phẩm</div>
+    <div class="item">📦 Danh mục Dịch vụ</div>
+    <div class="item active">🏷️ Offer Factory</div>
+    <div class="item">🏢 Tổ chức &amp; Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">Offer Factory (Gói sản phẩm &amp; Hạn mức)</span>
+      <div class="toolbar"><span class="search">🔍 Tìm gói Offer…</span><span class="fbtn primary">+ Tạo Offer mới</span></div>
+    </div>
+    <div class="page">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>Mã Offer</th><th>Tên Gói Sản phẩm</th><th>Role Đối tượng</th><th class="num">Level</th><th class="num">Dịch vụ Cấp phép</th><th>Trạng thái</th><th>Cập nhật bởi</th><th>Thao tác</th></tr>
+          <tr style="background:var(--brand-50)"><td class="mono" style="font-weight:600">OFFER_CUST_L1</td><td>Khách hàng Cá nhân (KYC Tier 1)</td><td><span class="chip info">customer</span></td><td class="num">1</td><td class="num">4</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td>mungnt</td><td style="color:var(--brand-600);font-weight:600">Cấu hình →</td></tr>
+          <tr><td class="mono" style="font-weight:600">OFFER_CUST_L2</td><td>Khách hàng Cá nhân (KYC Tier 2)</td><td><span class="chip info">customer</span></td><td class="num">2</td><td class="num">6</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td>hoangnd</td><td style="color:var(--brand-600);font-weight:600">Cấu hình →</td></tr>
+          <tr><td class="mono" style="font-weight:600">OFFER_BIZ_STARTER</td><td>Doanh nghiệp Starter (Maker/Checker L1)</td><td><span class="chip info">merchant</span></td><td class="num">3</td><td class="num">5</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td>hieumt</td><td style="color:var(--brand-600);font-weight:600">Cấu hình →</td></tr>
+          <tr><td class="mono" style="font-weight:600">OFFER_BIZ_ENT</td><td>Doanh nghiệp Enterprise (Maker/Checker L2)</td><td><span class="chip info">merchant</span></td><td class="num">5</td><td class="num">8</td><td><span class="chip success"><span class="dot"></span>Active</span></td><td>admin.root</td><td style="color:var(--brand-600);font-weight:600">Cấu hình →</td></tr>
+          <tr style="opacity:.6"><td class="mono">OFFER_AGENT_STD</td><td>Đại lý nạp rút (Agent Standard)</td><td><span class="chip neutral">agent</span></td><td class="num">2</td><td class="num">3</td><td><span class="chip neutral">Draft</span></td><td>tusnt</td><td style="color:var(--brand-600);font-weight:600">Sửa →</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══════════ A13. OFFER BUILDER & AUTH MATRIX ═══════════ -->
+<div class="slot"><div class="label">A13 · Offer Builder &amp; Auth Matrix</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị Sản phẩm</div>
+    <div class="item">📦 Danh mục Dịch vụ</div>
+    <div class="item active">🏷️ Offer Factory</div>
+    <div class="item">🏢 Tổ chức &amp; Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;gap:12px;align-items:center"><span class="fbtn">← Danh sách Offer</span><span class="h2" style="font-size:17px">Gói: Khách hàng Cá nhân (KYC Tier 2)</span><span class="chip success"><span class="dot"></span>Active</span></div>
+      <div class="toolbar"><span class="fbtn primary">Lưu cấu hình Offer</span></div>
+    </div>
+    <div class="page" style="flex-direction:row;gap:20px">
+      <div style="width:280px;display:flex;flex-direction:column;gap:10px">
+        <div class="field-label">DỊCH VỤ CẤP PHÉP (AUTHORIZED SERVICES)</div>
+        <div class="card" style="border:2px solid var(--brand-600);display:flex;gap:10px;align-items:center"><div><div class="li-title">Chuyển tiền P2P</div><div class="li-sub">P2P_TRANSFER · Configured</div></div></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><div><div class="li-title">Xin tiền &amp; Split Bill</div><div class="li-sub">MONEY_REQUEST · Configured</div></div></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><div><div class="li-title">Nạp tiền Ngân hàng</div><div class="li-sub">TOPUP_BANK · Configured</div></div></div>
+        <div class="fbtn" style="justify-content:center;border-style:dashed">+ Thêm Dịch vụ vào Offer</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="h2" style="font-size:15px;margin-bottom:12px">Cấu hình Hạn mức Dịch vụ · P2P_TRANSFER</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div><span class="field-label">HẠN MỨC MỖI GIAO DỊCH (MAX PER TXN)</span><div class="input"><span>100.000.000 ₫</span></div></div>
+            <div><span class="field-label">HẠN MỨC NGÀY (DAILY LIMIT)</span><div class="input"><span>500.000.000 ₫</span></div></div>
+            <div><span class="field-label">HẠN MỨC THÁNG (MONTHLY LIMIT)</span><div class="input"><span>2.000.000.000 ₫</span></div></div>
+            <div><span class="field-label">GIÂY GIỮA 2 GIAO DỊCH (INTERVAL SEC)</span><div class="input"><span>3 giây</span></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="h2" style="font-size:15px;margin-bottom:12px">Ma trận Xác thực (Authentication Matrix)</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:14px;background:var(--n50);border-radius:12px;padding:12px 16px">
+              <span class="chip info">Mức nhỏ</span>
+              <span style="font:500 13.5px Inter;flex:1">Dưới 2.000.000 ₫ → Xác thực bằng <b>PIN / Vân tay</b></span>
+              <span class="fbtn">PIN</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;background:var(--n50);border-radius:12px;padding:12px 16px">
+              <span class="chip warning">Mức vừa</span>
+              <span style="font:500 13.5px Inter;flex:1">Từ 2.000.000 ₫ đến 50.000.000 ₫ → Bắt buộc <b>Mã OTP SMS/Push</b></span>
+              <span class="fbtn">OTP</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;background:var(--n50);border-radius:12px;padding:12px 16px">
+              <span class="chip danger">Mức lớn</span>
+              <span style="font:500 13.5px Inter;flex:1">Trên 50.000.000 ₫ → Bắt buộc <b>2FA (PIN + OTP)</b></span>
+              <span class="fbtn">2FA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+</body>
+</html>

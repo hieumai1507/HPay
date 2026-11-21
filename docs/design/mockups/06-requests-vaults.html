@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>HPay — Request Money · Split Bill · Vaults · My Tasks</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mp-base.css">
+</head>
+<body>
+<div class="board">
+
+<!-- ═══════════ 25. REQUEST: TẠO YÊU CẦU ═══════════ -->
+<div class="slot"><div class="label">25 · Request Money — Tạo yêu cầu</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Xin tiền</div></div>
+  <div class="content" style="gap:18px">
+    <div style="display:flex;gap:10px;align-items:center;background:var(--n0);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow-card)">
+      <span class="avatar" style="background:#F59E0B;width:36px;height:36px;font-size:13px">MA</span>
+      <div style="flex:1"><div style="font:600 14px Inter">Minh Anh</div><div class="cap mono" style="font-size:12px">0905 678 xxx</div></div>
+      <span class="cap" style="color:var(--brand-600);font-weight:600">Đổi</span>
+    </div>
+    <div style="text-align:center;padding:14px 0 4px">
+      <div class="display money" style="font-size:44px;line-height:52px">250.000<span style="font-size:24px;color:var(--n500)"> ₫</span></div>
+      <div class="cap" style="margin-top:6px">Yêu cầu hết hạn sau 72 giờ</div>
+    </div>
+    <div>
+      <div class="field-label">Lý do</div>
+      <div class="input"><span>Tiền vé xem phim tối qua 🎬</span></div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--brand-50);box-shadow:none">
+      <span style="font-size:20px">💡</span><span class="cap" style="color:var(--n700)">Minh Anh sẽ nhận thông báo và có thể trả bạn trong 1 chạm. Bạn được báo ngay khi họ trả.</span>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Gửi yêu cầu</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 26. REQUEST INBOX ═══════════ -->
+<div class="slot"><div class="label">26 · Request Inbox</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Yêu cầu thanh toán</div><span class="chip danger" style="margin-left:auto">2</span></div>
+  <div class="content" style="gap:14px">
+    <div style="display:flex;gap:8px">
+      <span class="chip" style="padding:8px 14px;background:var(--n900);color:#fff">Cần tôi trả (2)</span>
+      <span class="chip neutral" style="padding:8px 14px">Tôi đã gửi (3)</span>
+    </div>
+    <div class="card" style="border-left:4px solid var(--brand-600)">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <span class="avatar" style="background:#EC4899">NA</span>
+        <div style="flex:1"><div class="li-title">Nguyễn V** Anh xin bạn</div><div class="li-sub">Tiền ship chung đơn hàng 📦 · 2 giờ trước</div></div>
+        <div class="money" style="font:700 20px Inter">120.000 ₫</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="btn" style="flex:1;height:42px;font-size:14px">Trả ngay</div>
+        <div class="btn ghost" style="width:96px;height:42px;font-size:14px;color:var(--danger-600)">Từ chối</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <span class="avatar" style="background:#8B5CF6">QB</span>
+        <div style="flex:1"><div class="li-title">Quốc Bảo xin bạn</div><div class="li-sub">Bida tối thứ 6 🎱 · hết hạn sau 5h</div></div>
+        <div class="money" style="font:700 20px Inter">75.000 ₫</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="btn" style="flex:1;height:42px;font-size:14px">Trả ngay</div>
+        <div class="btn ghost" style="width:96px;height:42px;font-size:14px;color:var(--danger-600)">Từ chối</div>
+      </div>
+    </div>
+    <div class="card" style="opacity:.7">
+      <div style="display:flex;gap:12px;align-items:center">
+        <span class="avatar" style="background:#F59E0B">MA</span>
+        <div style="flex:1"><div class="li-title">Bạn xin Minh Anh</div><div class="li-sub">Tiền vé xem phim 🎬 · vừa gửi</div></div>
+        <div style="text-align:right"><div class="money" style="font:700 16px Inter">250.000 ₫</div><span class="chip warning" style="padding:2px 8px;font-size:11px"><span class="dot"></span>Chờ trả</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 27. REQUEST: TRẢ NHANH ═══════════ -->
+<div class="slot"><div class="label">27 · Trả yêu cầu (prefill confirm)</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Trả yêu cầu</div></div>
+  <div class="content" style="gap:16px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0">
+      <span class="avatar" style="background:#EC4899;width:64px;height:64px;font-size:22px">NA</span>
+      <div style="text-align:center"><div class="h2">Nguyễn V** Anh</div><div class="cap">Tiền ship chung đơn hàng 📦</div></div>
+      <div class="display money" style="font-size:36px">120.000 ₫</div>
+      <span class="chip info"><span class="dot"></span>Từ yêu cầu · hết hạn sau 70h</span>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Phí</span><span style="font:600 14px Inter;color:var(--success-600)">Miễn phí</span></div>
+      <div class="list-item"><span class="cap" style="flex:1;color:var(--n700)">Từ</span><span style="font:500 14px Inter">Ví chính · <span class="money">12.450.000 ₫</span></span></div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--warning-50);box-shadow:none">
+      <span style="font-size:18px">⏱</span><span class="cap" style="color:var(--n700)">Nếu yêu cầu vừa bị hủy/hết hạn, giao dịch sẽ dừng an toàn trước khi trừ tiền (case E19).</span>
+    </div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn" style="background:linear-gradient(135deg,var(--brand-600),var(--brand-700))">Quẹt để trả  ›››</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 28. SPLIT BILL: SETUP ═══════════ -->
+<div class="slot"><div class="label">28 · Split Bill — Chia tiền</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Chia hóa đơn</div></div>
+  <div class="content" style="gap:16px">
+    <div style="text-align:center;padding:8px 0">
+      <div class="cap">Tổng hóa đơn</div>
+      <div class="display money" style="font-size:38px">840.000 ₫</div>
+      <div class="cap">Lẩu tối thứ 7 🍲 · 4 người</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <span class="chip" style="padding:8px 14px;background:var(--brand-50);color:var(--brand-600)">Chia đều ✓</span>
+      <span class="chip neutral" style="padding:8px 14px">Tùy chỉnh</span>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="avatar" style="background:linear-gradient(135deg,#7C3AED,#4F46E5)">HM</span><div class="li-main"><div class="li-title">Bạn (đã trả hóa đơn)</div></div><span class="money" style="font:600 15px Inter;color:var(--n500)">210.000 ₫</span></div>
+      <div class="list-item"><span class="avatar" style="background:#F59E0B">MA</span><div class="li-main"><div class="li-title">Minh Anh</div></div><span class="money" style="font:600 15px Inter">210.000 ₫</span></div>
+      <div class="list-item"><span class="avatar" style="background:#10B981">TL</span><div class="li-main"><div class="li-title">Thảo Linh</div></div><span class="money" style="font:600 15px Inter">210.000 ₫</span></div>
+      <div class="list-item"><span class="avatar" style="background:#8B5CF6">QB</span><div class="li-main"><div class="li-title">Quốc Bảo</div></div><span class="money" style="font:600 15px Inter">210.000 ₫</span></div>
+    </div>
+    <div class="cap" style="text-align:center">Sẽ tạo 3 yêu cầu thanh toán, mỗi người 210.000 ₫</div>
+    <div style="margin-top:auto;padding-bottom:20px"><div class="btn">Gửi 3 yêu cầu</div></div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 29. SPLIT BILL: TRACKING ═══════════ -->
+<div class="slot"><div class="label">29 · Split Bill — Theo dõi</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Lẩu tối thứ 7 🍲</div></div>
+  <div class="content" style="gap:16px">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px">
+      <div style="display:flex">
+        <span class="avatar" style="background:#F59E0B;border:3px solid #fff">MA</span>
+        <span class="avatar" style="background:#10B981;border:3px solid #fff;margin-left:-12px">TL</span>
+        <span class="avatar" style="background:#8B5CF6;border:3px solid #fff;margin-left:-12px;opacity:.45">QB</span>
+      </div>
+      <div class="h2">Đã thu 420.000 / 630.000 ₫</div>
+      <div style="width:100%;height:10px;border-radius:99px;background:var(--n100);overflow:hidden"><span style="display:block;width:66%;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--success-600),#22C55E)"></span></div>
+      <div class="cap">2/3 người đã trả · còn 22 giờ</div>
+    </div>
+    <div class="card" style="padding:6px 16px">
+      <div class="list-item"><span class="avatar" style="background:#F59E0B">MA</span><div class="li-main"><div class="li-title">Minh Anh</div><div class="li-sub">Trả lúc 21:14 hôm qua</div></div><span class="chip success"><span class="dot"></span>Đã trả</span></div>
+      <div class="list-item"><span class="avatar" style="background:#10B981">TL</span><div class="li-main"><div class="li-title">Thảo Linh</div><div class="li-sub">Trả lúc 08:02</div></div><span class="chip success"><span class="dot"></span>Đã trả</span></div>
+      <div class="list-item"><span class="avatar" style="background:#8B5CF6">QB</span><div class="li-main"><div class="li-title">Quốc Bảo</div><div class="li-sub">Chưa phản hồi</div></div><span class="chip warning"><span class="dot"></span>Chờ trả</span></div>
+    </div>
+    <div class="btn secondary">🔔 Nhắc Quốc Bảo</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 30. VAULTS: DANH SÁCH ═══════════ -->
+<div class="slot"><div class="label">30 · Vaults — Hũ tiết kiệm</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Hũ tiết kiệm</div><span style="margin-left:auto;color:var(--brand-600);font:600 14px Inter">+ Tạo hũ</span></div>
+  <div class="content" style="gap:14px">
+    <div class="hero" style="padding:18px 20px;background:linear-gradient(135deg,#059669,#047857)">
+      <div style="font:600 12px Inter;opacity:.85;position:relative;z-index:1">Tổng đang để dành</div>
+      <div class="display money" style="font-size:28px;position:relative;z-index:1">5.320.000 ₫</div>
+      <div style="font:500 12px Inter;opacity:.8;position:relative;z-index:1">+180.000 ₫ tháng này · round-up đang bật</div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;font-size:20px">🏔</span>
+        <div style="flex:1"><div class="li-title">Du lịch Đà Lạt</div><div class="li-sub money">4.200.000 / 6.000.000 ₫</div></div>
+        <span class="cap" style="font-weight:700;color:var(--brand-600)">70%</span>
+      </div>
+      <div style="width:100%;height:8px;border-radius:99px;background:var(--n100);overflow:hidden"><span style="display:block;width:70%;height:100%;background:var(--brand-600);border-radius:99px"></span></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <span style="width:44px;height:44px;border-radius:14px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:20px">💻</span>
+        <div style="flex:1"><div class="li-title">MacBook mới</div><div class="li-sub money">1.120.000 / 30.000.000 ₫</div></div>
+        <span class="cap" style="font-weight:700;color:var(--warning-600)">4%</span>
+      </div>
+      <div style="width:100%;height:8px;border-radius:99px;background:var(--n100);overflow:hidden"><span style="display:block;width:4%;height:100%;background:var(--warning-600);border-radius:99px"></span></div>
+    </div>
+    <div class="card" style="display:flex;gap:12px;align-items:center;background:var(--success-50);box-shadow:none">
+      <span style="font-size:20px">🪙</span>
+      <div style="flex:1"><div style="font:600 13.5px Inter">Round-up: làm tròn mỗi giao dịch chi</div><div class="cap" style="font-size:12px">GD 47.500 ₫ → bỏ 2.500 ₫ vào "Du lịch Đà Lạt"</div></div>
+      <span style="width:46px;height:28px;border-radius:99px;background:var(--success-600);position:relative;flex-shrink:0"><span style="position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:99px;background:#fff"></span></span>
+    </div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ 31. VAULT DETAIL ═══════════ -->
+<div class="slot"><div class="label">31 · Vault Detail</div>
+<div class="screen">
+  <div class="statusbar"><span>9:41</span><span class="icons">▮▮▮ ⌁ ▉</span></div>
+  <div class="navbar"><div class="back">←</div><div class="title">Du lịch Đà Lạt 🏔</div><span style="margin-left:auto;font-size:18px">⋯</span></div>
+  <div class="content" style="gap:16px">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px">
+      <div style="width:120px;height:120px;border-radius:99px;background:conic-gradient(var(--brand-600) 0% 70%, var(--n100) 70% 100%);display:flex;align-items:center;justify-content:center">
+        <div style="width:96px;height:96px;border-radius:99px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font:700 20px Inter">70%</span><span class="cap" style="font-size:11px">mục tiêu</span>
+        </div>
+      </div>
+      <div class="display money" style="font-size:26px">4.200.000 ₫</div>
+      <div class="cap">mục tiêu <b class="money" style="color:var(--n900)">6.000.000 ₫</b> · trước 30/09</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="btn" style="flex:1">＋ Bỏ tiền vào</div>
+      <div class="btn secondary" style="flex:1">↩ Rút về ví chính</div>
+    </div>
+    <div class="card" style="padding:2px 16px">
+      <div class="list-item"><span style="font-size:18px;width:30px">🪙</span><div class="li-main"><div class="li-title" style="font-size:14px">Round-up từ GD cafe</div><div class="li-sub">Hôm nay 09:12</div></div><span class="amt-in money">+2.500 ₫</span></div>
+      <div class="list-item"><span style="font-size:18px;width:30px">＋</span><div class="li-main"><div class="li-title" style="font-size:14px">Bỏ tiền thủ công</div><div class="li-sub">Hôm qua</div></div><span class="amt-in money">+500.000 ₫</span></div>
+      <div class="list-item"><span style="font-size:18px;width:30px">🪙</span><div class="li-main"><div class="li-title" style="font-size:14px">Round-up từ GD ship</div><div class="li-sub">Hôm qua</div></div><span class="amt-in money">+8.000 ₫</span></div>
+    </div>
+    <div class="cap" style="text-align:center">Chuyển main ↔ vault là giao dịch <span class="mono">vault_move</span> — có sổ cái, đối soát như mọi giao dịch khác</div>
+  </div>
+  <div class="homebar"></div>
+</div></div>
+
+<!-- ═══════════ A11. ADMIN MY TASKS ═══════════ -->
+<div class="slot"><div class="label">A11 · Admin — My Tasks (approval requests)</div>
+<div class="desk">
+  <div class="side">
+    <div class="logo"><span class="mark">M</span>HPay Ops</div>
+    <div class="item">📊 Tổng quan</div>
+    <div class="sect">Vận hành</div>
+    <div class="item">🪪 Duyệt KYC</div>
+    <div class="item">🚨 Gian lận</div>
+    <div class="item">🔀 Workflow</div>
+    <div class="item">⚖️ Đối soát</div>
+    <div class="sect">Quản trị</div>
+    <div class="item active">📥 My Tasks <span style="margin-left:auto;background:var(--brand-600);color:#fff;border-radius:99px;padding:1px 8px;font:600 11px Inter">4</span></div>
+    <div class="item">🏢 Tổ chức & Policy</div>
+    <div class="item">📜 Audit log</div>
+  </div>
+  <div class="main">
+    <div class="topbar"><span class="h2" style="font-size:17px">My Tasks — yêu cầu chờ tôi duyệt</span>
+      <div class="toolbar"><span class="fbtn">Loại: Tất cả ▾</span><span class="cap">Maker ≠ Checker — bạn không thấy yêu cầu do chính mình tạo</span></div>
+    </div>
+    <div class="page">
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>Loại</th><th>Yêu cầu</th><th>Maker</th><th class="num">Giá trị</th><th>Chờ</th><th></th></tr>
+          <tr style="background:var(--brand-50)"><td><span class="chip danger" style="font-size:11px">reversal</span></td><td>Đảo GD <span class="mono">MP26070800119</span> — hoàn tiền nạn nhân fraud #291</td><td>an.risk</td><td class="num money">9.800.000</td><td>12m</td><td style="color:var(--brand-600);font-weight:600">Xem →</td></tr>
+          <tr><td><span class="chip danger" style="font-size:11px">account_lock</span></td><td>Khóa tài khoản <span class="mono">0912•••830</span> — smurfing pattern</td><td>an.risk</td><td class="num">—</td><td>25m</td><td style="color:var(--brand-600);font-weight:600">Xem →</td></tr>
+          <tr><td><span class="chip warning" style="font-size:11px">policy_change</span></td><td>Fee p2p: 0 → 0,1% cho tier chưa KYC (min 500 ₫)</td><td>ops.finance</td><td class="num">—</td><td>1h</td><td style="color:var(--brand-600);font-weight:600">Xem →</td></tr>
+          <tr><td><span class="chip warning" style="font-size:11px">policy_change</span></td><td>DEH Corp "Chi lớn" v3 → v4: thêm level 3 từ 200M</td><td>admin.root</td><td class="num">—</td><td>2h</td><td style="color:var(--brand-600);font-weight:600">Xem →</td></tr>
+        </table>
+      </div>
+      <div class="card" style="border-left:4px solid var(--danger-600)">
+        <div class="field-label" style="margin-bottom:8px">CHI TIẾT — REVERSAL MP26070800119</div>
+        <div style="display:flex;gap:24px">
+          <div style="flex:1">
+            <div style="font:400 13.5px Inter;color:var(--n700)">Đảo toàn bộ bút toán của giao dịch gốc (Dr↔Cr, <b>không xóa sổ cái</b>), tạo giao dịch mới <span class="mono">reversal_of → MP26070800119</span>. Lý do của maker: <i>"Hoàn tiền nạn nhân sau khi xác nhận gian lận flag #291, user gốc đã bị khóa."</i></div>
+            <div class="cap" style="margin-top:8px">Ký duyệt bằng OTP · hành động ghi audit log vĩnh viễn</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;width:260px">
+            <div class="fbtn" style="justify-content:center;background:var(--success-600);border-color:var(--success-600);color:#fff">✓ Duyệt — nhận OTP</div>
+            <div class="fbtn" style="justify-content:center;border-color:var(--danger-600);color:var(--danger-600)">✕ Từ chối (nêu lý do)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+</div>
+</body>
+</html>

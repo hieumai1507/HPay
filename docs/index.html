@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HPay — Tổng quan toàn bộ chức năng</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{--brand:#0B5FFF;--brand-dark:#0A4FD6;--brand-50:#EBF1FF;--ok:#16A34A;--warn:#D97706;--bad:#DC2626;--info:#0891B2;
+--n900:#111827;--n700:#374151;--n500:#6B7280;--n200:#E5E7EB;--n100:#F3F4F6;--n50:#F9FAFB}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter,-apple-system,sans-serif;color:var(--n900);background:var(--n50);line-height:1.65}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 28px 100px}
+header.hero{background:linear-gradient(135deg,var(--brand),#083FAB);color:#fff;border-radius:20px;padding:36px 40px;margin-bottom:36px;box-shadow:0 16px 40px -12px rgba(11,95,255,.4)}
+header.hero h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
+header.hero p{margin-top:10px;opacity:.92;max-width:760px}
+header.hero .meta{margin-top:16px;display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-block;background:rgba(255,255,255,.16);padding:4px 12px;border-radius:99px;font-size:12.5px;font-weight:600}
+h2{font-size:22px;font-weight:700;margin:48px 0 14px;padding-top:12px;letter-spacing:-.01em}
+h2 .n{color:var(--brand);margin-right:8px}
+h3{font-size:16px;font-weight:600;margin:22px 0 10px}
+p{margin:10px 0;color:var(--n700)}
+b,strong{color:var(--n900)}
+.toc{background:#fff;border:1px solid var(--n200);border-radius:16px;padding:22px 26px;columns:2;gap:36px}
+.toc a{display:block;padding:5px 0;color:var(--n700);text-decoration:none;font-weight:500;font-size:14.5px;break-inside:avoid}
+.toc a:hover{color:var(--brand)}
+.toc a b{color:var(--brand);margin-right:8px}
+.card{background:#fff;border:1px solid var(--n200);border-radius:16px;padding:20px 24px;margin:16px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.mermaid{background:#fff;border:1px solid var(--n200);border-radius:16px;padding:18px;margin:16px 0;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;margin:14px 0;font-size:14px;border:1px solid var(--n200)}
+th{background:var(--n100);text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--n500)}
+td{padding:11px 14px;border-top:1px solid var(--n100);vertical-align:top}
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:var(--n100);padding:2px 6px;border-radius:6px}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:700}
+.p1{background:#ECFDF3;color:var(--ok)} .p2{background:#FFFBEB;color:var(--warn)} .core{background:var(--brand-50);color:var(--brand)} .ops{background:#FDEAEA;color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.note{border-left:4px solid var(--brand);background:var(--brand-50);border-radius:0 12px 12px 0;padding:12px 18px;margin:14px 0;font-size:14px}
+.warn-note{border-left-color:var(--warn);background:#FFFBEB}
+footer{margin-top:60px;color:var(--n500);font-size:13px;border-top:1px solid var(--n200);padding-top:18px}
+a{color:var(--brand)}
+@media(max-width:760px){.toc{columns:1}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>💠 HPay — Tổng quan toàn bộ chức năng</h1>
+  <p>Hệ ví điện tử end-to-end (backend Go + mobile React Native + admin React) định vị theo phong cách ví Mỹ (Venmo/Cash App/Revolut): P2P nhanh, Request Money, Business Wallet maker-checker. Trái tim hệ thống là <b>Workflow Engine cấu hình được</b> chạy trên <b>double-entry ledger</b>.</p>
+  <div class="meta">
+    <span class="pill">3 repo code + 1 repo docs</span><span class="pill">Go · Gin · sqlc · PostgreSQL · Redis Streams</span><span class="pill">AI 3 tầng: dev skills · runtime · CI/CD</span><span class="pill">v2.1 · 07/2026</span>
+  </div>
+</header>
+
+<div class="toc">
+  <a href="#s1"><b>1</b> Kiến trúc tổng thể</a>
+  <a href="#s2"><b>2</b> Deploy 1 binary — 4 role</a>
+  <a href="#s3"><b>3</b> Bản đồ chức năng (4 nhóm)</a>
+  <a href="#s4"><b>4</b> Workflow Engine — luồng P2P</a>
+  <a href="#s5"><b>5</b> Maker-Checker & Approval engine</a>
+  <a href="#s6"><b>6</b> Request Money & Split Bill</a>
+  <a href="#s7"><b>7</b> Vòng đời trạng thái giao dịch</a>
+  <a href="#s8"><b>8</b> Tiền & Sổ cái — bất biến</a>
+  <a href="#s9"><b>9</b> KYC · Fraud · Đối soát</a>
+  <a href="#s10"><b>10</b> AI tự động hóa 3 tầng</a>
+  <a href="#s11"><b>11</b> Ma trận edge case</a>
+  <a href="#s12"><b>12</b> Roadmap & tài liệu chi tiết</a>
+</div>
+
+<h2 id="s1"><span class="n">1.</span>Kiến trúc tổng thể</h2>
+<p>Modular monolith 1 binary Go — các module giao tiếp qua <b>Redis Streams</b> (consumer group + XACK, không phải Pub/Sub thường) và <b>transactional outbox</b>, nên tách được thành service riêng bất cứ lúc nào mà không đổi contract.</p>
+<pre class="mermaid">
+flowchart LR
+  subgraph Clients["📱 Clients"]
+    mob["Mobile app (React Native/Expo)\n24 màn · ví cá nhân + business"]
+    adm["Admin SPA (React + Vite)\n12 màn · vận hành"]
+  end
+  subgraph BE["⚙️ hpay-backend (Go, 1 binary)"]
+    gw["Gin middleware chain\nrate-limit → JWT → RBAC → idempotency"]
+    eng["Workflow Engine\nstate machine · retry · saga · human gate"]
+    subgraph H["Step handlers (consumer groups)"]
+      v["validator"]; f["fraud"]; w["wallet"]; c["confirmer"]
+    end
+    apr["Approval engine\nmaker-checker · policy snapshot · OTP"]
+    led["Ledger service\ndouble-entry · lock ordering"]
+    kyc["KYC service\nClaude vision / mock"]
+    rec["Recon (asynq cron)\n+ recovery jobs"]
+    ob["Outbox relay"]
+  end
+  subgraph Data["💾 Data"]
+    pg[("PostgreSQL 16\nledger · workflow · approval")]
+    rd[("Redis 7\nStreams · asynq · cache")]
+  end
+  ai["🤖 Claude API\nKYC scoring · fraud explain\n(mock fallback khi không có key)"]
+  mob --> gw; adm --> gw
+  gw --> eng; eng <--> rd; rd --> H; H --> ob
+  gw --> apr; apr --> ob; ob --> rd
+  H --> led; led --> pg; eng --> pg; apr --> pg; kyc --> ai; rec --> pg
+</pre>
+
+<h2 id="s2"><span class="n">2.</span>Deploy 1 binary — 4 role (học pattern MODE của ví production)</h2>
+<table>
+<tr><th>Lệnh</th><th>Mount</th><th>Phục vụ</th></tr>
+<tr><td><code>HPay serve --role=api</code></td><td>HTTP public /v1/*</td><td>Traffic mobile</td></tr>
+<tr><td><code>HPay serve --role=worker</code></td><td>Stream consumers + asynq</td><td>Step handlers, cron, outbox relay</td></tr>
+<tr><td><code>HPay serve --role=admin</code></td><td>/v1/admin/*, /v1/org/*</td><td>Admin SPA + org API</td></tr>
+<tr><td><code>HPay serve --role=all</code></td><td>Tất cả</td><td>Dev/demo 1 lệnh</td></tr>
+</table>
+<div class="note">Scale-out không cần tách code: chạy 3 process 3 role là có topology production-like. Câu trả lời sẵn cho câu hỏi phỏng vấn "monolith này scale thế nào?".</div>
+
+<h2 id="s3"><span class="n">3.</span>Bản đồ chức năng — 4 nhóm</h2>
+<pre class="mermaid">
+flowchart TB
+  KB["💠 HPay"]
+  subgraph G1["👤 Ví cá nhân"]
+    a1["Đăng ký / JWT + refresh rotation\ndevice binding · Face ID mở khóa"]
+    a2["KYC 2 bước: CCCD + selfie\nAI score → auto / manual / reject"]
+    a3["Nạp tiền (bank mock + OTP)"]
+    a4["Chuyển P2P qua engine\npreview phí → confirm → timeline"]
+    a5["Request Money + Split Bill ⭐\nnhắc nợ kiểu Venmo/MoMo"]
+    a6["QR nhận tiền + QR kèm số tiền\npayment link ký HMAC"]
+    a7["Vaults — hũ tiết kiệm\n+ round-up (P2)"]
+    a8["Lịch sử · chi tiết timeline\nsố dư ẩn mặc định"]
+  end
+  subgraph G2["🏢 Business Wallet"]
+    b1["Tổ chức · thành viên\nrole: admin / maker / checker L1-L2"]
+    b2["Policy phê duyệt theo dải tiền\ntiers · version · snapshot"]
+    b3["Maker tạo lệnh chi\n→ workflow treo WAIT_APPROVAL"]
+    b4["Checker inbox · ký OTP\nđủ chữ ký → engine tự chạy tiếp"]
+    b5["Bulk disbursement CSV (P2)"]
+  end
+  subgraph G3["🛡️ Admin / Vận hành"]
+    c1["Dashboard KPI + panel cần chú ý"]
+    c2["KYC review queue\nphím tắt J/K/A/R"]
+    c3["Fraud monitor\nrule + AI giải thích · SLA 30p"]
+    c4["Workflow monitor\nxem instance kẹt · retry / compensate"]
+    c5["Đối soát ngày + AI tóm tắt lệch\nexport Excel"]
+    c6["My Tasks — approval requests\nreversal · khóa TK · đổi policy"]
+    c7["Audit log immutable 5 năm"]
+  end
+  subgraph G4["🤖 AI & Automation"]
+    d1["6 Claude Code skills\nscaffold · migration · review fintech"]
+    d2["KYC vision scoring\nfraud hybrid rule+LLM"]
+    d3["CI/CD: lint · test -race\nmigrate up/down · AI review PR"]
+  end
+  KB --> G1 & G2 & G3 & G4
+</pre>
+<table>
+<tr><th>Ưu tiên</th><th>Chức năng</th></tr>
+<tr><td><span class="tag core">CORE</span></td><td>Auth, KYC, nạp, P2P, workflow engine, ledger, maker-checker org, admin queues, đối soát</td></tr>
+<tr><td><span class="tag p1">P1</span></td><td>Request Money, approval engine tổng quát (admin ops), fee engine, <code>processing_async</code> + recovery, deploy role</td></tr>
+<tr><td><span class="tag p2">P2</span></td><td>Vaults + round-up, Split Bill, chuyển định kỳ, QR kèm tiền + payment link, bulk CSV</td></tr>
+</table>
+
+<h2 id="s4"><span class="n">4.</span>Workflow Engine — luồng P2P chuẩn</h2>
+<p>Mỗi loại giao dịch là một <b>workflow definition</b> (JSONB, version hóa) — thêm luồng mới bằng INSERT, không sửa code. Step <code>auto</code> chạy qua handler; step <code>human_approval</code> treo instance chờ người duyệt.</p>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant API as API (Gin)
+  participant DB as PostgreSQL
+  participant OB as Outbox relay
+  participant RS as Redis Streams
+  participant W as Worker (handlers)
+  U->>API: POST /v1/transactions/transfer (Idempotency-Key)
+  API->>DB: tx: transactions + workflow_instance + outbox↳step.start
+  API-->>U: 202 {refCode} — app chuyển màn Processing (poll)
+  OB->>RS: XADD wf:steps:validator
+  RS->>W: VALIDATE → ok → outbox↳completed
+  RS->>W: FRAUD_CHECK → score<40 safe
+  RS->>W: DEBIT — SELECT FOR UPDATE (sort id) → ledger 2 bút toán
+  RS->>W: CREDIT — idempotent theo attempt
+  RS->>W: CONFIRM → txn=completed → notify 2 chiều
+  Note over W,DB: fail giữa chừng? → saga compensation:\npost bút toán đảo, KHÔNG xóa ledger
+</pre>
+
+<h2 id="s5"><span class="n">5.</span>Maker-Checker & Approval engine (hạ tầng dùng chung)</h2>
+<p>Không chỉ cho lệnh chi doanh nghiệp — <b>mọi thao tác nhạy cảm của admin</b> (reversal, khóa tài khoản, đổi policy/fee) cũng đi qua cùng một approval engine: Maker ≠ Checker, policy snapshot chống race, chữ ký OTP, audit đầy đủ.</p>
+<pre class="mermaid">
+flowchart LR
+  mk["👤 Maker\n(org maker / admin CS)"] --> rq["approval_requests\nsubject: org_txn | reversal |\naccount_lock | policy_change\n+ policy_snapshot"]
+  rq --> ib["📥 Inbox checker / My Tasks admin"]
+  ib --> d{"Checker ký OTP\nFOR UPDATE + unique(1 người 1 lần)"}
+  d -->|"đủ chữ ký theo tier"| ex["▶️ Thực thi:\nresume workflow / đảo bút toán /\nkhóa TK / áp policy mới"]
+  d -->|"reject"| rj["❌ Từ chối + lý do"]
+  d -->|"quá 24h"| xp["⏰ Expired — fail sạch"]
+  ex & rj & xp --> au["📜 audit_logs (immutable)"]
+</pre>
+<div class="note">Khác biệt so với hệ tham khảo: không có cờ "bypass auth" sau khi duyệt — bước tài chính chỉ chạy được khi state machine đi qua <code>WAIT_APPROVAL</code> hợp lệ. Quyền nằm trong cấu trúc state, không phải if-else.</div>
+
+<h2 id="s6"><span class="n">6.</span>Request Money & Split Bill (mô hình 2 giai đoạn)</h2>
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor A as Người xin tiền
+  actor B as Người trả
+  participant BE as Backend
+  A->>BE: POST /v1/money-requests {payer, amount, note}
+  BE->>B: 🔔 push + inbox badge (expires 72h)
+  B->>BE: chấp nhận → POST /v1/transactions/transfer\n(prefill từ request, cùng engine P2P mục 4)
+  BE->>BE: workflow chạy xong → request.status=paid\ngắn transaction_id
+  BE->>A: 🔔 "B đã trả bạn 250.000 ₫"
+  Note over A,BE: Split Bill = N requests cùng split_group_id\nmàn theo dõi avatar ai đã trả
+</pre>
+
+<h2 id="s7"><span class="n">7.</span>Vòng đời trạng thái giao dịch</h2>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> created : API nhận (idempotency ok)
+  created --> pending_approval : gặp step human_approval
+  created --> processing : workflow chạy
+  pending_approval --> processing : đủ chữ ký
+  pending_approval --> failed : reject / hết hạn 24h
+  processing --> completed : CONFIRM ok — GL đã cân
+  processing --> processing_async : bên phụ thuộc chậm\n(recoverable, không phải lỗi)
+  processing_async --> completed : recovery job replay ok
+  processing_async --> failed : recovery hết lượt
+  processing --> failed : lỗi + saga bồi hoàn xong
+  completed --> reversed : reversal qua maker-checker\n(bút toán đảo, không xóa)
+  completed --> [*]
+  failed --> [*]
+  reversed --> [*]
+</pre>
+<div class="note warn-note">Bất biến: sau <code>completed</code> trạng thái không bao giờ sửa tại chỗ. Hoàn tiền = giao dịch đảo mới có <code>reversal_of</code> trỏ về gốc.</div>
+
+<h2 id="s8"><span class="n">8.</span>Tiền & Sổ cái — các bất biến</h2>
+<table>
+<tr><th>Bất biến</th><th>Được đảm bảo bởi</th></tr>
+<tr><td>Tiền là <code>BIGINT</code> đơn vị nhỏ nhất — không bao giờ float</td><td>Schema + skill <code>fintech-review</code> chặn từ CI</td></tr>
+<tr><td>Mỗi giao dịch ≥ 2 bút toán, tổng Nợ = tổng Có</td><td>Ledger service + test invariant + recon nội bộ</td></tr>
+<tr><td><code>wallets.balance</code> = SUM(ledger_entries) của ví</td><td>Recon nội bộ hằng ngày đối chiếu</td></tr>
+<tr><td>Ledger chỉ INSERT — không UPDATE/DELETE</td><td>Trigger + quyền DB + review</td></tr>
+<tr><td>Retry không tạo giao dịch đôi</td><td>Idempotency-Key unique + attempt check trong handler</td></tr>
+<tr><td>Event không phát trước commit, không mất sau commit</td><td>Transactional outbox + Streams XACK/XAUTOCLAIM</td></tr>
+<tr><td>Không deadlock khi 2 ví chuyển chéo</td><td>Lock ordering theo wallet_id tăng dần</td></tr>
+<tr><td>Biometric chỉ mở khóa app — chuyển tiền luôn cần PIN/OTP</td><td>Auth matrix client + server</td></tr>
+</table>
+
+<h2 id="s9"><span class="n">9.</span>KYC · Fraud · Đối soát</h2>
+<div class="grid2">
+<div class="card"><h3>🪪 KYC</h3><p style="font-size:14px">Chụp CCCD + selfie → Claude vision trả <code>{score, reasons}</code> → ≥85 auto-approve · 50–85 vào queue người duyệt (kèm giải thích AI) · &lt;50 reject. Chạy như một workflow definition riêng — tái dùng retry/timeout/log.</p></div>
+<div class="card"><h3>🚨 Fraud</h3><p style="font-size:14px">Rule deterministic trước (velocity, amount spike, new device, giờ lạ) → vùng xám 40–70 mới hỏi LLM tổng hợp + giải thích tiếng Việt. <b>LLM không bao giờ tự quyết chặn tiền</b> — quyết định cứng là rule + con người.</p></div>
+<div class="card"><h3>⚖️ Đối soát</h3><p style="font-size:14px">Cron 00:15: so khớp theo <code>ref_code</code> với sao kê mock → matched / mismatch / missing từng chiều → AI tóm tắt nguyên nhân lệch → export Excel. Kèm recon nội bộ: SUM ledger = balance từng ví.</p></div>
+<div class="card"><h3>🔄 Recovery</h3><p style="font-size:14px">Job 5 phút/lần quét instance kẹt (<code>running/compensating</code> quá ngưỡng) → replay step hiện tại (handler idempotent). Giao dịch "lơ lửng" không bao giờ bị quên.</p></div>
+</div>
+
+<h2 id="s10"><span class="n">10.</span>AI tự động hóa — 3 tầng</h2>
+<table>
+<tr><th>Tầng</th><th>Nội dung</th></tr>
+<tr><td><b>Dev</b> — Claude Code skills</td><td><code>scaffold-module</code> · <code>gen-migration</code> (sinh up/down + sqlc + sửa compile) · <code>gen-workflow-step</code> (handler + registry + test) · <code>fintech-review</code> (checklist: float? idempotency? lock ordering? ledger bị UPDATE?) · <code>gen-api-test</code> · <code>seed-demo-data</code></td></tr>
+<tr><td><b>Runtime</b> — tính năng sản phẩm</td><td>KYC scoring (vision), fraud explain, recon summary — đều có mock fallback khi thiếu API key</td></tr>
+<tr><td><b>CI/CD</b> — GitHub Actions</td><td>golangci-lint · sqlc diff · migrate up+down trên DB sạch · test -race (testcontainers) · docker build distroless · claude-code-action review PR theo checklist fintech</td></tr>
+</table>
+
+<h2 id="s11"><span class="n">11.</span>Ma trận edge case (bắt buộc có test)</h2>
+<p><b>37 case</b> được liệt kê và gắn test: <b>E01–E20</b> backend (double-spend, deadlock chéo, worker chết giữa saga, event trùng, checker race, policy đổi giữa chừng, Redis sập…), <b>M01–M12</b> mobile (double-tap, timeout không báo fail vội, refresh token single-flight, BigInt tiền…), <b>A01–A07</b> admin (409 conflict giữa 2 reviewer, cursor pagination chống trôi hàng…). CI đếm test theo danh sách — thiếu là fail build. Chi tiết trong doc 01/02/03.</p>
+
+<h2 id="s12"><span class="n">12.</span>Roadmap & tài liệu chi tiết</h2>
+<table>
+<tr><th>Tuần</th><th>Việc</th></tr>
+<tr><td>1</td><td>Repo setup, migrations toàn bộ schema, sqlc, CI, viết Claude skills trước · Auth + wallet + topup</td></tr>
+<tr><td>2</td><td>Workflow engine core + 4 handler + outbox + saga · P2P end-to-end + test concurrent</td></tr>
+<tr><td>3</td><td>Approval engine (org + admin ops) · KYC AI · <b>Request Money</b></td></tr>
+<tr><td>4</td><td>Fraud hybrid · recon + recovery · fee engine · Mobile app màn chính</td></tr>
+<tr><td>5</td><td>Admin dashboard · P2 features nếu kịp · README + demo video</td></tr>
+</table>
+<h3>Tài liệu chi tiết (bản HTML)</h3>
+<table>
+<tr><td><a href="architecture/00-backend-design-v2-base.html">00 · Backend design nền</a></td><td>Schema SQL đầy đủ, engine spec, maker-checker, AI</td></tr>
+<tr><td><a href="architecture/01-backend-solution-architecture.html">01 · Backend solution architecture</a></td><td>Security, NFR, E01–E18, deployment</td></tr>
+<tr><td><a href="architecture/02-mobile-solution-architecture.html">02 · Mobile solution architecture</a></td><td>RN/Expo, M01–M12, client security</td></tr>
+<tr><td><a href="architecture/03-admin-solution-architecture.html">03 · Admin solution architecture</a></td><td>RBAC, màn vận hành, A01–A07</td></tr>
+<tr><td><a href="architecture/04-feature-extensions.html">04 · Feature extensions v2.1</a></td><td>Phân tích TMDS/MoMo, schema delta</td></tr>
+<tr><td><a href="architecture/05-offer-service-factory.html">05 · Offer Factory &amp; Service Catalog</a></td><td>Kiến trúc Enterprise Product Engine, Limit &amp; Auth Matrix, Service Catalog</td></tr>
+<tr><td><a href="architecture/06-service-engine-api-consolidation.html">06 · Service Engine API Consolidation</a></td><td>Plan Kế hoạch Tái cấu trúc &amp; Tinh gọn API Backend (Service Engine Consolidation)</td></tr>
+<tr><td><a href="architecture/07-tanstack-table-query-pagination.html">07 · TanStack Table &amp; Query Pagination</a></td><td>Plan Kế hoạch Chuẩn hóa TanStack Table v8 &amp; TanStack Query Server-Side Phân trang</td></tr>
+<tr><td><a href="design/ui-design-spec.html">Design · UI spec</a></td><td>Tokens, components, 36 màn</td></tr>
+<tr><td><a href="planning/master-plan.html">Planning · Master Plan</a></td><td>Quy trình 2-docs-per-feature, phân rã F1–F10/M/A, lessons từ source TMDS</td></tr>
+<tr><td><a href="skills/README.md">Skills · Agent loop</a></td><td>6 Claude Code skills: scaffold, migration, workflow step, fintech review, api test, seed demo</td></tr>
+<tr><td><a href="design/mockups/">Design · Mockups HTML</a></td><td>42 màn style ví Mỹ — gồm Request Money, Split Bill, Vaults, My Tasks (mở trực tiếp bằng browser)</td></tr>
+<tr><td><a href="guide/functional-overview.vi.html">Guide · Tổng quan chức năng</a> (<a href="guide/functional-overview.en.html">EN</a>)</td><td>Toàn bộ chức năng theo từng vai trò, click để xem giải thích + sơ đồ mermaid — dùng để thuyết trình/demo</td></tr>
+<tr><td><a href="guide/technical-overview.vi.html">Guide · Kiến trúc kỹ thuật</a> (<a href="guide/technical-overview.en.html">EN</a>)</td><td>Giải thích khái niệm nền tảng (ACID, workflow engine, AI, bảo mật...) đứng sau từng chức năng</td></tr>
+</table>
+
+<footer>HPay · docs v2.1 · cập nhật 08/07/2026 · nguồn tham khảo: DEH Corporate Authorization Matrix, TMDS Wallet Flow Overview, MoMo/Venmo/Cash App/Revolut patterns</footer>
+</div>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',flowchart:{curve:'basis'},themeVariables:{fontFamily:'Inter',fontSize:'13px'}});</script>
+</body>
+</html>
