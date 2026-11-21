@@ -6,7 +6,7 @@
 
 | Ships | Not in F4 |
 | --- | --- |
-| Engine core: Start / OnResult / advance driven by the JSONB definition; step type `auto` runs a handler through a Redis Streams consumer group (XACK, at-least-once), `human_approval` suspends the instance (resume in F6); retry with backoff (outbox `available_at`); `on_failure`: fail \| compensate (framework — the reversing ledger entries are executed in F5 when the wallet handler exists) \| manual; outbox relay (claim SKIP LOCKED); recovery: XAUTOCLAIM dead messages + sweep stuck instances with a lease UPDATE…RETURNING (learned from TMDS, E20); worker wiring into `--role=worker/all`; test handlers (echo/flaky/boom) + definition test | 4 business handlers + P2P + fee (F5); resume after approval (F6); admin API to view instances (F6/A3); notification |
+| Engine core: Start / OnResult / advance driven by the JSONB definition; step type `auto` runs a handler through a Redis Streams consumer group (XACK, at-least-once), `human_approval` suspends the instance (resume in F6); retry with backoff (outbox `available_at`); `on_failure`: fail \| compensate (framework — the reversing ledger entries are executed in F5 when the wallet handler exists) \| manual; outbox relay (claim SKIP LOCKED); recovery: XAUTOCLAIM dead messages + sweep stuck instances with a lease UPDATE…RETURNING (learned from the reference wallet, E20); worker wiring into `--role=worker/all`; test handlers (echo/flaky/boom) + definition test | 4 business handlers + P2P + fee (F5); resume after approval (F6); admin API to view instances (F6/A3); notification |
 
 ## 2. Task breakdown
 

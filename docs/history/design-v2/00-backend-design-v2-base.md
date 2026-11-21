@@ -1,14 +1,14 @@
 # HPay v2 — Backend Redesign in Golang
 
-> Version 2.0 — replaces the Node.js plan. Additions: a stricter schema (double-entry ledger, outbox, idempotency), a Maker-Checker module learned from the DEH engine, and an AI automation suite (Claude Code skills + AI runtime + CI/CD).
+> Version 2.0 — replaces the Node.js plan. Additions: a stricter schema (double-entry ledger, outbox, idempotency), a Maker-Checker module learned from a reference approval engine, and an AI automation suite (Claude Code skills + AI runtime + CI/CD).
 
 ---
 
-## 1. Assessment of the DEH engine — what to take, what to drop
+## 1. Assessment of a reference approval engine — what to take, what to drop
 
-The DEH docs describe a **Corporate Request-Approval engine** (a maker-checker authorization matrix). Assessment of each concept:
+The the reference approval docs describe a **Corporate Request-Approval engine** (a maker-checker authorization matrix). Assessment of each concept:
 
-| Concept in DEH | Assessment | Decision for HPay |
+| Concept in the reference engine | Assessment | Decision for HPay |
 |---|---|---|
 | Maker-Checker by policy tiers (`Policy.tiers`, `buildApprovalRecord`) | This is genuine fintech business logic that almost every corporate banking product has. The brightest spot of the docs. | **Take.** Build the Business Wallet module: the maker creates an order, the checker approves it according to the policy matrix. |
 | `TransactionTrail` keeps pending state separate from the final ledger (`Transaction`) | Separating the "transaction request" from the "financial entry" is the right pattern — the ledger is written only once the transaction is final. | **Take**, but leaner: `transactions` (state) + `ledger_entries` (double-entry postings, immutable). |
@@ -108,7 +108,7 @@ CREATE TABLE users (
 );
 -- NOTE: there is no balance column. The balance belongs to wallets.
 
--- Business Wallet (learned from DEH: corporate entity + maker/checker role)
+-- Business Wallet (learned from the reference engine: corporate entity + maker/checker role)
 CREATE TABLE organizations (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(200) NOT NULL,
@@ -244,12 +244,12 @@ CREATE TABLE step_executions (
 CREATE INDEX idx_step_instance ON step_executions (instance_id, id);
 ```
 
-### 3.4. Approval Matrix (maker-checker, learned from DEH)
+### 3.4. Approval Matrix (maker-checker, learned from the reference engine)
 
 > **F6 update (implemented):** the schema below is the original v2.0 version. The actual implementation generalized `transaction_approvals` → `approval_requests(subject_type, subject_id, ...)` already in migration 000005 (F1), following the direction settled in [04-feature-extensions.md §2.3](04-feature-extensions.md#23-generalized-approval-engine-p1--architecture-upgrade) — shared by `org_transaction` as well as later `reversal`/`account_lock`/`policy_change`. Read §4.3 and §5.1 below for the real resume mechanism (it does not use a separate `approval.finalized` event as originally described).
 
 ```sql
--- Equivalent to DEH's Policy.tiers
+-- Equivalent to the reference engine's Policy.tiers
 CREATE TABLE approval_policies (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id      UUID NOT NULL REFERENCES organizations(id),
@@ -267,7 +267,7 @@ CREATE TABLE approval_policies (
 
 CREATE TYPE approval_status AS ENUM ('pending','approved','rejected','expired');
 
--- Equivalent to DEH's TransactionApprove
+-- Equivalent to the reference engine's TransactionApprove
 CREATE TABLE transaction_approvals (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     transaction_id   UUID NOT NULL UNIQUE REFERENCES transactions(id),
@@ -387,7 +387,7 @@ CREATE INDEX idx_outbox_unpublished ON outbox (id) WHERE published_at IS NULL;
 
 ### 4.1. Step definition — adding the `human_approval` type
 
-The biggest difference from v1: a step has a `type`. An `auto` step runs through a handler as before; a `human_approval` step **suspends the workflow** until the approval module resumes it — this is exactly where the DEH engine is merged in.
+The biggest difference from v1: a step has a `type`. An `auto` step runs through a handler as before; a `human_approval` step **suspends the workflow** until the approval module resumes it — this is exactly where a reference approval engine is merged in.
 
 > **F6 constraint (implemented):** the first step of every definition MUST be `type: auto` — the engine's `Start()` dispatches the first step straight to the handler stream, so a definition that begins with `human_approval` makes no sense (there is nothing yet to suspend). The engine validates this at parse time (`ParseSteps`).
 
@@ -448,7 +448,7 @@ type StepInput struct {
 - When a handler finishes it publishes `workflow.step.completed` / `workflow.step.failed` to the stream `wf:events`. The engine (consumer group `engine`) receives it, writes `step_executions`, and decides the next move: next step, retry (exponential backoff), or run `on_failure`.
 - **Compensation (saga):** `on_failure: compensate` → the instance moves to `compensating`, and the engine runs the completed steps that have ledger postings in reverse (if `DEBIT` already ran → post a reversing entry, never delete the ledger) → `compensated`, transaction → `failed`.
 - **human_approval:** when the engine reaches this step → it sets the instance to `waiting_approval` and calls `PauseHook` — the approval module (which implements the hook) creates `approval_requests` (a policy snapshot matching org + amount) and sets the transaction to `pending_approval`, ALL in the same DB transaction as suspending the instance, then stops.
-- **Resume (F6, implemented):** there is no dedicated event type. When the request is finalized (enough signatures), the approval module itself writes `step_executions` for the `WAIT_APPROVAL` step and then emits a **standard outbox `workflow.step.result`** (identical to the result of an auto step) in the same transaction as the approval decision — the engine's `OnResult` receives it and advances to DEBIT → CREDIT → CONFIRM as usual. The state guard is relaxed to accept a result from `waiting_approval` when the step is `human_approval`, and stays strict for auto steps. This approach reuses the entire F4 pipeline (outbox → wf:events → OnResult, already idempotent per E06) instead of adding a new consumer/event type as in the original design — the practical generalization of DEH's `VERIFY_TRANSACTION` pubsub.
+- **Resume (F6, implemented):** there is no dedicated event type. When the request is finalized (enough signatures), the approval module itself writes `step_executions` for the `WAIT_APPROVAL` step and then emits a **standard outbox `workflow.step.result`** (identical to the result of an auto step) in the same transaction as the approval decision — the engine's `OnResult` receives it and advances to DEBIT → CREDIT → CONFIRM as usual. The state guard is relaxed to accept a result from `waiting_approval` when the step is `human_approval`, and stays strict for auto steps. This approach reuses the entire F4 pipeline (outbox → wf:events → OnResult, already idempotent per E06) instead of adding a new consumer/event type as in the original design — the practical generalization of the reference engine's `VERIFY_TRANSACTION` pubsub.
 
 ### 4.4. Wallet handler — the most important ACID section
 
@@ -472,12 +472,12 @@ func (h *WalletHandler) transfer(ctx context.Context, tx pgx.Tx, t Txn) error {
 
 ## 5. Maker-Checker module (approval/)
 
-### 5.1. 3-phase flow — mapping from DEH to HPay
+### 5.1. 3-phase flow — mapping from the reference engine to HPay
 
-| DEH | HPay v2 | Notes |
+| the reference engine | HPay v2 | Notes |
 |---|---|---|
 | `corporateRequestTransaction` (Maker) | `POST /v1/org/:id/transactions` | The service layer checks `org_members.role = maker` via a query, not only middleware. Creates the transaction + workflow instance; the engine runs VALIDATE, FRAUD_CHECK, then suspends at WAIT_APPROVAL. |
-| `corporateConfirmTransaction` (Checker handshake) | `POST /v1/org/approvals/:id/challenge` | Checks eligibility before sending the OTP (matching the intent of DEH's simulated `evaluateApprovalLogic`): is the checker in the right org? is the `checker_level` = `current_level`? has not acted before? is the request still `pending` and not expired? Only then create `otp_challenges` (mock delivery: console log / returned in the response in the dev environment). |
+| `corporateConfirmTransaction` (Checker handshake) | `POST /v1/org/approvals/:id/challenge` | Checks eligibility before sending the OTP (matching the intent of the reference engine's simulated `evaluateApprovalLogic`): is the checker in the right org? is the `checker_level` = `current_level`? has not acted before? is the request still `pending` and not expired? Only then create `otp_challenges` (mock delivery: console log / returned in the response in the dev environment). |
 | `corporateApproveTransaction` (Checker approve) | `POST /v1/org/approvals/:id/decide` | Body: `{action, otp}`. Verify the OTP (hash, attempts, expiry). In 1 DB transaction: `SELECT approval_requests FOR UPDATE` → insert `approval_actions` (UNIQUE(request_id, checker_id) blocks double-act) → recompute the state from `policy_snapshot` (the pure `Evaluate` function, §5.2). |
 | `VERIFY_TRANSACTION` pubsub | outbox `workflow.step.result` (not a dedicated event type) | In the same transaction as finalize: write `step_executions` for the `WAIT_APPROVAL` step + emit the standard ResultEvent → the engine resumes the workflow, running DEBIT → CREDIT → CONFIRM. See §4.3. |
 
@@ -499,11 +499,11 @@ func Evaluate(snapshot PolicySnapshot, actions []Action) Decision {
 }
 ```
 
-Race protection like DEH but using Postgres: two checkers press approve at the same time → both take `FOR UPDATE` on the `approval_requests` row, run sequentially, and `UNIQUE (request_id, checker_id)` on `approval_actions` blocks double-act (test `TestEdge_E08_CheckerRaceSingleFinalize`).
+Race protection like the reference engine but using Postgres: two checkers press approve at the same time → both take `FOR UPDATE` on the `approval_requests` row, run sequentially, and `UNIQUE (request_id, checker_id)` on `approval_actions` blocks double-act (test `TestEdge_E08_CheckerRaceSingleFinalize`).
 
-### 5.3. Fixes relative to DEH (talking points for interviews)
+### 5.3. Fixes relative to the reference engine (talking points for interviews)
 
-DEH bypasses auth in the core engine after the checker approves (`engineVerifyTransaction` skips `processVerifyStepV2` when `serviceType = corporate`). HPay needs no bypass flag: the financial steps can only run when the state machine has passed through a valid `WAIT_APPROVAL`, and the resume event is only emitted from the approval module in the same DB transaction as the approval decision. Authority is encoded in the **structure of the state machine**, not an if condition in code — safer and easier to audit.
+the reference engine bypasses auth in the core engine after the checker approves (`engineVerifyTransaction` skips `processVerifyStepV2` when `serviceType = corporate`). HPay needs no bypass flag: the financial steps can only run when the state machine has passed through a valid `WAIT_APPROVAL`, and the resume event is only emitted from the approval module in the same DB transaction as the approval decision. Authority is encoded in the **structure of the state machine**, not an if condition in code — safer and easier to audit.
 
 ---
 

@@ -15,11 +15,11 @@ Each item has a default I propose. If you say nothing, the plan uses the default
 | D2 | Old git history of the 3-4 sub-repos | Not kept. Initialize a new repo, first commit is a snapshot with secrets cleaned up. If history must be kept, use `git subtree add` (more effort) | **Decided: history dropped entirely (user decision)** |
 | D3 | Transaction PIN | Implement for real: PIN hashed with bcrypt/argon2 on the server, set/change PIN endpoint, lock after 5 wrong attempts | **Decided: real server-side PIN** |
 | D4 | Idempotency key | UNIQUE `(initiated_by, idempotency_key)` plus `request_hash`; same key with a different payload returns 409 | Default |
-| D5 | "Reference TMDS/DEH/MoMo" docs | Move into `docs/reference/` and label "reference, not an HPay specification". Remove the internal repo name `tmds-wallet-backend` | Default |
+| D5 | Docs about other products | Move into `docs/reference/` and label "reference, not an HPay specification". Remove any internal repo name of another product | Default |
 | D6 | Mock data in admin | Enabled only when `import.meta.env.DEV`; production shows real errors | Default |
 | D7 | Canonical KYC limits | You must pick a single table (currently 4 sources disagree). See section 5.2 | **Decided: take the seed values in code (L1 = 50M, L2 = 200M VND)** |
 | D8 | Docs say asynq but code uses goroutines | Default: fix the docs to match the code (goroutine + lease). Add asynq only if you want to run multiple replicas | Default |
-| D9 | `docs/reference/external/` (TMDS docs, `.docx`) | Keep out of the repo (not committed), or place in `docs/reference/` if you have the right to share | Default |
+| D9 | `docs/reference/external/` (external wallet docs, `.docx`) | Keep out of the repo (not committed), or place in `docs/reference/` if you have the right to share | Default |
 | D10 | Reversal when the receiver has already spent the money (see Wave 2) | Create a debt (receivable), hold the balance, or allow refund only when funds suffice and report manually | **Decided: reversal failure -> `needs_manual` status + audit; no negative balances** |
 | D11 | Fraud/LLM failure | Block the transaction (fail-closed) or let it pass and flag it (fail-open) | **Decided: fail-closed (hold for review)** |
 
@@ -197,7 +197,7 @@ Wait for Wave 1 to merge (A1 must finish before B1).
     qa/{plan,test-cases}/        (xlsx kept as is; .py scripts kept)
     specs/                       (per-feature spec and plan, from the new skills)
     handoff/                     (notes between agents)
-    reference/                   (TMDS/DEH, labeled as reference)
+    reference/                   (other products, labeled as reference)
     adr/
   ```
 - Conventions: diagrams use ```mermaid in md; HTML mockups (28KB+ each) are **not** converted to md because they are design deliverables, only a README describing them. Must run without losing content: use `pandoc` (or a script) and then a **human reviews tables, mermaid and links**.
@@ -205,7 +205,7 @@ Wait for Wave 1 to merge (A1 must finish before B1).
 
 **Agent D2 – Fix docs content** (runs after D1 to avoid editing twice)
 - Tasks, following the appendix and sections 3-5 of `docs/audit/AUDIT-REPORT.md`:
-  1. Separate information from other projects (D5): README, doc 06 (rename "TMDS Standard Platform" to "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. Fix the "DEH" comment in `approval/service.go:150` (touches code, hand to the agent that owns the file).
+  1. Separate information from other projects (D5): README, doc 06 (use the name "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. The comment in `approval/service.go` is already fixed.
   2. Figures: number of migrations (13, 14 after A1), E01–E20 and "39 cases", number of mockups, F11 into the master-plan, EN version "$200" → 5,000,000 VND, "US wallet" → state explicitly that it is a UI style.
   3. KYC limits: a single table (D7), other places reference it.
   4. Enums: `processing_async`, `cancelled`, `reversal`, `compensation_failed`, roles L1/L2 mapped to `org_role`.
@@ -341,7 +341,7 @@ BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency p
 | G13 | Admin cannot edit offers (no write route); offers change only by migration | operations | feature run |
 | G14 | Pre-existing lint errors: admin 6, mobile 3 | quality gate | fix or baseline |
 | G15 | Fraud LLM advisory is fire-and-forget; rule errors are retryable (fail-closed verified) but there is no test for an advisor outage | regression guard | add a test |
-| G16 | Wave 5 content fixes still open: some history docs still mention TMDS, DEH, MoMo (kept as history), mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
+| G16 | Wave 5 content fixes still open: mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
 | G17 | Key rotation (Neon, Cloudinary, JWT) postponed by the owner; the local `.env` JWT secret is the public placeholder | secrets | owner, when ready |
 | G18 | Daily and monthly windows use the server time zone and read-then-insert (BE-H2) | race on the limit window | bugfix run |
 | G19 | Outbox and consumer idempotency for non-money steps | duplicate side effects | review per handler |

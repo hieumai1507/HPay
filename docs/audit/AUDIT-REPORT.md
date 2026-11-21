@@ -264,18 +264,18 @@ Good points: the mobile access token lives only in memory, refresh is in SecureS
 
 | Location | Content | Proposal |
 |---|---|---|
-| `hpay-docs/README.md:16,28`; `architecture/06-service-engine-api-consolidation.html:27` | "TMDS/MoMo", "TMDS Enterprise Platform standard", "TMDS Standard Platform". Used as HPay's own standard name | Rename to "HPay Service Engine". Move the reference part into a "Reference sources" section |
-| `hpay-docs/index.html:287` | Footer: "DEH Corporate Authorization Matrix, TMDS Wallet Flow Overview" | Separate from the HPay spec |
-| `architecture/00-backend-design-v2-base.html:27-30,57-62` | "learned from the DEH engine"; `engineVerifyTransaction`, `VERIFY_TRANSACTION` are names from another system | Rename or state clearly that it is reference |
-| `architecture/04-feature-extensions.html:2,27,90,95` | "TMDS Wallet… production in Thailand", PromptPay, Node-RED, DipChip, Sails.js/MongoDB/AngularJS | Move into a comparison appendix |
-| `planning/master-plan.html:52,103,122`; `master-plan.txt:18,62,76` | "source tmds-wallet-backend (real code read)", "claim-lease learned from TMDS" | Remove the internal repo name if it is not yours |
-| `hpay-backend/internal/approval/service.go:150` | Comment "DEH's dry-run idea" | Fix the comment |
+| `hpay-docs/README.md:16,28`; `architecture/06-service-engine-api-consolidation.html:27` | "reference wallets / MoMo", "HPay Service Engine". Used as HPay's own standard name | Rename to "HPay Service Engine". Move the reference part into a "Reference sources" section |
+| `hpay-docs/index.html:287` | Footer: "a corporate authorization matrix, an external retail wallet flow overview" | Separate from the HPay spec |
+| `architecture/00-backend-design-v2-base.html:27-30,57-62` | "learned from a reference approval engine"; `engineVerifyTransaction`, `VERIFY_TRANSACTION` are names from another system | Rename or state clearly that it is reference |
+| `architecture/04-feature-extensions.html:2,27,90,95` | "a reference retail wallet… production in Thailand", PromptPay, Node-RED, DipChip, Sails.js/MongoDB/AngularJS | Move into a comparison appendix |
+| `planning/master-plan.html:52,103,122`; `master-plan.txt:18,62,76` | "source a reference wallet backend (real code read)", "claim-lease learned from the reference wallet" | Remove the internal repo name if it is not yours |
+| `hpay-backend/internal/approval/service.go:150` | Comment "the reference engine's dry-run idea" | Fix the comment |
 | `README.md:21`; `04-feature-extensions.html:25` | "US wallet" (Vietnamese phrase in the docs) but the currency is VND | State explicitly "Venmo/Cash App-style UI" |
 | `guide/functional-overview.en.html:285-286` | Tier 1/2 say "**$200**", the same threshold in both tiers. The `.vi` version says 5 million | Change to 5,000,000 VND |
 | `hpay-docs/push-to-github.ps1` | Commit message says "34 HTML mockups" (README says 42). It says itself "delete this file after running" | Delete the file |
-| `ref-docs/TMDS-Wallet-Flow-Overview.html` | Document of another system (correctly placed in ref-docs) | Make sure it is not put on public docs |
+| `ref-docs/<external wallet flow overview>.html` | Document of another system (correctly placed in ref-docs) | Make sure it is not put on public docs |
 
-Conclusion: no foreign stack (Laravel/Django/Stripe/MySQL) was found outside the TMDS comparison. Module path `github.com/hieumai1507/...` matches the repo owner.
+Conclusion: no foreign stack (Laravel/Django/Stripe/MySQL) was found outside the reference-wallet comparison. Module path `github.com/hieumai1507/...` matches the repo owner.
 
 ---
 

@@ -246,12 +246,12 @@ stateDiagram-v2
 | [01 · Backend solution architecture](design-v2/01-backend-solution-architecture.md) | Security, NFR, E01–E18, deployment |
 | [02 · Mobile solution architecture](design-v2/02-mobile-solution-architecture.md) | RN/Expo, M01–M12, client security |
 | [03 · Admin solution architecture](design-v2/03-admin-solution-architecture.md) | RBAC, operations screens, A01–A07 |
-| [04 · Feature extensions v2.1](design-v2/04-feature-extensions.md) | TMDS/MoMo analysis, schema delta |
+| [04 · Feature extensions v2.1](design-v2/04-feature-extensions.md) | reference wallets / MoMo analysis, schema delta |
 | [05 · Offer Factory & Service Catalog](design-v2/05-offer-service-factory.md) | Enterprise Product Engine architecture, Limit & Auth Matrix, Service Catalog |
 | [06 · Service Engine API Consolidation](design-v2/06-service-engine-api-consolidation.md) | Plan for restructuring & streamlining the Backend API (Service Engine Consolidation) |
 | [07 · TanStack Table & Query Pagination](design-v2/07-tanstack-table-query-pagination.md) | Plan for standardizing TanStack Table v8 & TanStack Query server-side pagination |
 | [Design · UI spec](../design/ui-design-spec.md) | Tokens, components, 36 screens |
-| [Planning · Master Plan](master-plan.md) | 2-docs-per-feature process, F1–F10/M/A breakdown, lessons from the TMDS source |
+| [Planning · Master Plan](master-plan.md) | 2-docs-per-feature process, F1–F10/M/A breakdown, lessons from a reference wallet source |
 | [Skills · Agent loop](../../.claude/skills/SOURCES.md) | 6 Claude Code skills: scaffold, migration, workflow step, fintech review, api test, seed demo |
 | [Design · HTML mockups](design/mockups/) | 42 US-wallet-style screens — including Request Money, Split Bill, Vaults, My Tasks (open directly in a browser) |
 | [Guide · Functional overview](guide-v2/functional-overview.md) | All features by role, with explanations + mermaid diagrams — for presentations/demos |
@@ -259,4 +259,4 @@ stateDiagram-v2
 
 ---
 
-HPay · docs v2.1 · updated 08/07/2026 · reference sources: DEH Corporate Authorization Matrix, TMDS Wallet Flow Overview, MoMo/Venmo/Cash App/Revolut patterns
+HPay · docs v2.1 · updated 08/07/2026 · reference sources: Acme Corporate Authorization Matrix, an external retail wallet flow overview, MoMo/Venmo/Cash App/Revolut patterns

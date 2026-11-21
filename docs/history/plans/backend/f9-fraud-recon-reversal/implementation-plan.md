@@ -4,7 +4,7 @@
 
 ## 1. Scope & non-goals
 
-> **3 independent areas, 1 shared principle** (index.html §9): hard decisions about money are always **deterministic rules + humans** — the LLM is advisory only (explaining fraud, summarizing recon), with a mock fallback when the key is missing. Reversal follows TMDS (doc 04 §1): **passive reversing entry, does NOT go through the workflow engine**, maker-checker between 2 admins is mandatory — the executor registers into the F6 approval framework via the `RegisterExecutor` hook that was left ready for it.
+> **3 independent areas, 1 shared principle** (index.html §9): hard decisions about money are always **deterministic rules + humans** — the LLM is advisory only (explaining fraud, summarizing recon), with a mock fallback when the key is missing. Reversal follows the reference wallet (doc 04 §1): **passive reversing entry, does NOT go through the workflow engine**, maker-checker between 2 admins is mandatory — the executor registers into the F6 approval framework via the `RegisterExecutor` hook that was left ready for it.
 
 | Ships | Not done in F9 |
 | --- | --- |

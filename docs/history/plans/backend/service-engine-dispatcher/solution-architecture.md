@@ -134,7 +134,7 @@ erDiagram
 | Invariant (index.html §8) | How the feature upholds it |
 | --- | --- |
 | The ledger always balances, money is BIGINT minor units | Every wallet_strategy still posts double-entry via `ledger.Post`; there is no path that writes balance directly |
-| Every actor goes through the proper engine (no "back door") | Topup/disbursement now also go through `engine.Start` + outbox like P2P (lesson from TMDS §2) |
+| Every actor goes through the proper engine (no "back door") | Topup/disbursement now also go through `engine.Start` + outbox like P2P (lesson from the reference wallet §2) |
 | Idempotency on the POST that creates a transaction | Keeps the `Idempotency-Key` UNIQUE + response snapshot unchanged (E01) |
 | KYC tier limit + Offer limit | OfferGuard adds the offer_services layer on top of the existing KYC tier check (E13) |
 | At-least-once + idempotent handler | The Action Pipeline step checks `step_executions` before any side effect (E04/E06); the gateway call carries an idempotency ref |

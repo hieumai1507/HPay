@@ -34,4 +34,4 @@ Product-side docs: [../product/feature-catalog.md](../product/feature-catalog.md
 
 - Every statement here was checked against code on 2026-11-21 (code was read, not executed; no test was run for this documentation pass).
 - Known defects are tracked in [../audit/AUDIT-REPORT.md](../audit/AUDIT-REPORT.md); this section cites audit IDs (BE-C1, BE-H1, ...) next to the code that has the problem and does not repeat the whole report.
-- Old design docs live in `docs/history/` and are context only. They contain claims the code does not support (asynq, golang-migrate, testcontainers in go.mod; `HPay serve` subcommand; other products TMDS/DEH/MoMo). Where this matters it is called out explicitly.
+- Old design docs live in `docs/history/` and are context only. They contain claims the code does not support (asynq, golang-migrate, testcontainers in go.mod; `HPay serve` subcommand; features of other products). Where this matters it is called out explicitly.

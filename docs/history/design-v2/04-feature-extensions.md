@@ -1,12 +1,12 @@
-# Feature Extensions v2.1 — learning from TMDS Wallet & MoMo, keeping the "American wallet" soul
+# Feature Extensions v2.1 — learning from a reference retail wallet & MoMo, keeping the "American wallet" soul
 
-> Reference sources: the TMDS Wallet Flow Overview (a production retail wallet in Thailand — a 3-step engine, GL, settlement, 18 feature groups) and the patterns of MoMo/Venmo/Cash App/Revolut. **Principle: HPay's core logic stays unchanged** (event-driven workflow engine, double-entry ledger, human-in-the-loop maker-checker, outbox, idempotency). This doc only adds to, and does not replace, the design in docs 00/01.
+> Reference sources: the an external retail wallet flow overview (a production retail wallet in Thailand — a 3-step engine, GL, settlement, 18 feature groups) and the patterns of MoMo/Venmo/Cash App/Revolut. **Principle: HPay's core logic stays unchanged** (event-driven workflow engine, double-entry ledger, human-in-the-loop maker-checker, outbox, idempotency). This doc only adds to, and does not replace, the design in docs 00/01.
 
-## 1. Assessment of TMDS — what to take, what to drop
+## 1. Assessment of the reference wallet — what to take, what to drop
 
-| TMDS pattern | Comment | Decision |
+| Reference pattern | Comment | Decision |
 |---|---|---|
-| 3-step engine Request→Confirm→Verify, `transactionTrail` throughout | The same philosophy as the earlier DEH docs. Our workflow engine is more general (N configurable steps, with a human gate) | **Keep our engine.** Only learn the invariant: after `completed` the state is IMMUTABLE, and to refund you must use a reversal |
+| 3-step engine Request→Confirm→Verify, `transactionTrail` throughout | The same philosophy as the earlier the reference approval docs. Our workflow engine is more general (N configurable steps, with a human gate) | **Keep our engine.** Only learn the invariant: after `completed` the state is IMMUTABLE, and to refund you must use a reversal |
 | `processing` state (code 9999 — slow partner) + cron recovery replay | Very practical: an async error is not failed but "recoverable" | **Take.** Add the txn status `processing_async` + a `recover_stuck` job that sweeps stuck instances and replays the step (idempotent already) |
 | Void/Reversal = a passive reversing entry, not going through the engine; operators must go through maker-checker | Matches our immutable ledger | **Take.** Standardize the reversal flow: swap Dr/Cr from the original ledger, add a `transactions.reversal_of` column |
 | Maker-checker for **18 types of admin operations** (adjustment, lock user, config change…), not only transactions | This is the biggest insight: the approval engine is shared infrastructure, not a feature of the org wallet alone | **Take.** Generalize `transaction_approvals` → `approval_requests(subject_type, subject_id)`: used for org txn, admin reversal, account lock, policy change |
@@ -72,7 +72,7 @@ Moving main↔vault is a transaction type `vault_move` that runs through the eng
 
 ### 2.3. Generalized approval engine (P1 — architecture upgrade)
 
-Rename `transaction_approvals` → `approval_requests` with a `subject_type` (`org_transaction` | `admin_reversal` | `account_lock` | `policy_change`), keeping the policy snapshot + evaluate + OTP unchanged. An admin who wants a reversal/account lock → creates a request → another admin approves (exactly the TMDS principle: Maker ≠ Checker even within internal operations). The admin "My Tasks" screen = the queue of requests awaiting my approval.
+Rename `transaction_approvals` → `approval_requests` with a `subject_type` (`org_transaction` | `admin_reversal` | `account_lock` | `policy_change`), keeping the policy snapshot + evaluate + OTP unchanged. An admin who wants a reversal/account lock → creates a request → another admin approves (exactly the reference principle: Maker ≠ Checker even within internal operations). The admin "My Tasks" screen = the queue of requests awaiting my approval.
 
 ### 2.4. Lean fee engine (P1)
 
@@ -90,7 +90,7 @@ CREATE TABLE fee_policies (
 );
 ```
 
-The fee is computed in the VALIDATE step, shown as a preview before confirm (learning from TMDS's enquiry-first UX), and the fee posting goes to the `SYSTEM_FEE` wallet. Changing a fee via admin → must go through an approval request (§2.3).
+The fee is computed in the VALIDATE step, shown as a preview before confirm (learning from the reference wallet's enquiry-first UX), and the fee posting goes to the `SYSTEM_FEE` wallet. Changing a fee via admin → must go through an approval request (§2.3).
 
 ### 2.5. Scheduled & recurring transfer (P2, Cash App style)
 
@@ -118,7 +118,7 @@ Integration with real billers/telcos, multi-tier settlement biller→aggregator�
 |---|---|
 | `00-backend-design-v2-base.md` | Unchanged. The schema delta lives in this doc, to be merged into migrations when coding |
 | `01-backend-solution-architecture.md` | Add edge case E19 (a money request expires exactly as it is being paid), E20 (a recovery replay collides with a running step — needs a lease/lock per instance) |
-| `02-mobile-solution-architecture.md` | Fix the auth matrix per the TMDS principle: biometrics ONLY unlock the app; transferring money = PIN/OTP. Add screens: Request Money (3), Split Bill (2), Vaults (2) |
+| `02-mobile-solution-architecture.md` | Fix the auth matrix per the reference principle: biometrics ONLY unlock the app; transferring money = PIN/OTP. Add screens: Request Money (3), Split Bill (2), Vaults (2) |
 | `03-admin-solution-architecture.md` | Add "My Tasks" (the approval requests queue), reversal via maker-checker instead of a direct action in the Fraud dialog |
 | `design/ui-design-spec.md` | +7 mobile screens (Request/Split/Vault), +1 admin screen (My Tasks); new components: `RequestCard`, `SplitAvatarStack`, `VaultCard` |
 | Roadmap | P1 (§2.1, 2.3, 2.4, 2.6, 2.7) in weeks 3–4; P2 (§2.2, 2.5, 2.8) after week 5 if time permits |

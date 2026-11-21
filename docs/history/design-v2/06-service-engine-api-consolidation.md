@@ -1,6 +1,6 @@
 # ⚡ 06 — Plan: Restructuring & Streamlining the Backend API (Service Engine Consolidation)
 
-A detailed plan to review and remove redundant APIs and consolidate all monetary transaction flows into the **standard 3-step Engine System (TMDS Standard Platform)**.
+A detailed plan to review and remove redundant APIs and consolidate all monetary transaction flows into the **standard 3-step Engine System (HPay Service Engine)**.
 
 ## 1. API Audit & Pruning List
 

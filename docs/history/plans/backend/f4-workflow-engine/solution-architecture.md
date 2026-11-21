@@ -99,7 +99,7 @@ erDiagram
 | Backoff via `outbox.available_at` | asynq delayed task / Redis ZSET | A retry is a decision already committed in the DB — keeping it in the DB preserves the invariant "an event is not lost after commit"; the relay only needs one more WHERE condition |
 | The worker re-emits the result event on redelivery instead of staying silent | Ignore the duplicate message | If a crash happens AFTER step_execution is written but BEFORE the relay emits the result, staying silent = the engine waits forever; re-emitting is always safe because the engine is idempotent (E06) |
 | Guard advance by (status, current_step) inside FOR UPDATE | Dedup by event id | No dedup table needed: the instance state ITSELF is the source of truth; stale events neutralize themselves |
-| Lease recovery = UPDATE…WHERE updated_at < threshold RETURNING | Advisory lock / separate flag | Learned from TMDS (pending→attempt): 1 SQL statement, race-safe, 2 sweepers never claim the same instance — exactly E20 |
+| Lease recovery = UPDATE…WHERE updated_at < threshold RETURNING | Advisory lock / separate flag | Learned from the reference wallet (pending→attempt): 1 SQL statement, race-safe, 2 sweepers never claim the same instance — exactly E20 |
 | Test handlers (echo/flaky/boom) instead of waiting for business handlers | Test the engine together with F5 | The engine is proven independently; F5 only has to deal with business logic |
 
 ## 6. Invariants touched

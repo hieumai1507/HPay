@@ -63,5 +63,5 @@ Registration/login with refresh rotation; wallets and double-entry ledger; P2P t
 
 - Real bank or card rails, real SMS/email delivery, push notifications, multi-currency (wallet currency is `VND` everywhere in queries), card issuing.
 - Server-side PIN: no PIN is stored or verified by the backend (audit BE-C2); see [crosscutting-concepts.md](crosscutting-concepts.md).
-- Other products mentioned in old docs (TMDS, DEH, MoMo) are reference material only and have no code in this repo.
+- Other products mentioned in old docs are reference material only and have no code in this repo.
 - Kubernetes/infra-as-code, observability stack (metrics, tracing): none in repo. Only `/healthz` and structured access logs exist.

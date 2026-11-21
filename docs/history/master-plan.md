@@ -22,7 +22,7 @@ flowchart LR
 
 > Document location: **inside the code repo** being worked on (for example `src/backend/docs/plans/f3-workflow-engine/`), not in the docs repo. The docs repo holds the overall design; the code repo holds its own execution plan. Plans are written as self-contained HTML (mermaid CDN) per the common standard.
 
-## 2. Lessons drawn from the TMDS source (real code was read)
+## 2. Lessons drawn from a reference wallet source (real code was read)
 
 | Finding in the source | Application to HPay |
 |---|---|
@@ -76,7 +76,7 @@ flowchart TB
 | **F1 Foundation** | go.mod, internal/ structure, docker-compose (pg16+redis7), all migrations from doc 00§3 + 04§2, sqlc, Makefile, CI with all jobs, copy skills into `.claude/skills/`, skeleton openapi.yaml | E18 (migrate up-down-up in CI) | 1 |
 | **F2 Auth & Users** | argon2id, JWT access/refresh rotation + theft detection, device binding, OTP service (hash/TTL/attempts), rate-limit middleware, audit_logs | E11 | 1 |
 | **F3 Ledger + Wallets** | ledger service (post double-entry, lock ordering), system wallets, topup mock bank + idempotency middleware | E01, E02, E13, E14, E15 | 1–2 |
-| **F4 Workflow Engine** | definitions/instances/step_executions, Streams consumer groups, outbox relay, retry/backoff, saga compensation, recover_stuck (claim-lease learned from TMDS), `--role` | E04, E05, E06, E17, E20 | 2 |
+| **F4 Workflow Engine** | definitions/instances/step_executions, Streams consumer groups, outbox relay, retry/backoff, saga compensation, recover_stuck (claim-lease learned from the reference wallet), `--role` | E04, E05, E06, E17, E20 | 2 |
 | **F5 P2P + Fee** | 4 handlers (validator/fraud-stub/wallet/confirmer), fee_policies + preview, P2P end-to-end, transaction timeline API | E03, E07, E12 | 2 |
 | **F6 Approval Engine** | orgs/members/policies, generalized approval_requests (org_txn + reversal + lock + policy_change), human_approval step, checker API, expiry cron, My Tasks API | E08, E09, E10 | 3 |
 | **F7 Request Money** | money_requests + split groups, notify, pay-flow attached to the engine, expiry | E19 | 3 |
@@ -96,4 +96,4 @@ Mobile (M1–M5) and Admin (A1–A4) are broken down similarly. Detailed scope f
 
 ---
 
-HPay Master Plan · v1 · 09/07/2026 · sources: docs 00–04 + reading the tmds-wallet-backend source
+HPay Master Plan · v1 · 09/07/2026 · sources: docs 00–04 + reading the a reference wallet backend source
