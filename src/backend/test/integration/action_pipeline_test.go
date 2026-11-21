@@ -31,6 +31,7 @@ func TestActionPipelineWiring_P2PCallsGateway(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
+	e.confirmWithPIN(t, senderID, res)
 	e.drain(t)
 	if got := e.txnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("txn status: want completed, got %s", got)
@@ -67,6 +68,7 @@ func TestActionPipelineWiring_EmptyActionsStillCompletes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
+	e.confirmWithPIN(t, senderID, res)
 	e.drain(t)
 	if got := e.txnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("txn status: want completed, got %s", got)

@@ -20,9 +20,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RequireAdmin validates a Bearer token minted with audience "admin"
-// (docs 01 §3.1) and stores the admin id in context.
-func RequireAdmin(issuer *auth.JWTIssuer) gin.HandlerFunc {
+// RequireAdmin validates a Bearer token minted with audience "admin" (docs 01 §3.1)
+// and then loads the admin from the database on EVERY request (ADR-0015): the admin
+// must exist and be active, and the role is taken from the row, never from the
+// token, so locking or demoting an admin takes effect on the next call. The admin id
+// and role are stored in the context for RequirePermission.
+func RequireAdmin(issuer *auth.JWTIssuer, pool *pgxpool.Pool) gin.HandlerFunc {
+	q := store.New(pool)
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		tok, ok := strings.CutPrefix(header, "Bearer ")
@@ -36,11 +40,42 @@ func RequireAdmin(issuer *auth.JWTIssuer) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		row, err := q.GetAdminByID(c.Request.Context(), adminID)
+		if err != nil {
+			// unknown admin and a database error both refuse; neither reveals which
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": "ERR_INVALID_TOKEN", "message": "invalid token"})
+			return
+		}
+		if row.Status != store.AccountStatusActive {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"code": "ERR_ACCOUNT_LOCKED", "message": "account locked"})
+			return
+		}
 		c.Set("admin_id", adminID.String())
+		c.Set("admin_role", string(row.Role))
 		c.Next()
 	}
 }
 
+// RequirePermission allows the request when the admin's CURRENT role holds at
+// least one of the listed permissions. With no permission listed it requires any
+// permission at all (a viewer holds none and is refused). The denial names no
+// permission: the caller must not learn the permission model.
+func RequirePermission(perms ...auth.Permission) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role := c.GetString("admin_role")
+		allowed := false
+		if len(perms) == 0 {
+			allowed = auth.RoleHasAnyPermission(role)
+		} else {
+			allowed = auth.RoleHasAny(role, perms...)
+		}
+		if !allowed {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "ERR_FORBIDDEN_PERMISSION", "message": "your role does not allow this action"})
+			return
+		}
+		c.Next()
+	}
+}
 func mustAdminID(c *gin.Context) uuid.UUID {
 	id, _ := uuid.Parse(c.GetString("admin_id"))
 	return id
@@ -150,5 +185,5 @@ func (h *AdminHandler) ServeFile(c *gin.Context) {
 		respondErr(c, err)
 		return
 	}
-	c.Data(http.StatusOK, http.DetectContentType(data), data)
+	writeStoredFile(c, key, data)
 }

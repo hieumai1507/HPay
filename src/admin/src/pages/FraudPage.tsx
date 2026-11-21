@@ -6,7 +6,10 @@ import {
 } from '@tanstack/react-table';
 import { useFraudFlags, useResolveFraudFlag, type FraudFlagItem } from '@/queries';
 import { ResolveDialog } from '@/features/fraud/ResolveDialog';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
+import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
+import { formatVnd } from '@/lib/money';
+import { useAdminStore } from '@/stores/admin';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -22,7 +25,7 @@ export default function FraudPage() {
   const { pagination, setPagination, sorting, setSorting, queryParams } = useTableQueryState({ initialPageSize: 10 });
   // Status + paging are server-side; ruleFilter below is still client-side and
   // therefore only narrows the page currently loaded.
-  const { data, isLoading, refetch } = useFraudFlags({
+  const { data, isLoading, error, refetch } = useFraudFlags({
     status: statusFilter,
     page: queryParams.page,
     limit: queryParams.limit,
@@ -31,6 +34,9 @@ export default function FraudPage() {
   const flags = data?.rows ?? [];
   const total = data?.total ?? 0;
   const resolveMutation = useResolveFraudFlag();
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canResolve = useAdminStore((s) => s.can(ACTION_PERMISSION.fraud));
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const filteredFlags = useMemo(() => {
     return flags.filter((f) => {
@@ -56,16 +62,27 @@ export default function FraudPage() {
   }, [filteredFlags, selectedIds.length]);
 
   const handleResolveConfirm = async ({ action, reason }: { action: 'clear' | 'confirm_fraud'; option: string; reason: string }) => {
-    if (!dialogFlag) return;
-    await resolveMutation.mutateAsync({ id: dialogFlag.id, action, reason });
-    setDialogFlag(null);
-    refetch();
+    if (!dialogFlag || resolveMutation.isPending) return;
+    setActionError(null);
+    try {
+      await resolveMutation.mutateAsync({ id: dialogFlag.id, action, reason });
+      setDialogFlag(null);
+      refetch();
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const handleQuickClear = async (flag: FraudFlagItem) => {
+    if (resolveMutation.isPending) return;
     if (!window.confirm(`Xác nhận đánh dấu an toàn cho flag ${flag.flagNo}?`)) return;
-    await resolveMutation.mutateAsync({ id: flag.id, action: 'clear', reason: 'Quyết định đánh dấu an toàn từ Admin Ops' });
-    refetch();
+    setActionError(null);
+    try {
+      await resolveMutation.mutateAsync({ id: flag.id, action: 'clear', reason: 'Quyết định đánh dấu an toàn từ Admin Ops' });
+      refetch();
+    } catch (e: unknown) {
+      setActionError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const columns = useMemo(
@@ -121,11 +138,11 @@ export default function FraudPage() {
       }),
       columnHelper.accessor('amount', {
         header: 'Số tiền',
-        cell: (info) => <span className="font-mono font-medium">{info.getValue().toLocaleString('vi-VN')} ₫</span>,
+        cell: (info) => <span className="font-mono font-medium">{formatVnd(info.getValue())}</span>,
       }),
       columnHelper.accessor('userName', {
         header: 'User',
-        cell: (info) => <span>{info.getValue()}</span>,
+        cell: (info) => <span>{info.getValue() ?? '—'}</span>,
       }),
       columnHelper.accessor('createdAt', {
         header: 'Tuổi',
@@ -198,13 +215,24 @@ export default function FraudPage() {
           {selectedIds.length > 0 && (
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm(`Đánh dấu an toàn cho ${selectedIds.length} flags?`)) {
-                  setSelectedIds([]);
-                  refetch();
+              disabled={!canResolve || resolveMutation.isPending}
+              title={canResolve ? undefined : NO_PERMISSION_REASON}
+              onClick={async () => {
+                if (!window.confirm(`Đánh dấu an toàn cho ${selectedIds.length} flags?`)) return;
+                setActionError(null);
+                const failed: string[] = [];
+                for (const id of selectedIds) {
+                  try {
+                    await resolveMutation.mutateAsync({ id, action: 'clear', reason: 'Quyết định đánh dấu an toàn từ Admin Ops' });
+                  } catch {
+                    failed.push(id);
+                  }
                 }
+                setSelectedIds(failed);
+                if (failed.length > 0) setActionError(`${failed.length} of the selected flags could not be resolved.`);
+                refetch();
               }}
-              className="h-9 px-3.5 rounded-lg border border-emerald-600 bg-emerald-50 text-xs font-semibold text-emerald-700 cursor-pointer hover:bg-emerald-100 transition-colors"
+              className="h-9 px-3.5 rounded-lg border border-emerald-600 bg-emerald-50 text-xs font-semibold text-emerald-700 cursor-pointer hover:bg-emerald-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               ☑ Mark safe ({selectedIds.length})
             </button>
@@ -219,6 +247,14 @@ export default function FraudPage() {
           </button>
         </div>
       </div>
+
+      <ErrorNotice error={error} what="fraud flags" />
+      {actionError && (
+        <div role="alert" className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-r-lg text-sm">
+          {actionError}
+        </div>
+      )}
+      {!canResolve && <div className="text-xs text-slate-500">{NO_PERMISSION_REASON} (fraud.resolve)</div>}
 
       {/* Main Table */}
       <div className="flex flex-col gap-4">
@@ -262,6 +298,8 @@ export default function FraudPage() {
                     <button
                       type="button"
                       onClick={() => handleQuickClear(activeDetailFlag)}
+                      disabled={!canResolve || resolveMutation.isPending}
+                      title={canResolve ? undefined : NO_PERMISSION_REASON}
                       className="h-9.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 font-semibold text-xs cursor-pointer flex items-center justify-center hover:bg-emerald-50 transition-colors"
                     >
                       ✓ Đánh dấu an toàn
@@ -269,6 +307,8 @@ export default function FraudPage() {
                     <button
                       type="button"
                       onClick={() => setDialogFlag(activeDetailFlag)}
+                      disabled={!canResolve || resolveMutation.isPending}
+                      title={canResolve ? undefined : NO_PERMISSION_REASON}
                       className="h-9.5 rounded-lg border-none bg-rose-600 text-white font-semibold text-xs cursor-pointer flex items-center justify-center hover:bg-rose-700 transition-colors shadow-xs"
                     >
                       🔒 Xác nhận gian lận — chọn hệ quả…

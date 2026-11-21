@@ -334,11 +334,9 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
           <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50">Đóng</button>
           <button
             type="button"
-            onClick={() => {
-              alert(`Đã lưu thiết kế Transaction Design cho Dịch vụ ${service.code}!`);
-              onClose();
-            }}
-            className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
+            disabled
+            title="Not available yet: the backend has no endpoint to save a service's transaction design (only PUT /v1/admin/services/{id} with a status)."
+            className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs shadow-xs opacity-60 cursor-not-allowed"
           >
             Lưu Transaction Design
           </button>

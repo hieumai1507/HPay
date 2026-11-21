@@ -41,9 +41,10 @@ jobs:
       E2E_BASE_URL: http://localhost:4173
       CI: true
       # internal/platform/config.Load fails fast without this — a CI-only
-      # value, never used for anything real. APP_ENV isn't set so it
+      # value, never used for anything real. APP_ENV=ci (explicit, required) so it
       # defaults to "dev", where the >=32-byte length check is skipped, but
       # this value clears it anyway.
+      APP_ENV: ci
       JWT_SECRET: ci-e2e-only-secret-not-for-real-use-32b
     steps:
       - uses: actions/checkout@v4

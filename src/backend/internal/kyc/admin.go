@@ -138,10 +138,16 @@ func (s *AdminService) Review(ctx context.Context, adminID, requestID uuid.UUID,
 	if err != nil {
 		return ReviewResult{}, err
 	}
-	if _, err := qtx.SetUserKycFromManualReview(ctx, store.SetUserKycFromManualReviewParams{
+	n, err = qtx.SetUserKycFromManualReview(ctx, store.SetUserKycFromManualReviewParams{
 		ID: req.UserID, KycStatus: newStatus,
-	}); err != nil {
+	})
+	if err != nil {
 		return ReviewResult{}, err
+	}
+	if n > 0 {
+		if err := applyOfferForStatus(ctx, qtx, req.UserID, newStatus); err != nil {
+			return ReviewResult{}, err
+		}
 	}
 	if err := qtx.InsertAudit(ctx, store.InsertAuditParams{
 		ActorID: adminID, ActorType: "admin", Action: action,

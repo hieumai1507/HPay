@@ -25,10 +25,10 @@ export function useVaults() {
 
 export function useCreateVault() {
   return useMutation({
-    mutationFn: (input: { label: string; targetAmount?: number }) =>
+    mutationFn: (input: { label: string; targetAmount?: bigint }) =>
       apiRequest<Vault>('/v1/vaults', {
         method: 'POST',
-        body: { label: input.label, target_amount: input.targetAmount ?? 0 },
+        body: { label: input.label, target_amount: input.targetAmount ?? 0n },
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: vaultKeys.all });
@@ -61,24 +61,31 @@ export function useSetRoundUpTarget() {
  * offer limits, the auth matrix and idempotency instead of getting their own
  * money path. There is no /vaults/:id/deposit endpoint by design.
  */
+export interface VaultMoveOptions {
+  /** One key per user intent (see src/lib/intentKey.ts). */
+  idempotencyKey: string;
+  /** Collected from the user via usePin(). */
+  pin: string;
+}
+
 export function useVaultMove() {
   const engine = useTransactionEngine();
 
   const move = async (
     vaultId: string,
-    amount: number,
+    amount: bigint,
     direction: 'deposit' | 'withdraw',
-    idempotencyKey?: string,
+    opts: VaultMoveOptions,
   ) => {
     const req = await engine.requestTransaction({
       serviceCode: 'VAULT_SAVINGS',
       amount,
-      idempotencyKey,
+      idempotencyKey: opts.idempotencyKey,
       extraParams: { vault_id: vaultId, direction },
     });
     const res = await engine.confirmTransaction({
       transactionId: req.transaction_id,
-      pin: '123456',
+      pin: opts.pin,
     });
     // Both the vault list and the main wallet balance changed.
     void queryClient.invalidateQueries({ queryKey: vaultKeys.all });
@@ -87,10 +94,10 @@ export function useVaultMove() {
   };
 
   return {
-    deposit: (vaultId: string, amount: number, key?: string) =>
-      move(vaultId, amount, 'deposit', key),
-    withdraw: (vaultId: string, amount: number, key?: string) =>
-      move(vaultId, amount, 'withdraw', key),
+    deposit: (vaultId: string, amount: bigint, opts: VaultMoveOptions) =>
+      move(vaultId, amount, 'deposit', opts),
+    withdraw: (vaultId: string, amount: bigint, opts: VaultMoveOptions) =>
+      move(vaultId, amount, 'withdraw', opts),
     isMoving: engine.isRequesting || engine.isConfirming,
   };
 }

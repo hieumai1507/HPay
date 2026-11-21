@@ -1,6 +1,6 @@
 # hpay-backend
 
-Go backend for HPay — Low-Code Service & Workflow Engine on a double-entry ledger (TMDS Enterprise Platform Standard).
+Go backend for HPay — Low-Code Service & Workflow Engine on a double-entry ledger.
 Design docs: [hpay-docs](https://github.com/hieumai1507/hpay-docs).
 
 ## Quick Start

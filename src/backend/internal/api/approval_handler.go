@@ -7,15 +7,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/hieumai1507/hpay-backend/internal/approval"
+	"github.com/hieumai1507/hpay-backend/internal/platform/config"
 )
 
 type ApprovalHandler struct {
 	svc *approval.Service
-	env string
+	cfg config.Config
 }
 
-func NewApprovalHandler(svc *approval.Service, env string) *ApprovalHandler {
-	return &ApprovalHandler{svc: svc, env: env}
+func NewApprovalHandler(svc *approval.Service, cfg config.Config) *ApprovalHandler {
+	return &ApprovalHandler{svc: svc, cfg: cfg}
 }
 
 // Inbox is the checker's "My Tasks" queue (pending only in F6).
@@ -44,11 +45,7 @@ func (h *ApprovalHandler) Challenge(c *gin.Context) {
 		respondErr(c, err)
 		return
 	}
-	body := gin.H{"status": "otp_sent"}
-	if h.env == "dev" {
-		body["otp_dev"] = code
-	}
-	c.JSON(http.StatusOK, body)
+	c.JSON(http.StatusOK, challengeBody(h.cfg, code))
 }
 
 type decideReq struct {

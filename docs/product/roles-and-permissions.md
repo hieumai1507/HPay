@@ -42,15 +42,26 @@ Gaps: no `checkerID != createdBy` rule in `eligibility` (the unique membership m
 
 Table `admin_users(email, password_hash, full_name, role, status)` with enum `admin_role` = `viewer | kyc_reviewer | risk_officer | ops | superadmin` (migration 000001:9,57; default `viewer`; a dev superadmin is seeded at 000001:77-81). Login: `POST /v1/admin/auth/login` (rate limit 5/min) returns an `aud=admin` JWT and the admin profile including role; locked admins get `ERR_ACCOUNT_LOCKED` (`auth/admin.go:45`).
 
-### What the backend enforces
+### What the backend enforces (ADR-0015, BUG-0013; fixed in the working tree 2026-11-21, not yet committed)
 
-Only authentication: `RequireAdmin` verifies signature, expiry and audience and stores `admin_id` (`admin_handler.go:25-42`). The role is NOT in the token claims used for authorization and NO handler or service checks it. Therefore every authenticated admin, including `viewer`, can call every `/v1/admin/*` route:
+`RequireAdmin` validates signature, expiry and audience, then loads the admin from `admin_users` on every request: an unknown id is refused (401), a status other than `active` is refused (401 `ERR_ACCOUNT_LOCKED`), and the role is taken from the row, never from the token, so a lock or a demotion applies on the next call. `RequirePermission` is attached to every `/v1/admin` route. The role table is `internal/auth/rbac.go` and a test compares it with `src/admin/src/stores/admin.ts`.
 
-KYC queue and review, fraud flags and resolve, create reversal, admin approvals and decide (`approval.AdminDecide` only checks `adminID != createdBy` style self-approval for reversals, `ErrSelfApproval` via `approval/admin.go:67`), recon run and read, service list/get/status update, offers list/get, workflows list/get, audit list, orgs list and `PUT /orgs/:id/policies`, AI keys create/update/list and AI settings update, signed file fetch (HMAC link only, no auth). This is audit BE-H6; no RBAC middleware exists.
+| Route | Permission (any one is enough) |
+|---|---|
+| `GET /kyc`, `POST /kyc/:id/review` | `kyc.review` |
+| `GET /fraud-flags`, `POST /fraud-flags/:id/resolve` | `fraud.resolve` |
+| `POST /reversals`, `GET /approvals`, `POST /approvals/:id/decide`, `GET /workflows`, `GET /workflows/:id` | `workflow.action` |
+| `POST /recon/run`, `GET /recon/runs/:date` | `recon.run` |
+| `GET /orgs` | `orgs.edit` or `workflow.action` |
+| `PUT /orgs/:id/policies` | `orgs.edit` |
+| `GET /services`, `GET /services/:id`, `GET /offers`, `GET /offers/:id`, `GET /audit` | any permission (a `viewer` holds none and sees nothing) |
+| `PUT /services/:id` | `admins.manage` |
+| `GET/POST/PUT /ai/keys`, `GET/PUT /ai/settings` | `ai.manage` |
 
+A denial is 403 `ERR_FORBIDDEN_PERMISSION` and does not name a permission. AI key create/update and AI setting update write audit rows (`ai.key.create`, `ai.key.update`, `ai.setting.update`) with the actor and client IP and no key material. Not covered: `GET /v1/files/*key` (signed link only, no identity; BE-H9), admin refresh tokens, a separate admin signing secret, MFA, and audit rows for every other admin write.
 ### What the admin frontend gates
 
-`stores/admin.ts` maps roles to permissions (UX only):
+`stores/admin.ts` maps roles to permissions; the backend now enforces the same table (see above) and the frontend uses it to hide what a role cannot use:
 
 | Role | Permissions in the UI map |
 |---|---|
@@ -60,27 +71,38 @@ KYC queue and review, fraud flags and resolve, create reversal, admin approvals 
 | `ops` | `workflow.action`, `recon.run` |
 | `superadmin` | all: `kyc.review`, `fraud.resolve`, `workflow.action`, `recon.run`, `orgs.edit`, `ai.manage`, `admins.manage` |
 
-Actually consulted by pages: `kyc.review` (KYCDetailPage:44, enables review buttons) and `workflow.action` (MyTasksPage:39, enables decide). The permissions `fraud.resolve`, `recon.run`, `orgs.edit`, `ai.manage` are defined but not checked by any page, and `admins.manage` has no feature behind it (no admin-user management endpoint or page exists). Routes and the sidebar are identical for all roles. `RequireAdmin` only checks for a token.
+Consulted by the UI (fixed in working tree, 2026-11-21, not yet committed): `kyc.review` (KYC review buttons), `workflow.action` (My Tasks decide, workflow retry/compensate), `fraud.resolve` (fraud resolve buttons), `recon.run` (run reconciliation), `orgs.edit` (org policy editor), `ai.manage` (AI keys and routing), `admins.manage` (service status change; reused as the platform-configuration permission because services and offers have no dedicated permission, **product decision pending**). A `RequirePermission` wrapper (inside `RequireAdmin`) now guards the routes below and the sidebar hides the same links. Source: `src/admin/src/lib/access.ts` `ROUTE_ACCESS`.
+
+| Route | Visible when the role holds any of |
+|---|---|
+| `/fraud` | `fraud.resolve` |
+| `/recon` | `recon.run` |
+| `/orgs` | `orgs.edit`, `workflow.action` |
+| `/ai-settings` | `ai.manage` |
+| `/services`, `/offers`, `/offers/:id` | `admins.manage`, `orgs.edit`, `ai.manage` |
+| `/audit` | any permission (a `viewer` sees nothing) |
+
+**The frontend guards are a convenience; the server enforces permissions (ADR-0015).** `/dashboard`, `/kyc`, `/workflows` and `/tasks` are not route-guarded (their buttons are gated where a permission exists). `admins.manage` has no feature behind it (no admin-user management endpoint or page).
 
 ### Intended vs actual summary
 
 | Capability | Intended role (UI map) | Backend enforces | Frontend enforces |
 |---|---|---|---|
-| Review KYC | kyc_reviewer, superadmin | any admin | buttons for kyc_reviewer, superadmin |
-| Resolve fraud flag | risk_officer, superadmin | any admin | not gated |
-| Decide admin approvals (reversal) | risk_officer, ops, superadmin | any admin (self-approval blocked) | buttons gated by `workflow.action` |
-| Run recon | ops, superadmin | any admin | not gated |
-| Edit org policy | superadmin | any admin | not gated |
-| AI keys/settings | superadmin | any admin | not gated |
-| Services/offers | none defined | any admin (offers read-only on backend) | not gated |
+| Review KYC | kyc_reviewer, superadmin | kyc.review | buttons for kyc_reviewer, superadmin |
+| Resolve fraud flag | risk_officer, superadmin | fraud.resolve | page and buttons gated by `fraud.resolve` |
+| Decide admin approvals (reversal) | risk_officer, ops, superadmin | workflow.action (self-approval blocked) | buttons gated by `workflow.action` |
+| Run recon | ops, superadmin | recon.run | page and run button gated by `recon.run` |
+| Edit org policy | superadmin | orgs.edit | edit controls gated by `orgs.edit`, page visible to `orgs.edit` or `workflow.action` |
+| AI keys/settings | superadmin | ai.manage (writes audited) | page and writes gated by `ai.manage` |
+| Services/offers | none defined (`admins.manage` reused for writes, any permission for reads; decision pending) | admins.manage for status change; any permission for reads | pages and service status change gated |
 
 ## 4. System actors
 
-Mock bank: shared-secret header (default secret in every env, BE-H7). Workers: system actor id for audit entries (`auth/service.go:18`). Files: signed links valid 5 minutes, no identity.
+Mock bank: shared-secret header; the route exists only outside production and the secret has no default outside dev and ci (ADR-0012). Workers: system actor id for audit entries (`auth/service.go:18`). Files: signed links valid 5 minutes, no identity.
 
 ## Open gaps to close
 
-1. Role claim in admin JWT plus a backend `RequirePermission` middleware matching the UI map (BE-H6).
-2. Gate fraud, recon, org policy, AI pages in the UI to match.
+1. ~~Role claim in admin JWT plus a backend `RequirePermission` middleware (BE-H6).~~ Done in the working tree (database role on every request; ADR-0015), not yet committed.
+2. ~~Gate fraud, recon, org policy, AI pages in the UI to match.~~ Done in the UI and now backed by server enforcement.
 3. Explicit self-approval block for org approvals.
 4. Separate admin signing secret and refresh/revocation for both token types.

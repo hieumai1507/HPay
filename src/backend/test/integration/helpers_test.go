@@ -72,6 +72,7 @@ type env struct {
 	worker *workflow.Worker
 	reg    *workflow.Registry // E17 builds a second worker on a real redis
 	svc    *transfer.Service
+	auth   *auth.Service
 	wsvc   *wallet.Service
 	asvc   *approval.Service
 	osvc   *org.Service
@@ -170,8 +171,9 @@ func newEnv(t *testing.T, defName string) *env {
 	} else {
 		svc = transfer.NewServiceWithDefinition(pool, engine, fees, defName)
 	}
+	svc.SetAuthenticator(authSvc)
 	return &env{pool: pool, q: store.New(pool), engine: engine, worker: worker, reg: reg,
-		svc: svc, wsvc: wallet.NewService(pool),
+		svc: svc, auth: authSvc, wsvc: wallet.NewService(pool),
 		asvc: asvc, osvc: org.NewService(pool, engine, fees),
 		msvc:   moneyrequest.NewService(pool, engine, fees),
 		qrSvc:  qr.NewService(signer),
@@ -246,7 +248,7 @@ func postTransfer(ctx context.Context, pool *pgxpool.Pool, initiator, from, to u
 	if err != nil {
 		return err
 	}
-	if err := ledger.Post(ctx, tx, txn.ID, []ledger.Leg{
+	if err := ledger.Post(ctx, tx, txn.ID, ledger.KindForward, []ledger.Leg{
 		{WalletID: from, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: to, Direction: store.EntryDirectionCredit, Amount: amount},
 	}); err != nil {

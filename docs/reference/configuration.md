@@ -27,26 +27,28 @@ Workers (role worker/all): outbox relay, workflow worker, recovery, approval swe
 
 | Name | Default | Required | Secret | Meaning |
 |---|---|---|---|---|
-| APP_ENV | `dev` | no | no | Environment: documented values `dev`, `ci`, `demo`; see below |
+| APP_ENV | none | **yes** | no | One of `dev`, `ci`, `demo`, `production`. Missing or any other value stops startup with an error (ADR-0012). `dev` is the only environment that returns OTP codes in responses and loads `.env`; `production` uses the real outbound gateway, does not mount the mock bank route, adds HSTS and demands strong secrets |
 | HTTP_PORT | 8080 | no | no | Listen port (invalid int silently falls back to default) |
 | DATABASE_URL | none | yes | yes (password) | Postgres connection string |
-| REDIS_ADDR | localhost:6379 | no | no | Redis address (no password support) |
-| JWT_SECRET | none | yes; at least 32 bytes unless APP_ENV=dev | yes | Signs user and admin JWTs and signed file URLs |
+| REDIS_ADDR | localhost:6379 | no | no | Redis address (no password support yet) |
+| JWT_SECRET | none | yes; outside `dev` and `ci` at least 32 bytes and not the `.env.example` placeholder | yes | Signs user and admin JWTs and signed file URLs |
 | KYC_STORAGE_DIR | ./data/kyc | no | no | Local storage root (provider `local`) |
 | STORAGE_PROVIDER | local | no | no | `local` or `cloudinary` |
 | CLOUDINARY_CLOUD_NAME | none | when provider=cloudinary | no | |
 | CLOUDINARY_API_KEY | none | when provider=cloudinary | yes | |
 | CLOUDINARY_API_SECRET | none | when provider=cloudinary | yes | |
-| MOCK_BANK_SECRET | dev-mock-bank-secret | no (but change outside dev) | yes | Shared secret for `/internal/mock-bank/callback` |
+| OUTBOUND_ALLOWED_HOSTS | empty | no | no | Comma separated host names or `*.example.com` suffixes the action pipeline gateway may call; empty means any PUBLIC https host. The gateway always refuses http, internal addresses and redirects (BUG-0014) |
+| TRUSTED_PROXIES | empty | no | no | Comma separated proxy addresses or CIDRs whose `X-Forwarded-For` is trusted for the client IP (rate limiting). Empty means trust none |
+| MOCK_BANK_SECRET | `dev-mock-bank-secret` in `dev` and `ci` only | **yes** outside `dev`/`ci`, and not the dev default | yes | Shared secret for `/internal/mock-bank/callback`; the route is not mounted in `production` |
 | ENGINE_DYNAMIC_DISPATCH | enabled | no | no | Read in `transfer/service.go`; only the literal `false` disables service-driven workflow dispatch |
 | OFFERGUARD_ENABLED | enabled | no | no | Only literal `false` disables OfferGuard limits |
-| DEFAULT_OFFER_CODE | none | no | no | `offerguard` fallback offer code for users without `user_offers` |
+| DEFAULT_OFFER_CODE | `OFFER_CUST_L0` | no | no | `offerguard` offer for users without a `user_offers` row (most restrictive customer offer) |
 | ROUND_UP_UNIT_VND | handler default | no | no | Round-up step rounding unit |
 | TEST_DATABASE_URL | none | tests only | yes | Integration tests; skipped if unset |
 | TEST_REDIS_ADDR | none | tests only | no | Used by CI test job |
 | DB_URL (Makefile only) | postgres://HPay:HPay@localhost:5432/HPay?sslmode=disable | no | yes | Makefile/migrate and seed target |
 
-`seed` (cmd/seed) also reads `APP_ENV` (refuses to run when `production`) and `DATABASE_URL`; flag `--e2e-admins` creates e2e admin accounts.
+`seed` (cmd/seed) also reads `APP_ENV` and `DATABASE_URL`. It runs only for `dev`, `ci` or `demo`, and refuses a database host that is not local (`localhost`, `127.0.0.1`, `::1`, `postgres`, `host.docker.internal`) unless `--allow-remote-db` is passed; it prints the host it is about to seed. Flag `--e2e-admins` creates e2e admin accounts. Code: `cmd/seed/guard.go`..
 
 ## APP_ENV effects
 
@@ -62,7 +64,7 @@ Only `dev` is special-cased in most places. Values other than `dev` behave as pr
 | cmd/seed | Refuses `production` |
 | Not env-gated | `/internal/mock-bank/callback` mounted in every env; `godotenv.Load()` in every env |
 
-Default `APP_ENV` is `dev`, so an unset variable means weak-secret acceptance and OTP leakage (audit BE-H7).
+There is no default: `APP_ENV` must be set (ADR-0012, audit BE-H7 fixed in the working tree, not yet committed). The helpers `Config.IsDev()`, `IsProduction()` and `AllowsMockBank()` answer every environment question; no package compares raw strings.
 
 ## docker-compose (src/backend/docker-compose.yml)
 
@@ -110,4 +112,4 @@ Multi-stage: golang:1.25 builds (installs sqlc v1.30.0, runs `sqlc generate`, `C
 
 ### admin-ci.yml (paths: src/admin/**, src/backend/**)
 
-Single job `e2e`: Postgres and Redis services, JWT_SECRET set to a CI value, APP_ENV unset (defaults to dev); sqlc generate, migrate up, build server, `go run ./cmd/seed --e2e-admins`, start server and wait on /healthz, Node 20, `npm ci`, `npm run build`, Playwright chromium install, `vite preview --port 4173`, `npx playwright test --project=chromium`, uploads `playwright-report` on failure. There is no mobile CI workflow.
+Single job `e2e`: Postgres and Redis services, JWT_SECRET set to a CI value, `APP_ENV=ci` (explicit); sqlc generate, migrate up, build server, `go run ./cmd/seed --e2e-admins`, start server and wait on /healthz, Node 20, `npm ci`, `npm run build`, Playwright chromium install, `vite preview --port 4173`, `npx playwright test --project=chromium`, uploads `playwright-report` on failure. There is no mobile CI workflow.

@@ -30,6 +30,7 @@ var (
 	ErrLimitDaily        = errors.New("vượt hạn mức trong ngày")
 	ErrLimitMonthly      = errors.New("vượt hạn mức trong tháng")
 	ErrTooFrequent       = errors.New("giao dịch quá nhanh, vui lòng thử lại sau")
+	ErrOfferInactive     = errors.New("offer is inactive")
 )
 
 // Decision is the guard's verdict for an allowed transaction.
@@ -40,8 +41,9 @@ type Decision struct {
 
 // DefaultOfferCode is used when a user has no explicit user_offers row, so the
 // transaction is still metered by a real package instead of running unlimited.
+// It is the most restrictive customer offer (docs/specs/w3-offer-limits).
 // Override with DEFAULT_OFFER_CODE.
-const DefaultOfferCode = "OFFER_CUST_L2"
+const DefaultOfferCode = "OFFER_CUST_L0"
 
 type Guard struct {
 	q            *store.Queries
@@ -62,23 +64,14 @@ func NewWithQueries(q *store.Queries) *Guard {
 // Check runs every offer rule for (user, service, amount). On success it returns
 // the auth method required for this amount tier.
 func (g *Guard) Check(ctx context.Context, userID uuid.UUID, serviceCode string, txnType store.TxnType, amount int64) (Decision, error) {
-	cfg, err := g.q.GetOfferServiceForUser(ctx, store.GetOfferServiceForUserParams{
-		UserID: userID,
-		Code:   serviceCode,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		// No explicit assignment — fall back to the platform default package.
-		cfg, err = g.q.GetOfferServiceByOfferCode(ctx, store.GetOfferServiceByOfferCodeParams{
-			Code:   g.defaultOffer,
-			Code_2: serviceCode,
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Decision{}, ErrServiceNotInOffer
-		}
-	}
+	lim, err := g.resolve(ctx, userID, serviceCode)
 	if err != nil {
 		return Decision{}, err
 	}
+	if !lim.offerActive {
+		return Decision{}, ErrOfferInactive
+	}
+	cfg := lim
 	if !cfg.IsEnabled {
 		return Decision{}, ErrServiceDisabled
 	}
@@ -121,6 +114,94 @@ func (g *Guard) Check(ctx context.Context, userID uuid.UUID, serviceCode string,
 	}
 
 	return Decision{OfferServiceID: cfg.ID, AuthMethod: g.authFor(ctx, cfg.ID, amount)}, nil
+}
+
+// limits is the resolved offer_services row plus whether its offer is active.
+type limits struct {
+	ID              uuid.UUID
+	IsEnabled       bool
+	MinAmount       int64
+	MaxAmountPerTxn int64
+	DailyLimit      int64
+	MonthlyLimit    int64
+	IntervalSeconds int32
+	offerActive     bool
+	OfferCode       string
+}
+
+// resolve finds the limits for (user, service). A user WITH an offer row is judged by
+// that offer only: a missing service row is ErrServiceNotInOffer and an inactive offer
+// blocks; neither falls back to the default offer. Only a user with NO offer row uses
+// the default (most restrictive) offer.
+func (g *Guard) resolve(ctx context.Context, userID uuid.UUID, serviceCode string) (limits, error) {
+	assigned, err := g.q.HasUserOffer(ctx, userID)
+	if err != nil {
+		return limits{}, err
+	}
+	if assigned {
+		row, err := g.q.GetOfferServiceForUser(ctx, store.GetOfferServiceForUserParams{UserID: userID, Code: serviceCode})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return limits{}, ErrServiceNotInOffer
+		}
+		if err != nil {
+			return limits{}, err
+		}
+		return limits{ID: row.ID, IsEnabled: row.IsEnabled, MinAmount: row.MinAmount, MaxAmountPerTxn: row.MaxAmountPerTxn,
+			DailyLimit: row.DailyLimit, MonthlyLimit: row.MonthlyLimit, IntervalSeconds: row.IntervalSeconds,
+			offerActive: row.OfferActive, OfferCode: row.OfferCode}, nil
+	}
+	row, err := g.q.GetOfferServiceByOfferCode(ctx, store.GetOfferServiceByOfferCodeParams{Code: g.defaultOffer, Code_2: serviceCode})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return limits{}, ErrServiceNotInOffer
+	}
+	if err != nil {
+		return limits{}, err
+	}
+	return limits{ID: row.ID, IsEnabled: row.IsEnabled, MinAmount: row.MinAmount, MaxAmountPerTxn: row.MaxAmountPerTxn,
+		DailyLimit: row.DailyLimit, MonthlyLimit: row.MonthlyLimit, IntervalSeconds: row.IntervalSeconds,
+		offerActive: row.OfferActive, OfferCode: row.OfferCode}, nil
+}
+
+// Limits returns the per-transaction, daily and monthly limits that apply to the user for a service.
+func (g *Guard) Limits(ctx context.Context, userID uuid.UUID, serviceCode string) (OfferLimits, error) {
+	lim, err := g.resolve(ctx, userID, serviceCode)
+	if err != nil {
+		return OfferLimits{}, err
+	}
+	if !lim.offerActive {
+		return OfferLimits{}, ErrOfferInactive
+	}
+	return OfferLimits{OfferCode: lim.OfferCode, PerTxn: lim.MaxAmountPerTxn, Daily: lim.DailyLimit, Monthly: lim.MonthlyLimit}, nil
+}
+
+// OfferLimits is what the profile endpoint shows.
+type OfferLimits struct {
+	OfferCode string `json:"code"`
+	PerTxn    int64  `json:"per_txn_limit"`
+	Daily     int64  `json:"daily_limit"`
+	Monthly   int64  `json:"monthly_limit"`
+}
+
+// CheckAmount is the per-transaction check only (no volume, no throttle), for paths that
+// are not the engine: it still honors the offer, the enabled flag and the minimum.
+func (g *Guard) CheckAmount(ctx context.Context, userID uuid.UUID, serviceCode string, amount int64) error {
+	lim, err := g.resolve(ctx, userID, serviceCode)
+	if err != nil {
+		return err
+	}
+	if !lim.offerActive {
+		return ErrOfferInactive
+	}
+	if !lim.IsEnabled {
+		return ErrServiceDisabled
+	}
+	if amount < lim.MinAmount {
+		return ErrBelowMin
+	}
+	if lim.MaxAmountPerTxn > 0 && amount > lim.MaxAmountPerTxn {
+		return ErrLimitPerTxn
+	}
+	return nil
 }
 
 func (g *Guard) volumeSince(ctx context.Context, userID uuid.UUID, txnType store.TxnType, since time.Time) (int64, error) {

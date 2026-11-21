@@ -16,9 +16,12 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ROUTE_ACCESS, canAccessRoute, type GuardedRoute } from '@/lib/access';
+import { useAdminStore } from '@/stores/admin';
+
 import { LogoMark } from './Logo';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { to: string; label: string; icon: typeof LayoutDashboard }[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/kyc', label: 'KYC Review', icon: IdCard },
   { to: '/fraud', label: 'Fraud Monitor', icon: ShieldAlert },
@@ -34,6 +37,9 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const can = useAdminStore((s) => s.can);
+  // UX only: hides links the role cannot use; the backend does not enforce roles yet (BE-H6).
+  const visibleItems = NAV_ITEMS.filter((i) => !(i.to in ROUTE_ACCESS) || canAccessRoute(can, i.to as GuardedRoute));
 
   return (
     <aside
@@ -49,7 +55,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-2 flex flex-col gap-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {visibleItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

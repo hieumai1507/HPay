@@ -14,7 +14,7 @@ Implemented as `cmd/seed/main.go` (idempotent — safe to re-run; it upserts by 
    - `0900000002` Minh Anh — verified, counterpart for P2P + one incoming money request pending.
    - `0900000003` — KYC `manual_review` (ai_score 64, reasons filled) sitting in the admin queue.
    - `0900000004` — account `locked` with a `confirmed_fraud` flag + reversal approval request pending in My Tasks.
-3. **Organization** "DEH Corp": owner + 1 maker + checkers L1/L2 (`0900000011..14`), policy "Chi lớn" v3 (L1 ≥10M: 1 sig; L2 ≥40M: +1 sig), org wallet 842,500,000₫, and:
+3. **Organization** "Acme Corp": owner + 1 maker + checkers L1/L2 (`0900000011..14`), policy "Chi lớn" v3 (L1 ≥10M: 1 sig; L2 ≥40M: +1 sig), org wallet 842,500,000₫, and:
    - one disbursement `pending_approval` at 1/2 signatures (workflow instance parked at WAIT_APPROVAL),
    - one completed disbursement with full step trail.
 4. **Workflow variety** (for the admin monitor): 1 instance `failed` at CREDIT (receiver locked → E07 material), 1 `compensated`, 1 `processing_async` awaiting recovery, plus healthy completed ones.

@@ -25,7 +25,7 @@ Role `worker` serves no HTTP. Role comes from `--role=` on `cmd/server`.
 - Auth: `RequireAuth` expects `Authorization: Bearer <access JWT>` (aud `user`). Missing header returns 401 `ERR_INVALID_TOKEN`. `RequireAdmin` expects an admin JWT (aud `admin`, same `JWT_SECRET`). It checks the token only: no admin role (`admin_role`) is enforced on any route, so every admin can call every admin endpoint.
 - Error body: `{"code","message","request_id"}`; see `error-codes.md`.
 - `RateLimit(limit, window)`: Redis fixed window keyed by client IP + route; fail-open on Redis errors; 429 `ERR_RATE_LIMITED`. `RateLimitUser` is the same keyed by user id.
-- `RequireIdempotencyKey`: header `Idempotency-Key` required, at most 64 chars, else 400 `ERR_IDEMPOTENCY_KEY_REQUIRED`. Only two routes use it (marked IDEM below).
+- `RequireIdempotencyKey`: header `Idempotency-Key` required, at most 64 chars, else 400 `ERR_IDEMPOTENCY_KEY_REQUIRED`. Used on every mounted money-moving or money-object-creating POST (marked IDEM below). The key is scoped to the calling user and bound to the request payload: same key and payload returns the original result, same key and another payload is 409 `ERR_IDEMPOTENCY_KEY_REUSED` (ADR-0011).
 - Every response carries `X-Request-Id` (echoed or generated).
 - Money amounts are integers in VND minor units.
 
@@ -49,7 +49,7 @@ Role `worker` serves no HTTP. Role comes from `--role=` on `cmd/server`.
 
 | Method | Path | Auth | Middleware | Handler | Purpose |
 |---|---|---|---|---|---|
-| GET | /v1/users/me | user | | UserHandler.Me | Profile, KYC status, txn limit |
+| GET | /v1/users/me | user | | UserHandler.Me | Profile, KYC status, txn limit and offer limits (from the user's offer) |
 | GET | /v1/users/me/qr | user | | QRHandler.Mint | Signed receive-QR payload |
 | POST | /v1/qr/resolve | user | RateLimitUser 30/min | QRHandler.Resolve | Verify QR, return receiver token |
 | GET | /v1/users/lookup | user | RateLimitUser 20/min | UserHandler.Lookup | Find a user by phone |
@@ -58,9 +58,12 @@ Role `worker` serves no HTTP. Role comes from `--role=` on `cmd/server`.
 | GET | /v1/transactions/:refCode | user | | WalletHandler.Detail | One transaction |
 | GET | /v1/transactions/:refCode/timeline | user | | TransferHandler.Timeline | Workflow step timeline and terminal error code |
 | GET | /v1/fees/preview | user | | TransferHandler.FeePreview | Fee for an amount |
-| POST | /v1/transactions/request | user | IDEM | TransactionEngineHandler.RequestTransaction | Engine step 1: validate, OfferGuard, create txn and start workflow for any `service_code` |
-| POST | /v1/transactions/confirm | user | none | TransactionEngineHandler.ConfirmTransaction | Engine step 2: status lookup by workflow; does not verify PIN/OTP (audit BE-C2) |
-| POST | /v1/transactions/verify | user | none | TransactionEngineHandler.VerifyTransaction | Engine step 3: result lookup; same caveat |
+| POST | /v1/transactions/request | user | IDEM | TransactionEngineHandler.RequestTransaction | Engine step 1: validate, OfferGuard, create the transaction for any `service_code`. When `auth_required` is `pin` or `otp` the transaction is held in `awaiting_auth` and nothing moves until step 2; `none` starts the workflow at once; a request needing `2fa` is refused (ERR_AUTH_METHOD_UNAVAILABLE) |
+| POST | /v1/transactions/challenge | user | RateLimitUser 10/min | TransactionEngineHandler.ChallengeTransaction | Issue the OTP for a transaction in the otp band; the code is returned only when APP_ENV=dev |
+| PUT | /v1/me/pin | user | RateLimitUser 10/min | PINHandler.Set | Set the first transaction PIN (account password step-up) |
+| PATCH | /v1/me/pin | user | RateLimitUser 10/min | PINHandler.Change | Change the PIN (current PIN required; same lockout) |
+| POST | /v1/transactions/confirm | user | RateLimitUser 20/min | TransactionEngineHandler.ConfirmTransaction | Engine step 2 (ADR-0014): authenticate with the server-verified PIN (plus OTP for the otp band) and start the recorded workflow once; unknown id and another user's id both return 404; repeated calls return the current state |
+| POST | /v1/transactions/verify | user | none | TransactionEngineHandler.VerifyTransaction | Engine step 3 (2fa): ownership-checked; there is no 2fa provider, so it only reports state for the caller's own transaction |
 
 ## Vaults
 
@@ -76,8 +79,8 @@ Money in or out of a vault uses `POST /v1/transactions/request` with `service_co
 
 | Method | Path | Auth | Middleware | Handler | Purpose |
 |---|---|---|---|---|---|
-| POST | /v1/money-requests | user | | RequestHandler.Create | Ask one user for money |
-| POST | /v1/money-requests/split | user | | RequestHandler.CreateSplit | Split a bill across payers |
+| POST | /v1/money-requests | user | IDEM | RequestHandler.Create | Ask one user for money |
+| POST | /v1/money-requests/split | user | IDEM | RequestHandler.CreateSplit | Split a bill across payers |
 | GET | /v1/money-requests/inbox | user | | RequestHandler.Inbox | Requests addressed to me |
 | GET | /v1/money-requests/sent | user | | RequestHandler.Sent | Requests I created |
 | GET | /v1/money-requests/:id | user | | RequestHandler.Detail | One request |
@@ -168,7 +171,7 @@ It must be run with cwd `src/backend`; from the repo root it fails with FileNotF
 - `/healthz` is also served for HEAD (router) and documented only as GET.
 - Spec describes `/v1/files/{key}`; router uses a catch-all `/v1/files/*key` (key may contain slashes).
 - Handlers that exist without a route: `WalletHandler.Topup` and `TransferHandler.Transfer` (legacy; no route mounted, so no `/v1/wallets/topup` or `/v1/transactions/transfer`).
-- Spec error codes not present in `errTable` (raised inline by handlers): `ERR_INVALID_CALLBACK_SECRET`, `ERR_KEY_NOT_FOUND`, `ERR_KEY_INACTIVE`, `ERR_RATE_LIMITED`, `ERR_IDEMPOTENCY_KEY_REQUIRED`; spec lists `ERR_NOT_FOUND`, `ERR_SERVICE_NOT_FOUND`, `ERR_OFFER_NOT_FOUND`, `ERR_WORKFLOW_NOT_FOUND` and `ERR_FRAUD_BLOCKED`, `ERR_ACCOUNT_INACTIVE`, `ERR_TRANSFER_FAILED` (the latter three only as workflow terminal codes) which are not emitted by `respondErr`. See `error-codes.md`.
+- Spec error codes not present in `errTable` (raised inline by handlers): `ERR_INVALID_CALLBACK_SECRET`, `ERR_KEY_NOT_FOUND`, `ERR_KEY_INACTIVE`, `ERR_RATE_LIMITED`, `ERR_IDEMPOTENCY_KEY_REQUIRED` (also in `errTable` since ADR-0011); spec lists `ERR_NOT_FOUND`, `ERR_SERVICE_NOT_FOUND`, `ERR_OFFER_NOT_FOUND`, `ERR_WORKFLOW_NOT_FOUND` and `ERR_FRAUD_BLOCKED`, `ERR_ACCOUNT_INACTIVE`, `ERR_TRANSFER_FAILED` (the latter three only as workflow terminal codes) which are not emitted by `respondErr`. See `error-codes.md`.
 
 ## Endpoints called by frontends that do not exist
 

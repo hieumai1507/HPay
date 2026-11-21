@@ -20,15 +20,16 @@ Services: `postgres` (postgres:16-alpine, user/password/db `HPay`, port 5432, he
 
 | Variable | Default | Notes |
 |---|---|---|
-| `APP_ENV` | `dev` | not validated against a list; code tests `== "dev"` (gin mode, `otp_dev`, log level) and `!= "production"` (mock gateway, `main.go:117`) |
+| `APP_ENV` | none, **required** | one of `dev`, `ci`, `demo`, `production`; missing or unknown stops startup (ADR-0012). `Config.IsDev()` gates `otp_dev`, `.env` loading, debug logging and Gin debug mode; `Config.IsProduction()` selects the real outbound gateway, HSTS and the strictest secret checks; `AllowsMockBank()` decides whether the mock bank route exists |
 | `HTTP_PORT` | 8080 | |
 | `DATABASE_URL` | none, required | |
 | `REDIS_ADDR` | `localhost:6379` | |
-| `JWT_SECRET` | none, required | length >= 32 enforced only when `APP_ENV != dev`; also used to HMAC-sign file links and QR codes (audit BE-H6/H9) |
+| `TRUSTED_PROXIES` | empty | proxy addresses or CIDRs trusted for `X-Forwarded-For`; empty trusts none |
+| `JWT_SECRET` | none, required | at least 32 bytes and not the `.env.example` placeholder outside `dev` and `ci`; also used to HMAC-sign file links and QR codes (audit BE-H6/H9) |
 | `KYC_STORAGE_DIR` | `./data/kyc` | |
 | `STORAGE_PROVIDER` | `local` | `cloudinary` requires `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` |
-| `MOCK_BANK_SECRET` | `dev-mock-bank-secret` | default accepted in every env (audit BE-H7) |
-| `DEFAULT_OFFER_CODE` | `OFFER_CUST_L2` | read in `offerguard.go:55`; offer used when a user has no `user_offers` row |
+| `MOCK_BANK_SECRET` | `dev-mock-bank-secret` in `dev` and `ci` only | required and non-default in `demo` and `production` (the route is not mounted in `production`) |
+| `DEFAULT_OFFER_CODE` | `OFFER_CUST_L0` | read in `offerguard.go:55`; offer used when a user has no `user_offers` row |
 | round-up unit env | see `workflow/handlers/round_up.go:22` | |
 
 `godotenv.Load()` reads `./.env` in every environment (existing env wins). `src/backend/.env` exists in the working tree; the audit flagged real secrets in it (rotate; do not copy values into docs).

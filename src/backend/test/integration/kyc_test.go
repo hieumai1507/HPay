@@ -1,7 +1,11 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/color"
+	"image/png"
 	"sync"
 	"testing"
 
@@ -12,16 +16,23 @@ import (
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 )
 
-// tinyPNG is a 1x1 transparent PNG — a real, valid image payload.
-var tinyPNG = []byte{
-	0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A,
-	0x00, 0x00, 0x00, 0x0D, 'I', 'H', 'D', 'R',
-	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-	0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89,
-	0x00, 0x00, 0x00, 0x0A, 'I', 'D', 'A', 'T',
-	0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01,
-	0x0D, 0x0A, 0x2D, 0xB4,
-	0x00, 0x00, 0x00, 0x00, 'I', 'E', 'N', 'D', 0xAE, 0x42, 0x60, 0x82,
+// tinyPNG is a real 400x400 PNG generated with the standard library. The name is kept
+// from the old 1x1 fixture, which the KYC image validator now (rightly) refuses: it
+// decodes the file and requires at least 200x200 pixels (docs/specs/w3-kyc-upload).
+var tinyPNG = realTestPNG(400, 400)
+
+func realTestPNG(w, h int) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y += 8 {
+		for x := 0; x < w; x += 8 {
+			img.Set(x, y, color.RGBA{uint8(x), uint8(y), 90, 255})
+		}
+	}
+	var b bytes.Buffer
+	if err := png.Encode(&b, img); err != nil {
+		panic(err)
+	}
+	return b.Bytes()
 }
 
 // stubScorer returns a fixed score — tests drive each classification branch.

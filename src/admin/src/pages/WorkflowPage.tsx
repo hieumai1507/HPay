@@ -6,7 +6,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useWorkflowInstances, type WorkflowInstance } from '@/queries';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -22,7 +22,7 @@ export default function WorkflowPage() {
 
   // stuckOnly/status/definition stay client-side (no API filter yet) — the hook
   // reports the narrowed count in that case so pageCount never over-promises.
-  const { data, isLoading, refetch } = useWorkflowInstances({
+  const { data, isLoading, error, refetch } = useWorkflowInstances({
     stuckOnly,
     status: statusFilter,
     definition: defFilter,
@@ -165,6 +165,7 @@ export default function WorkflowPage() {
       </div>
 
       {/* Page Content */}
+      <ErrorNotice error={error} what="workflows" />
       <div className="flex flex-col gap-3">
         <DataTable
           table={table}

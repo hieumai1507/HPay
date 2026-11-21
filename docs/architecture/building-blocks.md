@@ -41,7 +41,7 @@ Dependencies below were derived from `import` statements in non-test files (2026
 | Orchestration | `workflow/handlers` | step handlers: validator, wallet (MOVE_FUNDS), confirmer, action_pipeline, round_up | workflow, ledger, gateway |
 | Orchestration | `outbox` | relay outbox rows to Redis streams | workflow |
 | Domain | `transfer` | P2P and generic engine request (`ExecuteEngineRequest`), timeline, fee preview | fee, ledger, offerguard, vault, wallet, workflow |
-| Domain | `wallet` | wallets, history, top-up, bank callback, `TxnLimit` | ledger, user |
+| Domain | `wallet` | wallets, history, top-up, bank callback | ledger, user |
 | Domain | `moneyrequest` | money requests, split, expiry sweeper | fee, ledger, wallet, workflow |
 | Domain | `org` | organizations, members, policies, disbursement | approval, fee, ledger, wallet, workflow |
 | Domain | `approval` | maker-checker engine: tiers, OTP challenge, decide, expiry sweeper, admin approvals | auth, listing, workflow |

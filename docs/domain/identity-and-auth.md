@@ -63,7 +63,15 @@ Owns end-user and admin identity: registration, password login, access JWTs, rot
 | BR-AUTH-20 | Rate limits (Redis fixed window, per client IP + route; fail-open on Redis errors): register 5/min, login 5/min, refresh 30/min, admin login 5/min, approval challenge 10/min. Logout and `/v1/files` have none. | `api/middleware.go:RateLimit`, `api/router.go:99-102,160,187` | none |
 | BR-AUTH-21 | User lookup by phone is per-user rate limited (20/min), returns only a masked name, and answers an identical 404 for unknown phone, non-active user, and self. | `api/router.go:109`, `api/middleware.go:RateLimitUser`, `api/user_handler.go:30-52` | `TestLookup_MaskedAndUniform404` |
 | BR-AUTH-22 | Masking: phone keeps first 3 and last 3 digits (shorter than 7 runes fully masked); name keeps the first word, later words reduced to first rune plus `*`. | `user/mask.go:MaskPhone,MaskName` | `mask_test.go` |
-| BR-AUTH-23 | `JWT_SECRET` is mandatory; outside `dev` it must be at least 32 bytes. `APP_ENV` defaults to `dev`. | `platform/config/config.go:72,92-96` | none |
+| BR-AUTH-23 | `APP_ENV` is mandatory and must be `dev`, `ci`, `demo` or `production`; `JWT_SECRET` is mandatory and, outside `dev` and `ci`, at least 32 bytes and not the `.env.example` placeholder. OTP codes appear in a response only when `APP_ENV=dev`. | `platform/config/config.go` (`Load`, `IsDev`, `IsProduction`), `api/env_guards.go` (`challengeBody`) | `TestLoad_*`, `TestOTPExposedOnlyInDev` |
+| BR-AUTH-25 | A transaction PIN is exactly 6 digits, not all the same digit and not an ascending or descending run (`ErrWeakPIN`). | `auth/pin.go:ValidatePIN` | `TestValidatePINFormat` |
+| BR-AUTH-26 | The PIN is stored only as an argon2id hash in `users.pin_hash`; it is never returned or logged, and audit rows contain no PIN or hash. | `auth/pin.go` | `TestPin_SetAndChange`, `TestPin_FailuresAreAuditedWithoutTheSecret` |
+| BR-AUTH-27 | The first PIN needs the account password (`PUT /v1/me/pin`); changing it needs the current PIN (`PATCH /v1/me/pin`), which uses the same counter and lockout. | `api/pin_handler.go`; `auth/pin.go:SetPIN,ChangePIN` | `TestPin_SetAndChange` |
+| BR-AUTH-28 | Five consecutive wrong PINs lock PIN use for 15 minutes (per user, atomic SQL counter); a correct PIN is refused during the lock; success resets the counter; failures and locks are audited (`pin.failed`, `pin.locked`). | `queries/auth.sql:RecordPINFailure`; `auth/pin.go:VerifyPIN`; migration 000018 | `TestPin_LockoutAfterFiveFailures` |
+| BR-AUTH-29 | `RequireAdmin` loads the admin from `admin_users` on every request: unknown id gives 401, a status other than `active` gives 401 `ERR_ACCOUNT_LOCKED`, and the role comes from the row, never from the token. | `api/admin_handler.go:RequireAdmin`; `queries/auth.sql:GetAdminByID` | `TestAdminRBAC_LockedAdminRefusedImmediately`, `TestAdminRBAC_RoleChangeTakesEffect`, `TestAdminRBAC_DeletedAdminRefused` |
+| BR-AUTH-30 | Every `/v1/admin` route carries `RequirePermission` (table in `product/roles-and-permissions.md`); a viewer holds no permission and is refused everywhere; a denial is 403 `ERR_FORBIDDEN_PERMISSION` and does not name a permission. A new admin route without a permission entry fails the build. | `api/router.go`; `auth/rbac.go` | `TestAdminRBAC_ViewerIsDeniedEverywhere`, `TestAdminRBAC_RoleMatrix`, `TestEveryAdminRouteHasAPermission` |
+| BR-AUTH-31 | The Go role table equals the admin app role table; a drift fails `TestRolePermissionsMatchFrontend`. | `auth/rbac.go` | `TestRolePermissionsMatchFrontend` |
+| BR-AUTH-32 | AI key create/update and AI setting update write audit rows (actor, client IP, non-secret attributes); the API key never appears in a response or an audit row. | `api/admin_ai.go:auditAdmin` | `TestAdminAI_WritesAreAudited` |
 | BR-AUTH-24 | After a successful register or login the main wallet is ensured (self-heal). A failure there fails the whole request with an error even though tokens were already issued. | `api/auth_handler.go:45-50,70-75`, `router.go:87` | none |
 
 ## 4. Lifecycle / state machine
@@ -151,10 +159,10 @@ Migration `000001_users_admin_auth.up.sql`:
 See `../reference/data-model.md`.
 
 ## 8. Interfaces
-- Public: `POST /v1/auth/register|login|refresh|logout`; `GET /v1/users/lookup` and `GET /v1/users/me` behind `RequireAuth` (`router.go:98-109`). `/users/me` returns profile plus `txn_limit` from `wallet.TxnLimit` (`user_handler.go:57-72`).
+- Public: `POST /v1/auth/register|login|refresh|logout`; `GET /v1/users/lookup` and `GET /v1/users/me` behind `RequireAuth` (`router.go:98-109`). `/users/me` returns the profile, `txn_limit` (the per-transaction limit of the user's offer for P2P_TRANSFER, 0 when the user has no usable offer) and an `offer` block with its code and per-transaction, daily and monthly limits (`user_handler.go`, `offerguard.Limits`).
 - Admin: `POST /v1/admin/auth/login`; every other `/v1/admin/*` route behind `RequireAdmin` (`router.go:186-188`).
 - Org routes `/v1/org/*` use the user token (`router.go:151`).
-- No endpoint exists to request or verify a login OTP, to set or verify a PIN, or to change a password. See `../reference/api.md`.
+- No endpoint exists to request or verify a login OTP or to change a password; the PIN endpoints exist (`/v1/me/pin`). See `../reference/api.md`.
 
 ## 9. Edge cases
 - E11 OTP brute force: third wrong attempt exhausts the challenge (BR-AUTH-15).
@@ -163,10 +171,10 @@ See `../reference/data-model.md`.
 - An expired but unconsumed OTP stays selected by `GetActiveOTP`; verify then returns `ERR_OTP_EXPIRED`, while a new request is only blocked by the 30 s cooldown measured from its `created_at`.
 
 ## 10. Known gaps (as-is vs intended)
-- **No server-side PIN.** `users.pin_hash` exists but nothing uses it; the engine confirm/verify path does not check PIN/OTP (BE-C2). Older design docs describe PIN/OTP authentication levels (`offer_auth_matrix` seeds pin/otp/2fa, 000004:90-94); the matrix is returned as a label only.
+- **Server-side PIN exists since 2026-11-21** (uncommitted; BUG-0012, ADR-0014). Not implemented: PIN reset for a forgotten PIN, admin unlock, a 2FA provider. Lockout is per user, so an attacker holding a victim's session can lock their PIN for 15 minutes.
 - **Access token not revocable and status not rechecked** (BE-H6): a locked user keeps a valid access token for up to 15 minutes, and `Refresh` does not check `users.status` either (`auth/service.go:96-157`).
 - **Admin has no RBAC** (BE-H6): `admin_role` is stored and returned on login but never enforced; admins have no refresh and share `JWT_SECRET` with users.
-- **Weak defaults** (BE-H7): `APP_ENV` defaults to `dev` which exposes `otp_dev`; the HS256 secret is accepted at any length in dev.
+- **Weak defaults** (BE-H7): fixed in the working tree (ADR-0012, uncommitted): `APP_ENV` has no default; the HS256 secret is still accepted at any length in `dev` and `ci` by design.
 - **Brute-force protection** (BE-H8): only per-IP route limits, fail-open, no per-account lockout; unknown-phone login returns before hashing (timing difference); `ErrPhoneTaken` allows phone enumeration; logout and admin routes beyond login are unlimited.
 - **OTP**: hash is bound to `userID:purpose`, not to the challenge id (audit says so too); no per-user total cap; no cleanup job.
 - `X-Device-Id` is trusted client input.
@@ -188,5 +196,5 @@ See `../reference/data-model.md`.
 
 ## 12. Open questions
 - Should login require phone verification by OTP? (Not decided; no owner recorded.)
-- Which component will own PIN storage and verification (no code exists)?
+- PIN reset for a forgotten PIN: which factor proves identity (owner: product/security)?
 - Which actor locks/closes accounts? No code path found.

@@ -4,20 +4,20 @@ import { BlurView } from 'expo-blur';
 import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, View, Text, AppState, Pressable, Animated } from 'react-native';
 
-import { useSessionStore } from '@/src/stores/session';
+import { runUnlockAttempt } from '@/src/features/security/unlockAttempts';
+import { clearStoredRefreshToken, useSessionStore } from '@/src/stores/session';
 import { useSecurityStore } from '@/src/stores/security';
 import { color, radius, space, type } from '@/src/ui/tokens';
 import { LogoMark } from '@/src/ui/Logo';
-import { OTPInput } from '@/src/features/auth/components/OTPInput';
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 export function SecurityWrapper({ children }: { children: React.ReactNode }) {
-  const { isLocked, isRooted, biometricEnabled, setLocked, setRooted } = useSecurityStore();
+  const { isLocked, isRooted, setLocked, setRooted } = useSecurityStore();
   const [showPrivacyMask, setShowPrivacyMask] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState(false);
-  const [hasBiometricHardware, setHasBiometricHardware] = useState(false);
+  const [unlockError, setUnlockError] = useState(false);
+  const [hasDeviceAuth, setHasDeviceAuth] = useState(false);
+  const failedAttempts = useRef(0);
 
   const appState = useRef(AppState.currentState);
   const backgroundTime = useRef<number | null>(null);
@@ -34,13 +34,13 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
     checkRooted();
 
-    // Check if device has biometric hardware (for showing the button)
-    const checkBiometric = async () => {
+    // Is a biometric or device credential available to unlock with?
+    const checkDeviceAuth = async () => {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      setHasBiometricHardware(hasHardware && isEnrolled);
+      setHasDeviceAuth(hasHardware && isEnrolled);
     };
-    checkBiometric();
+    checkDeviceAuth();
 
     // 2. AppState monitoring for privacy screen (M07) and lock timer
     const subscription = AppState.addEventListener('change', (nextAppState) => {
@@ -75,7 +75,7 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
     };
   }, [isAuthenticated, setLocked, setRooted]);
 
-  // Shake animation when PIN is wrong
+  // Shake animation when an unlock attempt fails
   const triggerShake = () => {
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -87,44 +87,35 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
     ]).start();
   };
 
-  // Handle biometric unlock — only triggered by user tapping the button
-  const triggerBiometricUnlock = async () => {
-    try {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Xác minh vân tay hoặc khuôn mặt để mở khóa',
-        fallbackLabel: 'Nhập mã PIN',
-        cancelLabel: 'Hủy',
-      });
-      if (result.success) {
-        setLocked(false);
-        setPinInput('');
-        setPinError(false);
-      }
-    } catch {
-      // no-op — user cancelled or hardware error
+  // Unlock with biometrics or the device credential (PIN/pattern/passcode), verified by the OS.
+  // The app holds no PIN of its own. After MAX_UNLOCK_ATTEMPTS failures the user is signed out.
+  // TODO(ADR-0008): add server-side PIN verification here once the backend defines it.
+  const triggerUnlock = async () => {
+    const res = await runUnlockAttempt(
+      () =>
+        LocalAuthentication.authenticateAsync({
+          promptMessage: 'Xác minh vân tay hoặc khuôn mặt để mở khóa',
+          fallbackLabel: 'Dùng mật mã thiết bị',
+          cancelLabel: 'Hủy',
+        }),
+      failedAttempts.current,
+    );
+    failedAttempts.current = res.failedAttempts;
+
+    if (res.outcome === 'unlocked') {
+      setUnlockError(false);
+      setLocked(false);
+    } else if (res.outcome === 'signed_out') {
+      failedAttempts.current = 0;
+      setUnlockError(false);
+      setLocked(false);
+      await clearStoredRefreshToken();
+      useSessionStore.getState().clearSession('user');
+    } else if (res.outcome === 'failed') {
+      setUnlockError(true);
+      triggerShake();
     }
   };
-
-  // Auto-submit when 6 digits PIN are entered (OTP style)
-  useEffect(() => {
-    if (pinInput.length === 6) {
-      // Mock PIN for local verification: 123456
-      if (pinInput === '123456') {
-        setLocked(false);
-        setPinInput('');
-        setPinError(false);
-      } else {
-        setPinError(true);
-        triggerShake();
-        // Clear after a brief delay so user sees the shake
-        setTimeout(() => {
-          setPinInput('');
-        }, 300);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinInput, setLocked]);
-
   // If app is locked and user is logged in, show lock screen
   if (isLocked && isAuthenticated) {
     return (
@@ -135,39 +126,28 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
             <Text style={styles.lockEmoji}>🔒</Text>
           </View>
           <Text style={styles.lockTitle}>Ứng dụng đã khóa</Text>
-          <Text style={styles.lockSubtitle}>Nhập mã PIN 6 số để mở khóa</Text>
+          <Text style={styles.lockSubtitle}>Xác thực để mở khóa ứng dụng</Text>
         </View>
 
-        {/* PIN Input with shake animation */}
+        {/* Unlock error with shake animation */}
         <Animated.View style={[styles.pinWrapper, { transform: [{ translateX: shakeAnim }] }]}>
-          <OTPInput
-            value={pinInput}
-            onChange={(text) => {
-              setPinError(false);
-              setPinInput(text);
-            }}
-            secureTextEntry
-          />
-          {pinError && (
-            <Text style={styles.pinErrorText}>Mã PIN không chính xác. Vui lòng thử lại.</Text>
+          {unlockError && (
+            <Text style={styles.pinErrorText}>Xác thực không thành công. Vui lòng thử lại.</Text>
           )}
         </Animated.View>
 
-        {/* Biometric button — only shown if user has enabled biometric AND device supports it */}
         <View style={styles.footerActions}>
-          {biometricEnabled && hasBiometricHardware && (
-            <Pressable onPress={triggerBiometricUnlock} style={styles.biometricBtn}>
+          {hasDeviceAuth ? (
+            <Pressable onPress={triggerUnlock} style={styles.biometricBtn} accessibilityRole="button">
               <Text style={styles.biometricIcon}>🧬</Text>
-              <Text style={styles.biometricBtnText}>Sử dụng Sinh trắc học</Text>
+              <Text style={styles.biometricBtnText}>Mở khóa</Text>
             </Pressable>
-          )}
-          {!biometricEnabled && hasBiometricHardware && (
+          ) : (
             <Text style={styles.biometricHint}>
-              Bật sinh trắc học trong Cài đặt để mở khóa nhanh hơn
+              Thiết bị chưa cài sinh trắc học hoặc mã khóa màn hình. Vui lòng đăng xuất và đăng nhập lại.
             </Text>
           )}
-        </View>
-      </View>
+        </View>      </View>
     );
   }
 

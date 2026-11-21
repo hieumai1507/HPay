@@ -76,7 +76,8 @@ export function resultVariantFor(tl: Timeline): TransferResultVariant {
 /* --- Transaction Engine --- */
 export interface EngineRequestPayload {
   serviceCode: string;
-  amount: number;
+  /** Minor units. bigint so it reaches the wire as a raw JSON integer (C-01). */
+  amount: bigint;
   receiverPhone?: string;
   receiverId?: string;
   note?: string;
@@ -98,6 +99,7 @@ export interface EngineRequestResponse {
 
 export interface EngineConfirmPayload {
   transactionId: string;
+  /** Collected from the user via usePin() (src/features/security). Never a literal. */
   pin?: string;
   otp?: string;
 }
@@ -143,43 +145,6 @@ export function useTransactionEngine() {
     },
   });
 
-  const payMoneyRequest = async (requestId: string, amount: number, payerNote?: string) => {
-    const req = await requestMutation.mutateAsync({
-      serviceCode: 'MONEY_REQUEST',
-      amount,
-      note: payerNote,
-      extraParams: { money_request_id: requestId },
-    });
-    return await confirmMutation.mutateAsync({
-      transactionId: req.transaction_id,
-      pin: '123456',
-    });
-  };
-
-  const topupBank = async (amount: number) => {
-    const req = await requestMutation.mutateAsync({
-      serviceCode: 'TOPUP_BANK',
-      amount,
-    });
-    return await confirmMutation.mutateAsync({
-      transactionId: req.transaction_id,
-      pin: '123456',
-    });
-  };
-
-  const disburseOrg = async (orgId: string, amount: number, note?: string) => {
-    const req = await requestMutation.mutateAsync({
-      serviceCode: 'ORG_DISBURSEMENT',
-      amount,
-      note,
-      extraParams: { org_id: orgId },
-    });
-    return await confirmMutation.mutateAsync({
-      transactionId: req.transaction_id,
-      pin: '123456',
-    });
-  };
-
   return {
     requestTransaction: requestMutation.mutateAsync,
     isRequesting: requestMutation.isPending,
@@ -188,10 +153,6 @@ export function useTransactionEngine() {
     confirmTransaction: confirmMutation.mutateAsync,
     isConfirming: confirmMutation.isPending,
     confirmError: confirmMutation.error,
-
-    payMoneyRequest,
-    topupBank,
-    disburseOrg,
   };
 }
 

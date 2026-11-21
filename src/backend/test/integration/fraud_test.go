@@ -19,6 +19,8 @@ func verifyKYC(t *testing.T, e *env, userID uuid.UUID) {
 		`UPDATE users SET kyc_status='verified' WHERE id=$1`, userID); err != nil {
 		t.Fatal(err)
 	}
+	// a verified user is on the L1 offer (docs/specs/w3-offer-limits)
+	e.setOffer(t, userID, "OFFER_CUST_L1")
 }
 
 // insertP2PHistory writes N completed p2p transactions for a sender at "now",
@@ -43,7 +45,7 @@ func TestFraudBlocksHighRisk(t *testing.T) {
 	e := newEnv(t, "")
 	ctx := context.Background()
 	senderID, senderWallet, _ := e.userWithMoney(t, 0)
-	// verified tier lifts the per-txn limit to 100M; fund via topup so the
+	// verified tier moves the user to offer L1 (62.5M per transaction); fund via topup so the
 	// funding row is type=topup and never pollutes the p2p average/velocity.
 	verifyKYC(t, e, senderID)
 	if _, err := e.wsvc.Topup(ctx, senderID, 50_000_000, uuid.NewString()); err != nil {

@@ -38,15 +38,15 @@ type seeder struct {
 
 func main() {
 	e2eAdmins := flag.Bool("e2e-admins", false, "additionally upsert 2 fixed-credential admin_users for the Playwright E2E suite (src/admin/e2e)")
+	allowRemote := flag.Bool("allow-remote-db", false, "allow seeding a database whose host is not local (the seeder creates accounts with known passwords)")
 	flag.Parse()
 
-	if env := os.Getenv("APP_ENV"); env == "production" {
-		fatal("refusing to seed: APP_ENV=production")
-	}
 	url := os.Getenv("DATABASE_URL")
-	if url == "" {
-		fatal("DATABASE_URL is required")
+	host, err := checkSeedTarget(os.Getenv("APP_ENV"), url, *allowRemote)
+	if err != nil {
+		fatal("%v", err)
 	}
+	fmt.Printf("seeding database host %q (APP_ENV=%s)\n", host, os.Getenv("APP_ENV"))
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
@@ -82,17 +82,18 @@ func (s *seeder) run() {
 	u2 := s.user("0900000002", "Minh Anh", "verified", "active", hash)
 	u3 := s.user("0900000003", "Trần Văn Ba", "manual_review", "active", hash)
 	u4 := s.user("0900000004", "Lê Thị Tư", "none", "locked", hash)
-	owner := s.user("0900000011", "DEH Owner", "verified", "active", hash)
-	maker := s.user("0900000012", "DEH Maker", "verified", "active", hash)
-	l1 := s.user("0900000013", "DEH Checker L1", "verified", "active", hash)
-	l2 := s.user("0900000014", "DEH Checker L2", "verified", "active", hash)
+	owner := s.user("0900000011", "Acme Owner", "verified", "active", hash)
+	maker := s.user("0900000012", "Acme Maker", "verified", "active", hash)
+	l1 := s.user("0900000013", "Acme Checker L1", "verified", "active", hash)
+	l2 := s.user("0900000014", "Acme Checker L2", "verified", "active", hash)
 
-	// Offer packages: verified individuals on L2, unverified/locked on L1, and
-	// the DEH Corp actors on the business package.
+	// Offer packages by KYC tier (docs/specs/w3-offer-limits): u1 is fully verified (L2), u2 basic
+	// verified (L1), the manual-review and locked users stay on L0; the Acme Corp actors use the
+	// business package.
 	s.assignOffer(u1, "OFFER_CUST_L2")
-	s.assignOffer(u2, "OFFER_CUST_L2")
-	s.assignOffer(u3, "OFFER_CUST_L1")
-	s.assignOffer(u4, "OFFER_CUST_L1")
+	s.assignOffer(u2, "OFFER_CUST_L1")
+	s.assignOffer(u3, "OFFER_CUST_L0")
+	s.assignOffer(u4, "OFFER_CUST_L0")
 	for _, biz := range []uuid.UUID{owner, maker, l1, l2} {
 		s.assignOffer(biz, "OFFER_BIZ_STARTER")
 	}
@@ -123,8 +124,8 @@ func (s *seeder) run() {
 	s.txn("seed-u2-topup-1", "topup", cashIn, w2, 500_000, u2, -4)
 	s.txn("seed-u11-topup-1", "topup", cashIn, wOwner, 500_000, owner, -2)
 
-	// --- organization DEH Corp + policy "Chi lớn" (large spend) v3 ---
-	orgID := s.org("DEH Corp", owner)
+	// --- organization Acme Corp + policy "Chi lớn" (large spend) v3 ---
+	orgID := s.org("Acme Corp", owner)
 	orgWallet := s.orgWallet(orgID)
 	s.member(orgID, owner, "admin", 0)
 	s.member(orgID, maker, "maker", 0)
@@ -340,7 +341,7 @@ func (s *seeder) txn(key, typ string, from, to uuid.UUID, amount int64, by uuid.
 		wallet.NewRefCode(), key, typ, from, to, amount, by, at).Scan(&id); err != nil {
 		fatal("txn %s: %v", key, err)
 	}
-	if err := ledger.Post(s.ctx, tx, id, []ledger.Leg{
+	if err := ledger.Post(s.ctx, tx, id, ledger.KindForward, []ledger.Leg{
 		{WalletID: from, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: to, Direction: store.EntryDirectionCredit, Amount: amount},
 	}); err != nil {
@@ -392,14 +393,14 @@ func (s *seeder) compensatedTxn(key string, from, to uuid.UUID, amount int64, by
 		{WalletID: from, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: to, Direction: store.EntryDirectionCredit, Amount: amount},
 	}
-	if err := ledger.Post(s.ctx, tx, id, legs); err != nil {
+	if err := ledger.Post(s.ctx, tx, id, ledger.KindForward, legs); err != nil {
 		fatal("ledger %s: %v", key, err)
 	}
 	rev := []ledger.Leg{
 		{WalletID: to, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: from, Direction: store.EntryDirectionCredit, Amount: amount},
 	}
-	if err := ledger.Post(s.ctx, tx, id, rev); err != nil {
+	if err := ledger.Post(s.ctx, tx, id, ledger.KindCompensate, rev); err != nil {
 		fatal("ledger rev %s: %v", key, err)
 	}
 	if err := tx.Commit(s.ctx); err != nil {
@@ -442,7 +443,7 @@ func (s *seeder) orgWallet(orgID uuid.UUID) uuid.UUID {
 		orgID).Scan(&id); err != nil {
 		fatal("org wallet select: %v", err)
 	}
-	s.touched[id] = "DEH Corp org"
+	s.touched[id] = "Acme Corp org"
 	return id
 }
 
@@ -599,7 +600,7 @@ func (s *seeder) reconTopup(key string, from, to uuid.UUID, amount int64, by uui
 		ref, key, from, to, amount, by, at).Scan(&id); err != nil {
 		fatal("recon topup %s: %v", key, err)
 	}
-	if err := ledger.Post(s.ctx, tx, id, []ledger.Leg{
+	if err := ledger.Post(s.ctx, tx, id, ledger.KindForward, []ledger.Leg{
 		{WalletID: from, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: to, Direction: store.EntryDirectionCredit, Amount: amount},
 	}); err != nil {
@@ -686,7 +687,7 @@ func (s *seeder) summary() {
 	fmt.Println(" 0900000002  Minh Anh      verified, P2P counterpart, 1 money request pending")
 	fmt.Println(" 0900000003  (queue)       KYC manual_review, ai_score 64 → admin KYC queue")
 	fmt.Println(" 0900000004  (locked)      confirmed_fraud + reversal pending in admin My Tasks")
-	fmt.Println(" 0900000011-14 DEH Corp    owner/maker/checker L1/L2 — policy 'Chi lớn' v3")
+	fmt.Println(" 0900000011-14 Acme Corp    owner/maker/checker L1/L2 — policy 'Chi lớn' v3")
 	fmt.Println("   org wallet 842.500.000₫ · 1 disbursement waiting 1/2 signatures (45M)")
 	fmt.Println(" Admin monitor: instances failed@MOVE_FUNDS · compensated · processing_async")
 	fmt.Println(" Recon yesterday: 3 matched + 3 missing_external in the 23:58–00:02 window")

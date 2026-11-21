@@ -6,7 +6,7 @@ import { useOrgStore, type ActiveOrg } from '@/src/stores/org';
 
 const mockOrg: ActiveOrg = {
   orgId:        'org-uuid-1',
-  name:         'DEH Corp',
+  name:         'Acme Corp',
   role:         'maker',
   checkerLevel: 0,
   walletId:     'wallet-uuid-1',
@@ -55,7 +55,7 @@ describe('useOrgStore', () => {
     act(() => useOrgStore.getState().switchOrg(mockOrg));
     act(() => useOrgStore.getState().updateBalance(9_000_000));
     expect(useOrgStore.getState().activeOrg?.balance).toBe(9_000_000);
-    expect(useOrgStore.getState().activeOrg?.name).toBe('DEH Corp');
+    expect(useOrgStore.getState().activeOrg?.name).toBe('Acme Corp');
   });
 
   it('updateBalance is a no-op when not in business mode', () => {

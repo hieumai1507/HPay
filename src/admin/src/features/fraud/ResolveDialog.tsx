@@ -33,7 +33,7 @@ export function ResolveDialog({ flag, onClose, onConfirm, isSubmitting }: Resolv
     <Modal open={Boolean(flag)} onClose={onClose} title={`Xác nhận xử lý — flag ${flag.flagNo}`}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="text-xs text-slate-500 leading-relaxed">
-          Chọn hệ quả áp dụng cho giao dịch <b className="font-mono text-slate-900">{flag.txnRef}</b> của user <b>{flag.userName}</b>. Hành động được ghi audit log và không thể hoàn tác từ UI.
+          Chọn hệ quả áp dụng cho giao dịch <b className="font-mono text-slate-900">{flag.txnRef}</b> của user <b>{flag.userName ?? '—'}</b>. Hành động được ghi audit log và không thể hoàn tác từ UI.
         </div>
 
         {/* Radio Option 1 */}

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,6 +62,9 @@ func (s *Service) CreateRequest(ctx context.Context, adminID uuid.UUID, refCode,
 			return CreateResult{}, ErrTxnNotFound
 		}
 		return CreateResult{}, err
+	}
+	if txn.Type == store.TxnTypeReversal {
+		return CreateResult{}, ErrNotReversible // a reversal cannot itself be reversed (AC-3)
 	}
 	switch txn.Status {
 	case store.TxnStatusCompleted:
@@ -127,9 +131,14 @@ func (executor) run(ctx context.Context, q *store.Queries, fin approval.Finalize
 	if !fin.Approved {
 		return nil // rejected/expired: original stays completed, nothing to do
 	}
-	orig, err := q.GetTransactionByWorkflow(ctx, fin.SubjectID)
+	// Lock the original and require it to still be completed (AC-4): the state
+	// check and the work that depends on it must be atomic.
+	orig, err := q.GetTransactionForUpdate(ctx, fin.SubjectID)
 	if err != nil {
 		return err
+	}
+	if orig.Status != store.TxnStatusCompleted {
+		return fmt.Errorf("%w: %s is %s", ErrNotReversible, orig.RefCode, orig.Status)
 	}
 
 	// Insert the reversal transaction: sender/receiver swapped so the display
@@ -161,12 +170,22 @@ func (executor) run(ctx context.Context, q *store.Queries, fin approval.Finalize
 		}
 		legs = append(legs, ledger.Leg{WalletID: feeWallet.ID, Direction: store.EntryDirectionDebit, Amount: orig.Fee})
 	}
-	if err := ledger.PostWithQueries(ctx, q, rev.ID, legs); err != nil {
+	if err := ledger.PostWithQueries(ctx, q, rev.ID, ledger.KindForward, legs); err != nil {
+		if errors.Is(err, ledger.ErrInsufficientBalance) {
+			// The receiver no longer holds the money (BE-H4, ADR-0009/0013): park the
+			// request for a person instead of losing the approver's decision.
+			return approval.NeedsManual("reversal.needs_manual", "transaction "+orig.RefCode,
+				"receiver wallet cannot cover the reversal amount")
+		}
 		return err
 	}
 
-	if _, err := q.MarkTransactionReversed(ctx, orig.ID); err != nil {
+	n, err := q.MarkTransactionReversed(ctx, orig.ID)
+	if err != nil {
 		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("%w: %s changed state during reversal", ErrNotReversible, orig.RefCode)
 	}
 	return nil
 }

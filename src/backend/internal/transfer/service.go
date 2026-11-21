@@ -4,15 +4,16 @@ package transfer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -41,6 +42,8 @@ type Service struct {
 	guardOn bool
 	// vaults resolves savings pockets owner-scoped for the user_to_vault strategy.
 	vaults *vault.Service
+	// authn verifies the second factor for confirm (ADR-0014). Nil = fail closed.
+	authn Authenticator
 }
 
 func NewService(pool *pgxpool.Pool, engine *workflow.Engine, fees *fee.Service) *Service {
@@ -86,6 +89,16 @@ func (s *Service) Transfer(ctx context.Context, senderID uuid.UUID, receiverPhon
 // transaction + workflow start in ONE DB transaction. Deep checks re-run in
 // workflow steps (E12) — these soft checks are for immediate user feedback.
 func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.UUID, amount int64, note, idemKey string) (Result, error) {
+	// C-03 / ADR-0011: the key is per user and bound to this request. A replay
+	// returns the original result before any fail-fast check can disagree with it.
+	hash := wallet.RequestHash("p2p_transfer", receiverID.String(), strconv.FormatInt(amount, 10), note)
+	old, err := wallet.FindReplay(ctx, s.q, senderID, idemKey, hash)
+	if err != nil {
+		return Result{}, err
+	}
+	if old != nil {
+		return replayResult(old), nil
+	}
 	if amount <= 0 {
 		return Result{}, wallet.ErrAmountInvalid
 	}
@@ -93,8 +106,8 @@ func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.
 	if err != nil {
 		return Result{}, err
 	}
-	if amount > wallet.TxnLimit(sender.KycStatus) {
-		return Result{}, wallet.ErrLimitExceeded
+	if err := s.guard.CheckAmount(ctx, senderID, "P2P_TRANSFER", amount); err != nil {
+		return Result{}, err
 	}
 	_, err = s.q.GetUserStatusByID(ctx, receiverID)
 	if err != nil {
@@ -131,21 +144,21 @@ func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.
 	qtx := s.q.WithTx(tx)
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
-		RefCode: wallet.NewRefCode(), IdempotencyKey: pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		RefCode: wallet.NewRefCode(), IdempotencyKey: wallet.KeyText(idemKey),
 		Type:           store.TxnTypeP2p,
 		SenderWalletID: senderWallet.ID, ReceiverWalletID: receiverWallet.ID,
 		Amount: amount, Fee: feeAmt,
-		Note: noteText(note), InitiatedBy: senderID,
+		Note: noteText(note), InitiatedBy: senderID, RequestHash: wallet.HashText(hash),
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
-			old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
+		if wallet.IsIdempotencyConflict(err) { // concurrent request with the same key won the race
+			old, gerr := wallet.FindReplay(ctx, s.q, senderID, idemKey, hash)
 			if gerr != nil {
 				return Result{}, gerr
 			}
-			return Result{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
-				Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
+			if old != nil {
+				return replayResult(old), nil
+			}
 		}
 		return Result{}, err
 	}
@@ -157,6 +170,11 @@ func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.
 	}
 	return Result{RefCode: txn.RefCode, Status: string(txn.Status), Amount: amount,
 		Fee: feeAmt, Total: amount + feeAmt, CreatedAt: txn.CreatedAt.Time}, nil
+}
+
+func replayResult(old *store.GetUserTransactionByIdempotencyKeyRow) Result {
+	return Result{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
+		Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}
 }
 
 // FeePreview returns the fee the caller would pay right now (mobile confirm screen).
@@ -278,6 +296,11 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 	if input.Amount <= 0 {
 		return EngineRequestResult{}, wallet.ErrAmountInvalid
 	}
+	// C-03 / ADR-0011: no server-generated fallback; a retry must be recognizable.
+	reqHash := engineRequestHash(input)
+	if _, err := wallet.FindReplay(ctx, s.q, input.SenderUserID, input.Idempotency, reqHash); err != nil {
+		return EngineRequestResult{}, err // missing key, or key reused for another request
+	}
 
 	// 1. Fetch Service config dynamically from Database
 	srvCode := strings.ToUpper(strings.TrimSpace(input.ServiceCode))
@@ -318,6 +341,9 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 		}
 		authReq = decision.AuthMethod
 	}
+	if authReq == "2fa" {
+		return EngineRequestResult{}, ErrAuthMethodUnavailable // no 2fa provider yet: fail closed
+	}
 
 	// 3. Resolve Sender & Receiver Wallets per strategy
 	sender, err := s.q.GetUserStatusByID(ctx, input.SenderUserID)
@@ -342,9 +368,6 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 
 	// 4. Create Transaction Record
 	idemKey := input.Idempotency
-	if idemKey == "" {
-		idemKey = uuid.NewString()
-	}
 
 	refCode := wallet.NewRefCode()
 	tx, err := s.pool.Begin(ctx)
@@ -356,7 +379,8 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
 		RefCode:          refCode,
-		IdempotencyKey:   pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		IdempotencyKey:   wallet.KeyText(idemKey),
+		RequestHash:      wallet.HashText(reqHash),
 		Type:             txnType,
 		SenderWalletID:   plan.senderWalletID,
 		ReceiverWalletID: plan.receiverWalletID,
@@ -366,11 +390,13 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 		InitiatedBy:      input.SenderUserID,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
-			old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
+		if wallet.IsIdempotencyConflict(err) {
+			old, gerr := wallet.FindReplay(ctx, s.q, input.SenderUserID, idemKey, reqHash)
 			if gerr != nil {
 				return EngineRequestResult{}, gerr
+			}
+			if old == nil {
+				return EngineRequestResult{}, err
 			}
 			return EngineRequestResult{
 				TransactionID: old.ID,
@@ -387,11 +413,20 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 		return EngineRequestResult{}, err
 	}
 
-	if _, err := s.engine.Start(ctx, tx, defName, txn.ID, map[string]any{
-		"ref_code": txn.RefCode,
-		// Lets the action_pipeline step resolve this service's configured actions.
-		"service_code": srv.Code,
-	}); err != nil {
+	status := string(txn.Status)
+	if needsAuth(authReq) {
+		// ADR-0014: hold the transaction until confirm verifies the credential.
+		// The workflow is NOT started and nothing touches the ledger.
+		if err := qtx.HoldTransactionForAuth(ctx, store.HoldTransactionForAuthParams{
+			ID:           txn.ID,
+			AuthMethod:   store.NullAuthMethodEnum{AuthMethodEnum: store.AuthMethodEnum(authReq), Valid: true},
+			WorkflowName: pgtype.Text{String: defName, Valid: true},
+			ServiceCode:  pgtype.Text{String: srv.Code, Valid: true},
+		}); err != nil {
+			return EngineRequestResult{}, err
+		}
+		status = string(store.TxnStatusAwaitingAuth)
+	} else if _, err := s.engine.Start(ctx, tx, defName, txn.ID, s.workflowContext(txn.RefCode, srv.Code)); err != nil {
 		return EngineRequestResult{}, err
 	}
 
@@ -403,7 +438,7 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 	return EngineRequestResult{
 		TransactionID: txn.ID,
 		RefCode:       txn.RefCode,
-		Status:        string(txn.Status),
+		Status:        status,
 		ServiceCode:   srv.Code,
 		Amount:        input.Amount,
 		Fee:           feeAmt,
@@ -411,6 +446,22 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 		AuthRequired:  authReq,
 		CreatedAt:     txn.CreatedAt.Time,
 	}, nil
+}
+
+// engineRequestHash binds an Idempotency-Key to the fields that define an engine
+// operation. json.Marshal sorts map keys, so extra_params is canonical.
+func engineRequestHash(in EngineRequestInput) string {
+	svc := strings.ToUpper(strings.TrimSpace(in.ServiceCode))
+	if svc == "" {
+		svc = "P2P_TRANSFER"
+	}
+	receiverID := ""
+	if in.ReceiverID != nil {
+		receiverID = in.ReceiverID.String()
+	}
+	extra, _ := json.Marshal(in.ExtraParams)
+	return wallet.RequestHash("engine", svc, receiverID, in.ReceiverPhone,
+		strconv.FormatInt(in.Amount, 10), in.Note, string(extra))
 }
 
 type enginePlan struct {
@@ -508,29 +559,87 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 	}
 }
 
-// ExecuteEngineConfirm acknowledges auth (PIN/OTP) for a transaction already
-// in flight. It never touches the ledger itself — VALIDATE/DEBIT/CREDIT run
-// as workflow steps dispatched by ExecuteEngineRequest's engine.Start, and
-// posting here too would double-move funds. This just reports current state.
+// ExecuteEngineConfirm authenticates the caller for a transaction held in
+// awaiting_auth and starts its workflow (ADR-0014). It never touches the ledger
+// itself: VALIDATE and MOVE_FUNDS run as workflow steps dispatched by the engine.
+//
+// The ownership check is in SQL (C-08): someone else's id and an unknown id both
+// return ErrTxnNotFound. Calling it again for a transaction that already started
+// returns the current state without starting a second workflow; concurrent calls
+// serialize on the row lock and the guarded awaiting_auth -> processing UPDATE.
 func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmInput) (Result, error) {
-	txn, err := s.q.GetTransactionByWorkflow(ctx, input.TransactionID)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return Result{}, errors.New("không tìm thấy giao dịch")
+		return Result{}, err
 	}
-	return Result{
-		RefCode:   txn.RefCode,
-		Status:    string(txn.Status),
-		Amount:    txn.Amount,
-		Fee:       txn.Fee,
-		Total:     txn.Amount + txn.Fee,
-		CreatedAt: time.Now(),
-	}, nil
-}
+	defer tx.Rollback(ctx)
+	qtx := s.q.WithTx(tx)
 
+	txn, err := qtx.GetOwnedTransactionForUpdate(ctx, store.GetOwnedTransactionForUpdateParams{
+		ID: input.TransactionID, InitiatedBy: input.SenderUserID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Result{}, ErrTxnNotFound
+		}
+		return Result{}, err
+	}
+	res := Result{
+		RefCode: txn.RefCode, Status: string(txn.Status), Amount: txn.Amount, Fee: txn.Fee,
+		Total: txn.Amount + txn.Fee, CreatedAt: txn.CreatedAt.Time,
+	}
+	if txn.Status != store.TxnStatusAwaitingAuth {
+		if txn.Status == store.TxnStatusFailed && txn.FailureReason == "auth_expired" {
+			return Result{}, ErrAuthExpired
+		}
+		return res, nil // already started (or finished): report the state, start nothing
+	}
+	if time.Since(txn.CreatedAt.Time) > AwaitingAuthTTL {
+		return Result{}, ErrAuthExpired
+	}
+
+	method := string(txn.AuthMethod.AuthMethodEnum)
+	if !txn.AuthMethod.Valid || !needsAuth(method) {
+		return Result{}, ErrAuthMethodUnavailable
+	}
+	// Verify OUTSIDE the row lock's effect on the counter: VerifyPIN writes the
+	// attempt counter through the pool, so a failed attempt must persist even
+	// though this transaction rolls back.
+	if err := s.confirmCredential(ctx, input.SenderUserID, txn.ID, method, input.PIN, input.OTP); err != nil {
+		return Result{}, err
+	}
+
+	started, err := qtx.StartAwaitingAuthTransaction(ctx, txn.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return res, nil // lost a race to another confirm
+		}
+		return Result{}, err
+	}
+	// Start exactly the workflow the request resolved (recorded when it was held).
+	defName := txn.WorkflowName
+	if defName == "" {
+		defName = s.defName
+	}
+	if _, err := s.engine.Start(ctx, tx, defName, txn.ID, s.workflowContext(started.RefCode, txn.ServiceCode)); err != nil {
+		return Result{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Result{}, err
+	}
+	res.Status = string(store.TxnStatusProcessing)
+	return res, nil
+}
 func (s *Service) ExecuteEngineVerify(ctx context.Context, txnID, senderID uuid.UUID, code string) (Result, error) {
 	return s.ExecuteEngineConfirm(ctx, EngineConfirmInput{
 		TransactionID: txnID,
 		SenderUserID:  senderID,
 		OTP:           code,
 	})
+}
+
+// workflowContext is the initial instance context. service_code lets the
+// action_pipeline step resolve the service's configured actions.
+func (s *Service) workflowContext(refCode, serviceCode string) map[string]any {
+	return map[string]any{"ref_code": refCode, "service_code": serviceCode}
 }

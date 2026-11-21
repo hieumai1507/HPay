@@ -15,7 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiRequest } from '@/src/api/client';
-import { generateIdempotencyKey } from '@/src/lib/idempotency';
+import { withIntentKey } from '@/src/lib/intentKey';
+import { parseAmountStrict } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useOrgStore } from '@/src/stores/org';
 
 type Tab = 'members' | 'policy';
@@ -121,7 +123,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
   const [tiers, setTiers] = useState<PolicyTier[]>([
     { level: 1, min_amount: '10000000', required_approvals: 1 },
   ]);
-  const [loading, setLoading] = useState(false);
+  const guard = useSubmitGuard();
 
   const addTier = () => {
     setTiers((t) => [...t, { level: t.length + 1, min_amount: '', required_approvals: 1 }]);
@@ -133,31 +135,36 @@ function PolicyTab({ orgId }: { orgId: string }) {
     setTiers((t) => t.map((tier, idx) => idx === i ? { ...tier, [field]: value } : tier));
   };
 
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-      const payload = {
-        name: 'default',
-        min_amount: 0,
-        max_amount: null,
-        tiers: tiers.map((t) => ({
-          level: t.level,
-          min_amount: parseInt(t.min_amount, 10) || 0,
-          required_approvals: t.required_approvals,
-        })),
-      };
-      await apiRequest(`/v1/org/${orgId}/policies`, {
-        method: 'POST',
-        headers: { 'Idempotency-Key': generateIdempotencyKey() },
-        body: JSON.stringify(payload),
-      });
-      Alert.alert('Đã lưu', 'Chính sách phê duyệt mới đã có hiệu lực ngay lập tức.');
-    } catch (e: unknown) {
-      Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSave = () =>
+    guard.run(async () => {
+      // Tier thresholds are money: parse with BigInt and bound them (C-01). Empty means 0.
+      const parsedTiers: { level: number; min_amount: bigint; required_approvals: number }[] = [];
+      for (const t of tiers) {
+        if (t.min_amount.trim() === '') {
+          parsedTiers.push({ level: t.level, min_amount: 0n, required_approvals: t.required_approvals });
+          continue;
+        }
+        const parsed = parseAmountStrict(t.min_amount);
+        if (!parsed.ok) {
+          Alert.alert('Thiếu thông tin', `Mức tiền của Level ${t.level} không hợp lệ.`);
+          return;
+        }
+        parsedTiers.push({ level: t.level, min_amount: parsed.value, required_approvals: t.required_approvals });
+      }
+      const payload = { name: 'default', min_amount: 0, max_amount: null, tiers: parsedTiers };
+      try {
+        await withIntentKey(`policy:${orgId}:${JSON.stringify(tiers)}`, (idempotencyKey) =>
+          apiRequest(`/v1/org/${orgId}/policies`, {
+            method: 'POST',
+            idempotencyKey,
+            body: payload,
+          }),
+        );
+        Alert.alert('Đã lưu', 'Chính sách phê duyệt mới đã có hiệu lực ngay lập tức.');
+      } catch (e: unknown) {
+        Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+      }
+    });
 
   return (
     <View className="gap-4">
@@ -210,10 +217,10 @@ function PolicyTab({ orgId }: { orgId: string }) {
 
       <Pressable
         onPress={handleSave}
-        disabled={loading}
-        className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${loading ? 'opacity-70' : ''}`}
+        disabled={guard.isPending}
+        className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${guard.isPending ? 'opacity-70' : ''}`}
       >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Lưu chính sách</Text>}
+        {guard.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Lưu chính sách</Text>}
       </Pressable>
     </View>
   );

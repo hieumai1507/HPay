@@ -20,11 +20,27 @@ import (
 
 // --- test handlers ---------------------------------------------------------
 
-type echoHandler struct{ calls atomic.Int64 }
+type echoHandler struct {
+	calls atomic.Int64
+	mu    sync.Mutex
+	by    map[uuid.UUID]int // calls per instance: other tests leave unpublished events in the shared database
+}
+
+func (h *echoHandler) callsFor(id uuid.UUID) int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.by[id]
+}
 
 func (h *echoHandler) Name() string { return "echo" }
 func (h *echoHandler) Execute(_ context.Context, in StepInput) (StepOutput, error) {
 	h.calls.Add(1)
+	h.mu.Lock()
+	if h.by == nil {
+		h.by = map[uuid.UUID]int{}
+	}
+	h.by[in.InstanceID]++
+	h.mu.Unlock()
 	return StepOutput{Context: map[string]any{"echoed_" + in.Step.Name: true}}, nil
 }
 
@@ -126,8 +142,8 @@ func TestWorkflowHappyPath(t *testing.T) {
 	if got := h.instanceStatus(t, instID); got != store.WfStatusCompleted {
 		t.Fatalf("want completed, got %s", got)
 	}
-	if echo.calls.Load() != 2 {
-		t.Fatalf("want 2 handler calls, got %d", echo.calls.Load())
+	if n := echo.callsFor(instID); n != 2 {
+		t.Fatalf("want 2 handler calls for this instance, got %d", n)
 	}
 }
 

@@ -93,5 +93,19 @@ func (r *Recovery) SweepStuck(ctx context.Context) error {
 			r.log.Error("re-emit failed", "instance", inst.ID, "err", err)
 		}
 	}
+	// A compensation that never reported back must not hang forever either.
+	comps, err := r.q.ClaimStuckCompensations(ctx, store.ClaimStuckCompensationsParams{
+		UpdatedAt: pgtype.Timestamptz{Time: time.Now().Add(-stuckThreshold), Valid: true},
+		Limit:     sweepBatch,
+	})
+	if err != nil {
+		return err
+	}
+	for _, inst := range comps {
+		r.log.Warn("recovering stuck compensation", "instance", inst.ID, "step", inst.CurrentStep.String)
+		if err := r.engine.ReEmitCompensation(ctx, inst.ID); err != nil {
+			r.log.Error("re-emit compensation failed", "instance", inst.ID, "err", err)
+		}
+	}
 	return nil
 }

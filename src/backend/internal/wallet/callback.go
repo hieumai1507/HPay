@@ -77,7 +77,7 @@ func (s *Service) BankCallback(ctx context.Context, refCode string, amount int64
 	res := CallbackResult{RefCode: refCode, Status: string(txn.Status)}
 	credited := false
 	if txn.Status == store.TxnStatusCreated && amount == txn.Amount {
-		if err := ledger.Post(ctx, tx, txn.ID, []ledger.Leg{
+		if err := ledger.Post(ctx, tx, txn.ID, ledger.KindForward, []ledger.Leg{
 			{WalletID: txn.SenderWalletID, Direction: store.EntryDirectionDebit, Amount: amount},
 			{WalletID: txn.ReceiverWalletID, Direction: store.EntryDirectionCredit, Amount: amount},
 		}); err != nil {

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountVND, parseAmountStrict, percentOf } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { describeError } from '@/src/lib/errors';
 import { useCreateVault, useVaults, type Vault } from '@/src/queries';
 import { useSecureScreen } from '@/src/features/security/useSecureScreen';
@@ -14,7 +15,7 @@ import { color } from '@/src/ui/tokens';
 function progressPct(v: Vault): number | null {
   const target = v.target_amount ?? 0;
   if (!target) return null; // no goal set — show the amount, not a bar
-  return Math.min(100, Math.round(((v.balance ?? 0) / target) * 100));
+  return percentOf(BigInt(v.balance ?? 0), BigInt(target));
 }
 
 export default function VaultsScreen() {
@@ -24,31 +25,40 @@ export default function VaultsScreen() {
   const router = useRouter();
   const { data: vaults, isLoading, refetch, isRefetching } = useVaults();
   const createVault = useCreateVault();
+  const guard = useSubmitGuard();
 
   const [creating, setCreating] = useState(false);
   const [label, setLabel] = useState('');
   const [target, setTarget] = useState('');
 
-  const total = (vaults ?? []).reduce((sum, v) => sum + (v.balance ?? 0), 0);
+  const total = (vaults ?? []).reduce((sum, v) => sum + BigInt(v.balance ?? 0), 0n);
 
-  const submitCreate = async () => {
-    const name = label.trim();
-    if (!name) {
-      Alert.alert('Thiếu tên hũ', 'Đặt tên cho hũ tiết kiệm của bạn.');
-      return;
-    }
-    try {
-      await createVault.mutateAsync({
-        label: name,
-        targetAmount: target ? Number(target.replace(/\D/g, '')) : 0,
-      });
-      setLabel('');
-      setTarget('');
-      setCreating(false);
-    } catch (e) {
-      Alert.alert('Không tạo được hũ', describeError(e));
-    }
-  };
+  const submitCreate = () =>
+    guard.run(async () => {
+      const name = label.trim();
+      if (!name) {
+        Alert.alert('Thiếu tên hũ', 'Đặt tên cho hũ tiết kiệm của bạn.');
+        return;
+      }
+      // The goal is optional; when given it must be a valid bounded amount (C-01).
+      let targetAmount = 0n;
+      if (target.trim()) {
+        const parsed = parseAmountStrict(target);
+        if (!parsed.ok) {
+          Alert.alert('Mục tiêu không hợp lệ', 'Nhập số tiền hợp lệ hoặc để trống.');
+          return;
+        }
+        targetAmount = parsed.value;
+      }
+      try {
+        await createVault.mutateAsync({ label: name, targetAmount });
+        setLabel('');
+        setTarget('');
+        setCreating(false);
+      } catch (e) {
+        Alert.alert('Không tạo được hũ', describeError(e));
+      }
+    });
 
   const renderVault = ({ item }: { item: Vault }) => {
     const pct = progressPct(item);
@@ -105,7 +115,7 @@ export default function VaultsScreen() {
       <View className="mx-4 mb-4 rounded-2xl p-5" style={{ backgroundColor: color.brand[600] }}>
         <Text className="text-white/80 text-xs">Tổng để dành</Text>
         <Text className="text-white text-3xl font-bold tabular-nums mt-1">
-          {formatAmountVND(BigInt(total))}
+          {formatAmountVND(total)}
         </Text>
         <Text className="text-white/70 text-xs mt-1">
           {(vaults ?? []).length} hũ · tiền vẫn nằm trong ví của bạn
@@ -158,9 +168,9 @@ export default function VaultsScreen() {
             </Pressable>
             <Pressable
               onPress={submitCreate}
-              disabled={createVault.isPending}
+              disabled={guard.isPending}
               className="flex-1 items-center py-3 rounded-xl"
-              style={{ backgroundColor: color.brand[600], opacity: createVault.isPending ? 0.6 : 1 }}
+              style={{ backgroundColor: color.brand[600], opacity: guard.isPending ? 0.6 : 1 }}
             >
               <Text className="font-bold text-white">Tạo hũ</Text>
             </Pressable>

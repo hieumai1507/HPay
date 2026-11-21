@@ -35,14 +35,18 @@ Lets platform admins undo a completed transaction using maker-checker: admin A f
 |----|------|-------------|------|
 | BR-REV-01 | The original is found by `ref_code`; unknown -> `ErrTxnNotFound` (404). | `reversal.go:CreateRequest` 58-64 | `TestReversalGuards` |
 | BR-REV-02 | Only a transaction with status `completed` may be reversed; `reversed` -> `ErrAlreadyReversed` (409); any other status -> `ErrNotReversible` (409). | `reversal.go:65-72` | `TestReversalGuards`, `TestReversalEndToEnd` |
-| BR-REV-03 | Only one pending reversal request per transaction (application check). | `reversal.go:74-80`, `queries/approval.sql:ExistsPendingReversalForTxn` | `TestReversalEndToEnd` (second request returns `ErrReversalPending`) |
-| BR-REV-04 | Request deadline is 24 h; the sweeper expires it, in which case the executor does nothing. | `reversal.go:26,101`, `reversal.go:127-129`, `approval/service.go:ExpireDue` | none |
+| BR-REV-03 | At most one pending reversal request per transaction, enforced by a partial unique index `one_pending_approval_per_subject` on `approval_requests (subject_type, subject_id) WHERE status = 'pending'` (migration 000017) plus the application check; a concurrent second request gets `ErrReversalPending`. | migration 000017; `reversal.go:CreateRequest` | `TestReversal_ConcurrentRequestsOnlyOne`, `TestReversalEndToEnd` |
+| BR-REV-04 | Request deadline is 24 h; the sweeper expires it, in which case the executor does nothing; `AdminDecide` also refuses a request past its deadline with `ErrExpired` (same rule as the org path). | `reversal.go:26,101`, `reversal.go:127-129`, `approval/service.go:ExpireDue` | none |
 | BR-REV-05 | The deciding admin must differ from the requesting admin. | `approval/admin.go:67-69` | `TestReversalEndToEnd` |
 | BR-REV-06 | One approval completes it (single tier). A reject leaves the original `completed` and posts nothing. | `reversal.go:82-85`, `reversal.go:127-129` | `TestReversalGuards` |
 | BR-REV-07 | On approve, a reversal transaction is inserted with `amount` and `fee` equal to the original, note `reversal of <ref_code>`, `initiated_by` = original's initiator, `idempotency_key = "rev-<orig id>"`. | `reversal.go:139-145` | `TestReversalEndToEnd` |
 | BR-REV-08 | Ledger legs (balanced): credit original sender `amount+fee`; debit original receiver `amount`; if fee > 0, debit `SYSTEM_FEE` wallet `fee`. Posted with `ledger.PostWithQueries` on the finalize transaction. | `reversal.go:153-166`, `ledger.go:PostWithQueries` | `TestReversalEndToEnd` |
 | BR-REV-09 | The ledger refuses unbalanced legs and any final balance < 0 on non-system wallets (`ErrInsufficientBalance`). | `ledger.go:59,101-112` | `TestEdge_E07_CompensationReversesMovedFunds` (forward ledger) |
 | BR-REV-10 | After posting, the original is moved `completed -> reversed` with a guarded UPDATE; original ledger entries are never edited (ledger is append-only). | `transactions.sql:MarkTransactionReversed` (72-77), migration 000007 | `TestReversalEndToEnd` |
+| BR-REV-12 | At most one reversal transaction per original, enforced by the unique index `one_reversal_per_txn` on `transactions (reversal_of) WHERE reversal_of IS NOT NULL` (migration 000017). | migration 000017 | `TestReversal_SecondReversalRowRejectedByDB` |
+| BR-REV-13 | A transaction of type `reversal` cannot be reversed (`ErrNotReversible`). | `reversal.go:CreateRequest` | `TestReversal_ReversalOfReversalRejected` |
+| BR-REV-14 | The executor locks the original (`GetTransactionForUpdate`) and requires `completed`; a changed state fails the finalize with `ErrNotReversible` and changes nothing; the row count of `MarkTransactionReversed` must be 1. | `reversal.go:executor.run` | `TestReversal_ExecutorRequiresCompletedOriginal` |
+| BR-REV-15 | If the receiver cannot cover the reversal (`ErrInsufficientBalance`), the executor returns `approval.NeedsManual`; the approval service rolls back the executor's work to a savepoint, keeps the approver's action row, sets the request to `needs_manual` and writes an audit row `reversal.needs_manual`. No reversal transaction, no ledger entry, no balance change; the original stays `completed`. `needs_manual` is terminal for the decision flow (ADR-0013). | `approval/admin.go:finalizeOrPark`, `approval/manual.go`, migration 000016 | `TestReversal_ReceiverWithoutFundsGoesToNeedsManual` |
 | BR-REV-11 | Request, decision and audit rows: `reversal.request` (actor `admin`), then `approval.approve/reject` (actor `admin`). | `reversal.go:110-116`, `admin.go:121` | none |
 
 ## 4. Lifecycle / state machine
@@ -101,20 +105,17 @@ sequenceDiagram
 `POST /v1/admin/reversals` (`router.go:193`, `admin_ops_handler.go:102`; body `ref_code`, `reason` max 255), `GET /v1/admin/approvals`, `POST /v1/admin/approvals/:id/decide`. Executor registered at `router.go:170`. Error codes `errmap.go:107-110`. See `../reference/api.md`.
 
 ## 9. Edge cases
-- Receiver already spent the funds: see gap BE-H4 below.
+- Receiver already spent the funds: the request is parked as `needs_manual` (BR-REV-15); nothing is posted.
 - Reversal of a transaction with fee 0: no SYSTEM_FEE leg.
 - Reversal of an org disbursement: sender is the org wallet, which is credited back (`reversal.go:154`).
 
 ## 10. Known gaps (as-is vs intended)
-- **Double-reversal protection is weaker than the comments claim (BE-H3).** `transactions.sql:65` and `reversal.go:106` mention `one_reversal_per_txn` and `UNIQUE(subject_type, subject_id)`; neither exists in migrations 000001-000013 (no match for them in `db/migrations`). What really prevents a second reversal: (1) the status check `completed` at request time (`reversal.go:65`), (2) `ExistsPendingReversalForTxn` (not atomic: two admins can both pass it), (3) the unique `idempotency_key = "rev-<id>"` (000002:57), which makes a second `InsertReversalTransaction` fail with a raw 23505 and roll back the finalize (the second approval would be stuck, not cleanly rejected). The `23505 -> ErrReversalPending` branch at `reversal.go:105` cannot be triggered by `approval_requests` because that table has no such unique constraint.
-- **The executor does not re-check `orig.Status == completed` and ignores the row count of `MarkTransactionReversed`** (`reversal.go:130-170`; the query is `:execrows`).
-- **Receiver lacks funds (BE-H4):** `ledger.ErrInsufficientBalance` propagates from the executor, the whole `AdminDecide` transaction (including the checker action row) rolls back, the API returns an error and the request stays `pending` until it expires after 24 h. No `reversal_failed`/manual state, no debt record, no hold. Each retry repeats the failure.
-- **A reversal transaction itself is `completed`, and `CreateRequest` only checks status**, so it is possible by code to file a reversal of a reversal (no `type != 'reversal'` check at `reversal.go:65-72`). Not covered by a test.
+- BE-H3 (double reversal) and BE-H4 (receiver without funds) are FIXED in the working tree (2026-11-21, not yet committed): see BR-REV-03, 12 to 15, ADR-0013 and the bug records. Remaining in this area:
+- **Resolution of `needs_manual`** is manual and undefined: nothing in the system retries, writes off, or opens a debt record (ADR-0009 follow-up). Admin screens do not yet show or filter the new status.
 - Any transaction type with status `completed` is reversible (topup, vault_move, p2p, org_disbursement); there is no type restriction or age limit.
 - `GET /v1/admin/approvals` shows reversals only while `expires_at > now()` (`approval.sql:56`).
 - No wallet-owner status check (locked/inactive owner) in the executor.
-- Global idempotency key space (BE-H1) is shared with the `rev-` keys.
-
+- The unique key space for `idempotency_key` is still shared with the `rev-` keys until the per-user idempotency slice lands.
 ## 11. Code map
 - `internal/reversal/reversal.go`: `RegisterExecutor` 46, `CreateRequest` 57, `executor.run` 126.
 - `internal/approval/admin.go`: `AdminDecide` 46.

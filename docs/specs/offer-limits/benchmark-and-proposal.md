@@ -1,7 +1,7 @@
 ---
 title: Offer limits - market benchmark and proposal
 type: spec
-status: proposed          # NOT decided. Needs the user's approval and a compliance review per jurisdiction.
+status: approved-numbers   # user approved the T0/T1/T2 table on 2026-11-21; implementation not started; compliance review per jurisdiction still required
 last_verified: 2026-11-21
 code:
   - src/backend/db/migrations/000004_offer_factory_policies.up.sql
@@ -62,10 +62,10 @@ Rules that go with the table:
 - **Inactive offer blocks** (it does not fall back to a default).
 - Limits count completed and in-flight transactions, exclude failed and reversed ones, and use a fixed time zone for calendar windows.
 
-## 4. Open questions for the user (nothing below is decided)
+## 4. Open questions (user accepted the proposal without answering them; working assumptions in bold, change them if wrong)
 
-1. **Currency**: is the product single-currency per deployment (for example VND for Vietnam) or truly multi-currency? Multi-currency needs a currency column on the ledger and an exchange-rate source, which is a large architecture change. Until decided, state limits in the deployment currency and convert once with a published rate (the exchange rate is an assumption to confirm).
-2. **Weekly windows**: add a rolling weekly (and rolling 30-day) limit to the offer model, or keep daily and monthly only?
+1. **Currency** (assumption: **single currency per deployment, amounts stated in that currency; the USD figures are converted once with a published rate when the deployment is configured**): is the product single-currency per deployment (for example VND for Vietnam) or truly multi-currency? Multi-currency needs a currency column on the ledger and an exchange-rate source, which is a large architecture change. Until decided, state limits in the deployment currency and convert once with a published rate (the exchange rate is an assumption to confirm).
+2. **Weekly windows** (assumption: **add rolling weekly and 30-day limits as a separate slice; until then daily and monthly apply**): add a rolling weekly (and rolling 30-day) limit to the offer model, or keep daily and monthly only?
 3. **Tier definitions**: what exactly qualifies T1 and T2 (documents, data checks, manual review), and which jurisdictions' rules apply? **This needs compliance or legal review; the benchmark is not regulatory advice.**
 4. **Balance ceilings**: enforce the wallet balance ceiling (the `primary_pocket_max` field exists but nothing enforces it)?
 5. **Auth thresholds**: scale PIN / OTP / 2FA bands per tier, or keep fixed amounts?

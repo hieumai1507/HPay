@@ -101,7 +101,7 @@ sequenceDiagram
   M->>A: GET /v1/kyc/status
 ```
 
-Verified: `kyc/service.go:65-124`, `kyc/handlers.go:49-170`, `kyc/classify.go:7-40`, `kyc/admin.go:107-156`. Both `auto_approved` and `verified` are treated as the verified tier by `wallet.TxnLimit` (`wallet/service.go:35`). Note the KYC workflow instance has `transaction_id = uuid.Nil` (`kyc/service.go:115`).
+Verified: `kyc/service.go:65-124`, `kyc/handlers.go:49-170`, `kyc/classify.go:7-40`, `kyc/admin.go:107-156`. Both `auto_approved` and `verified` select offer `OFFER_CUST_L1` (`kyc/offer.go`). Note the KYC workflow instance has `transaction_id = uuid.Nil` (`kyc/service.go:115`).
 
 ## 4. Bank top-up callback
 

@@ -21,7 +21,7 @@ func TestMoneyRequestPayEndToEnd(t *testing.T) {
 	requesterID, requesterWallet, _ := e.userWithMoney(t, 0)
 	payerID, payerWallet, payerPhone := e.userWithMoney(t, 2_000_000)
 
-	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 200_000, "dinner")
+	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 200_000, "dinner", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestSplitBillThreeWay(t *testing.T) {
 	p2ID, _, p2Phone := e.userWithMoney(t, 500_000)
 	p3ID, _, p3Phone := e.userWithMoney(t, 500_000)
 
-	split, err := e.msvc.CreateSplit(ctx, requesterID, []string{p1Phone, p2Phone, p3Phone}, 300_000, "trip", nil)
+	split, err := e.msvc.CreateSplit(ctx, requesterID, []string{p1Phone, p2Phone, p3Phone}, 300_000, "trip", nil, uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestMoneyRequestCancelAndActorGuards(t *testing.T) {
 	payerID, _, payerPhone := e.userWithMoney(t, 0)
 	outsiderID, _, _ := e.userWithMoney(t, 0)
 
-	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 50_000, "")
+	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 50_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestEdge_E19_ExpiryRacePay(t *testing.T) {
 		requesterID, _, _ := e.userWithMoney(t, 0)
 		payerID, _, payerPhone := e.userWithMoney(t, 500_000)
 
-		req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "")
+		req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "", uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -193,7 +193,7 @@ func TestEdge_E19_ExpiryRacePay(t *testing.T) {
 		requesterID, _, _ := e.userWithMoney(t, 0)
 		payerID, _, payerPhone := e.userWithMoney(t, 500_000)
 
-		req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "")
+		req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "", uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +254,7 @@ func TestMoneyRequestRemind(t *testing.T) {
 	payerID, _, payerPhone := e.userWithMoney(t, 500_000)
 	outsiderID, _, _ := e.userWithMoney(t, 0)
 
-	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "trip")
+	req, err := e.msvc.Create(ctx, requesterID, payerPhone, 100_000, "trip", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,11 +8,15 @@ import {
   type AIKey,
   type AISetting,
 } from '@/queries';
-import { Badge, Modal } from '@/ui';
+import { Badge, ErrorNotice, Modal } from '@/ui';
+import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
+import { useAdminStore } from '@/stores/admin';
 
 export default function AISettingsPage() {
-  const { data: keys = [], isLoading: loadingKeys } = useAIKeys();
-  const { data: settings = [], isLoading: loadingSettings } = useAISettings();
+  const { data: keys = [], isLoading: loadingKeys, error: keysError } = useAIKeys();
+  const { data: settings = [], isLoading: loadingSettings, error: settingsError } = useAISettings();
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canManage = useAdminStore((s) => s.can(ACTION_PERMISSION.aiSettings));
 
   const createKeyMutation = useCreateAIKey();
   const updateKeyMutation = useUpdateAIKey();
@@ -28,6 +32,7 @@ export default function AISettingsPage() {
 
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createKeyMutation.isPending) return;
     if (!newKeyName.trim() || !newKeyValue.trim()) {
       alert('Vui lòng điền tên và giá trị API key.');
       return;
@@ -58,6 +63,7 @@ export default function AISettingsPage() {
   };
 
   const performKeyToggle = async (key: AIKey, newActiveState: boolean) => {
+    if (updateKeyMutation.isPending) return;
     try {
       await updateKeyMutation.mutateAsync({
         id: key.id,
@@ -76,6 +82,7 @@ export default function AISettingsPage() {
     modelName: string,
     keyId: string,
   ) => {
+    if (updateSettingMutation.isPending) return;
     try {
       await updateSettingMutation.mutateAsync({
         function_name: functionName,
@@ -97,6 +104,9 @@ export default function AISettingsPage() {
         <h2 className="text-lg font-bold text-slate-900">Cấu hình AI &amp; Model Routing (F11)</h2>
         <span className="text-xs text-slate-500">Dynamic LLM Provider &amp; Secret Management</span>
       </div>
+
+      <ErrorNotice error={keysError ?? settingsError} what="AI configuration" />
+      {!canManage && <div className="text-xs text-slate-500">{NO_PERMISSION_REASON} (ai.manage)</div>}
 
       {isLoading ? (
         <div className="p-10 text-center text-slate-500">Đang tải AI config…</div>
@@ -132,6 +142,8 @@ export default function AISettingsPage() {
                       <button
                         type="button"
                         onClick={() => handleToggleActive(k)}
+                        disabled={!canManage || updateKeyMutation.isPending}
+                        title={canManage ? undefined : NO_PERMISSION_REASON}
                         className={`px-2.5 py-1 rounded-full text-white font-bold text-[11px] cursor-pointer transition-colors ${
                           k.is_active ? 'bg-emerald-600' : 'bg-slate-400'
                         }`}
@@ -181,7 +193,8 @@ export default function AISettingsPage() {
                 </div>
                 <button
                   type="submit"
-                  disabled={createKeyMutation.isPending}
+                  disabled={createKeyMutation.isPending || !canManage}
+                  title={canManage ? undefined : NO_PERMISSION_REASON}
                   className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
                 >
                   {createKeyMutation.isPending ? 'Đang tạo…' : '+ Lưu Key Mới'}
@@ -211,7 +224,7 @@ export default function AISettingsPage() {
                       setting={setting}
                       availableKeys={keys.filter((k) => k.is_active)}
                       onSave={handleSettingChange}
-                      isSaving={updateSettingMutation.isPending}
+                      isSaving={updateSettingMutation.isPending || !canManage}
                     />
                   );
                 })}
@@ -243,6 +256,7 @@ export default function AISettingsPage() {
               <button
                 type="button"
                 onClick={() => performKeyToggle(confirmKeyDisable, false)}
+                disabled={updateKeyMutation.isPending}
                 className="h-9 px-4 rounded-lg bg-rose-600 text-white font-semibold text-xs cursor-pointer hover:bg-rose-700 shadow-xs"
               >
                 Xác nhận vô hiệu hóa

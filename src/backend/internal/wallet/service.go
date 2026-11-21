@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hieumai1507/hpay-backend/internal/ledger"
+	"github.com/hieumai1507/hpay-backend/internal/offerguard"
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 	"github.com/hieumai1507/hpay-backend/internal/user"
 )
@@ -28,26 +30,17 @@ var (
 	ErrTxnNotFound    = errors.New("transaction not found")
 )
 
-// Per-transaction limits by KYC tier (minor units, VND). Moves into a DB
-// policy table together with the fee engine in F5 (docs plan f3 §6).
-func TxnLimit(kyc store.KycStatus) int64 {
-	switch kyc {
-	case store.KycStatusVerified, store.KycStatusAutoApproved:
-		return 100_000_000
-	case store.KycStatusManualReview, store.KycStatusPending:
-		return 5_000_000
-	default: // none, rejected
-		return 2_000_000
-	}
-}
+// Per-transaction limits are not defined here: they follow the user's offer
+// (ADR-0007, docs/specs/w3-offer-limits) and are enforced by offerguard.
 
 type Service struct {
-	pool *pgxpool.Pool
-	q    *store.Queries
+	pool  *pgxpool.Pool
+	q     *store.Queries
+	guard *offerguard.Guard
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool, q: store.New(pool)}
+	return &Service{pool: pool, q: store.New(pool), guard: offerguard.New(pool)}
 }
 
 // EnsureMainWallet is idempotent: safe to call on every register/login
@@ -82,15 +75,19 @@ type TopupResult struct {
 // Topup credits the user's main wallet from SYSTEM_CASH_IN in one atomic tx.
 // A repeated Idempotency-Key returns the original transaction (E01).
 func (s *Service) Topup(ctx context.Context, userID uuid.UUID, amount int64, idemKey string) (TopupResult, error) {
-	if amount <= 0 {
-		return TopupResult{}, ErrAmountInvalid
-	}
-	ustate, err := s.q.GetUserStatusByID(ctx, userID)
+	hash := RequestHash("topup", strconv.FormatInt(amount, 10))
+	old, err := FindReplay(ctx, s.q, userID, idemKey, hash)
 	if err != nil {
 		return TopupResult{}, err
 	}
-	if amount > TxnLimit(ustate.KycStatus) {
-		return TopupResult{}, ErrLimitExceeded
+	if old != nil {
+		return topupReplay(old), nil
+	}
+	if amount <= 0 {
+		return TopupResult{}, ErrAmountInvalid
+	}
+	if err := s.guard.CheckAmount(ctx, userID, "TOPUP_BANK", amount); err != nil {
+		return TopupResult{}, err
 	}
 
 	userWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
@@ -110,26 +107,27 @@ func (s *Service) Topup(ctx context.Context, userID uuid.UUID, amount int64, ide
 	qtx := s.q.WithTx(tx)
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
-		RefCode: NewRefCode(), IdempotencyKey: pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		RefCode: NewRefCode(), IdempotencyKey: KeyText(idemKey),
 		Type:           store.TxnTypeTopup,
 		SenderWalletID: cashIn.ID, ReceiverWalletID: userWallet.ID,
 		Amount: amount, Fee: 0,
 		Note: pgtype.Text{String: "topup via mock bank", Valid: true}, InitiatedBy: userID,
+		RequestHash: HashText(hash),
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
-			old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
+		if IsIdempotencyConflict(err) {
+			old, gerr := FindReplay(ctx, s.q, userID, idemKey, hash)
 			if gerr != nil {
 				return TopupResult{}, gerr
 			}
-			return TopupResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
-				CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
+			if old != nil {
+				return topupReplay(old), nil
+			}
 		}
 		return TopupResult{}, err
 	}
 
-	if err := ledger.Post(ctx, tx, txn.ID, []ledger.Leg{
+	if err := ledger.Post(ctx, tx, txn.ID, ledger.KindForward, []ledger.Leg{
 		{WalletID: cashIn.ID, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: userWallet.ID, Direction: store.EntryDirectionCredit, Amount: amount},
 	}); err != nil {
@@ -143,6 +141,11 @@ func (s *Service) Topup(ctx context.Context, userID uuid.UUID, amount int64, ide
 	}
 	return TopupResult{RefCode: txn.RefCode, Status: "completed", Amount: amount,
 		NewBalance: userWallet.Balance + amount, CreatedAt: txn.CreatedAt.Time}, nil
+}
+
+func topupReplay(old *store.GetUserTransactionByIdempotencyKeyRow) TopupResult {
+	return TopupResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
+		CreatedAt: old.CreatedAt.Time, Duplicate: true}
 }
 
 func (s *Service) ListWallets(ctx context.Context, userID uuid.UUID) ([]store.ListUserWalletsRow, error) {

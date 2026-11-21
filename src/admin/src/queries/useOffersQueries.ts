@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
@@ -39,7 +39,7 @@ export function useOffers(params?: AdminQueryParams) {
   return useQuery({
     queryKey: ['admin', 'offers', params],
     queryFn: async (): Promise<Paged<OfferPackage>> => {
-      const res = await apiRequest<{ offers: OfferPackage[]; total?: number }>(
+      const res = await apiRequest<{ offers: OfferPackage[] | null; total?: number }>(
         `/v1/admin/offers${buildQueryString(params)}`
       );
       const rows = res?.offers ?? [];
@@ -52,7 +52,7 @@ export function useOfferDetail(id: string) {
   return useQuery({
     queryKey: ['admin', 'offer', id],
     queryFn: async () => {
-      const res = await apiRequest<{ offer: OfferPackage; services: OfferServiceConfig[] }>(`/v1/admin/offers/${id}`);
+      const res = await apiRequest<{ offer: OfferPackage; services: OfferServiceConfig[] | null }>(`/v1/admin/offers/${id}`);
       return {
         ...res.offer,
         services: res.services || [],
@@ -62,17 +62,6 @@ export function useOfferDetail(id: string) {
   });
 }
 
-export function useSaveOffer() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (offer: Partial<OfferPackage>) => {
-      return await apiRequest<OfferPackage>(`/v1/admin/offers/${offer.id || ''}`, {
-        method: offer.id ? 'PUT' : 'POST',
-        body: offer,
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'offers'] });
-    },
-  });
-}
+// Backend gap: only GET /v1/admin/offers and GET /v1/admin/offers/{id} exist.
+// useSaveOffer (PUT/POST /v1/admin/offers/{id}) was removed because those
+// routes return 404/405; OfferDetailPage disables "Save" with a visible reason.

@@ -35,7 +35,7 @@ Windows note: Windows Application Control on the dev machine blocks Go-built exe
 
 | Key | Default / example | Required | Meaning |
 |-----|-------------------|----------|---------|
-| `APP_ENV` | `dev` | no (defaults to `dev`) | `dev`, `ci`, `demo`. Anything other than `dev` enforces `JWT_SECRET` >= 32 bytes and gin release mode |
+| `APP_ENV` | `dev` (in `.env.example`) | **yes**, no code default | `dev`, `ci`, `demo`, `production`. Missing or unknown stops the server. `dev` returns OTP codes in responses and loads `.env`; outside `dev` and `ci` a `JWT_SECRET` under 32 bytes or the example placeholder is refused |
 | `HTTP_PORT` | `8080` | no | |
 | `DATABASE_URL` | `postgres://HPay:HPay@localhost:5432/HPay?sslmode=disable` | yes | matches `docker-compose.yml` |
 | `REDIS_ADDR` | `localhost:6379` | no | |
@@ -76,7 +76,7 @@ Reversibility check (E18): `make migrate-verify` (up, down -all, up). It destroy
 
 ## 5. Seed demo data
 
-The seeder (`cmd/seed`) is idempotent: users upsert by phone, every transaction has a fixed idempotency key. It refuses to run when `APP_ENV=production` and requires `DATABASE_URL`. At the end it asserts `wallets.balance == SUM(ledger)` for every wallet it touched and exits non-zero on drift. All money moves through `ledger.Post`.
+The seeder (`cmd/seed`) is idempotent: users upsert by phone, every transaction has a fixed idempotency key. It runs only for `APP_ENV` `dev`, `ci` or `demo`, refuses a non-local database host unless `--allow-remote-db` is passed, and requires `DATABASE_URL`. At the end it asserts `wallets.balance == SUM(ledger)` for every wallet it touched and exits non-zero on drift. All money moves through `ledger.Post`.
 
 ```powershell
 cd src\backend
@@ -101,7 +101,7 @@ All demo users share the demo password defined as the constant `demoPassword` in
 | 0900000002 | Minh Anh | verified, P2P counterpart, one pending money request |
 | 0900000003 | Tran Van Ba | KYC `manual_review` (AI score 64), sits in the admin KYC queue |
 | 0900000004 | Le Thi Tu | account `locked`, confirmed fraud flag, reversal approval pending in admin My Tasks |
-| 0900000011 to 0900000014 | DEH Owner, Maker, Checker L1, Checker L2 | organization "DEH Corp", policy "Chi lon" v3, org wallet, one 45M disbursement at 1/2 signatures |
+| 0900000011 to 0900000014 | Acme Owner, Maker, Checker L1, Checker L2 | organization "Acme Corp", policy "Chi lon" v3, org wallet, one 45M disbursement at 1/2 signatures |
 
 Also seeded: workflow instances in `failed`, `compensated` and `processing_async`-like states (for the admin monitor), fraud flags, a reconciliation day with 3 `missing_external` rows around 23:58 to 00:02, a split money request.
 
@@ -149,6 +149,8 @@ Known trap: in `app.config.ts` the `dev` API base URL currently points at a remo
 |---------|-------------|
 | `store.X undefined` compile wall | `sqlc generate` was not run or failed; fix it first |
 | `DATABASE_URL is required` / `JWT_SECRET is required` | `.env` missing or not loaded (working directory must be `src/backend`) |
-| `JWT_SECRET must be at least 32 bytes outside dev` | set `APP_ENV=dev` or use a longer secret |
+| `APP_ENV "" is not valid: it is required and must be one of dev, ci, demo, production` | export `APP_ENV=dev` for local runs (the Makefile and `scripts/dev-local.bat` already do) |
+| `JWT_SECRET must be at least 32 bytes when APP_ENV=...` | use `openssl rand -base64 48`, or `APP_ENV=dev`/`ci` for local runs |
+| `refusing to seed a non-local database host` | you pointed `DATABASE_URL` at a remote database; the seeder creates accounts with known passwords. Use the local compose database, or pass `--allow-remote-db` only if you are sure |
 | Go binaries blocked by Windows | use Docker (tests: `scripts/test-backend.ps1`) |
 | Seed prints `LEDGER DRIFT` | a wallet balance differs from its ledger sum; do not ignore, investigate |

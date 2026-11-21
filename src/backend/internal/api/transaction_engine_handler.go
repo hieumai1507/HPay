@@ -6,16 +6,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/hieumai1507/hpay-backend/internal/platform/config"
 	"github.com/hieumai1507/hpay-backend/internal/transfer"
 )
 
 type TransactionEngineHandler struct {
 	transferSvc *transfer.Service
+	cfg         config.Config
 }
 
-func NewTransactionEngineHandler(transferSvc *transfer.Service) *TransactionEngineHandler {
+func NewTransactionEngineHandler(transferSvc *transfer.Service, cfg config.Config) *TransactionEngineHandler {
 	return &TransactionEngineHandler{
 		transferSvc: transferSvc,
+		cfg:         cfg,
 	}
 }
 
@@ -109,4 +112,24 @@ func (h *TransactionEngineHandler) VerifyTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+type engineChallengeReq struct {
+	TransactionID uuid.UUID `json:"transaction_id" binding:"required"`
+}
+
+// ChallengeTransaction issues the OTP for a transaction in the otp band. The code
+// is returned only when APP_ENV=dev; other environments deliver it out of band.
+func (h *TransactionEngineHandler) ChallengeTransaction(c *gin.Context) {
+	var req engineChallengeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondValidation(c, err.Error())
+		return
+	}
+	code, err := h.transferSvc.ExecuteEngineChallenge(c.Request.Context(), mustUserID(c), req.TransactionID)
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, challengeBody(h.cfg, code))
 }

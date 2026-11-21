@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -288,6 +289,13 @@ func (s *Service) Topup(ctx context.Context, actorID, orgID uuid.UUID, amount in
 	if err := s.requireActiveOrg(ctx, orgID); err != nil {
 		return wallet.TopupResult{}, err
 	}
+	// ADR-0011: the key is scoped to the acting user and bound to this request.
+	hash := wallet.RequestHash("org_topup", orgID.String(), strconv.FormatInt(amount, 10))
+	if old, err := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash); err != nil {
+		return wallet.TopupResult{}, err
+	} else if old != nil {
+		return replayTopup(old), nil
+	}
 	orgWallet, err := s.q.GetOrgMainWallet(ctx, store.GetOrgMainWalletParams{OwnerID: orgID, Currency: "VND"})
 	if err != nil {
 		return wallet.TopupResult{}, wallet.ErrWalletNotFound
@@ -305,19 +313,25 @@ func (s *Service) Topup(ctx context.Context, actorID, orgID uuid.UUID, amount in
 	qtx := s.q.WithTx(tx)
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
-		RefCode: wallet.NewRefCode(), IdempotencyKey: pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		RefCode: wallet.NewRefCode(), IdempotencyKey: wallet.KeyText(idemKey), RequestHash: wallet.HashText(hash),
 		Type:           store.TxnTypeTopup,
 		SenderWalletID: cashIn.ID, ReceiverWalletID: orgWallet.ID,
 		Amount: amount, Fee: 0,
 		Note: pgtype.Text{String: "org topup via mock bank", Valid: true}, InitiatedBy: actorID,
 	})
 	if err != nil {
-		if dup, dupRes, derr := s.duplicateTopup(ctx, err, idemKey); dup {
-			return dupRes, derr
+		if wallet.IsIdempotencyConflict(err) { // a concurrent request with the same key won the race
+			old, gerr := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash)
+			if gerr != nil {
+				return wallet.TopupResult{}, gerr
+			}
+			if old != nil {
+				return replayTopup(old), nil
+			}
 		}
 		return wallet.TopupResult{}, err
 	}
-	if err := ledger.Post(ctx, tx, txn.ID, []ledger.Leg{
+	if err := ledger.Post(ctx, tx, txn.ID, ledger.KindForward, []ledger.Leg{
 		{WalletID: cashIn.ID, Direction: store.EntryDirectionDebit, Amount: amount},
 		{WalletID: orgWallet.ID, Direction: store.EntryDirectionCredit, Amount: amount},
 	}); err != nil {
@@ -333,17 +347,14 @@ func (s *Service) Topup(ctx context.Context, actorID, orgID uuid.UUID, amount in
 		NewBalance: orgWallet.Balance + amount, CreatedAt: txn.CreatedAt.Time}, nil
 }
 
-func (s *Service) duplicateTopup(ctx context.Context, err error, idemKey string) (bool, wallet.TopupResult, error) {
-	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != "23505" || !strings.Contains(pgErr.ConstraintName, "idempotency") {
-		return false, wallet.TopupResult{}, nil
-	}
-	old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
-	if gerr != nil {
-		return true, wallet.TopupResult{}, gerr
-	}
-	return true, wallet.TopupResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
-		CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
+func replayTopup(old *store.GetUserTransactionByIdempotencyKeyRow) wallet.TopupResult {
+	return wallet.TopupResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
+		CreatedAt: old.CreatedAt.Time, Duplicate: true}
+}
+
+func replayDisbursement(old *store.GetUserTransactionByIdempotencyKeyRow) DisbursementResult {
+	return DisbursementResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
+		Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}
 }
 
 type DisbursementResult struct {
@@ -371,6 +382,13 @@ func (s *Service) CreateDisbursement(ctx context.Context, actorID, orgID uuid.UU
 	}
 	if err := s.requireActiveOrg(ctx, orgID); err != nil {
 		return DisbursementResult{}, err
+	}
+
+	hash := wallet.RequestHash("org_disbursement", orgID.String(), receiverPhone, strconv.FormatInt(amount, 10), note)
+	if old, err := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash); err != nil {
+		return DisbursementResult{}, err
+	} else if old != nil {
+		return replayDisbursement(old), nil
 	}
 
 	receiver, err := s.q.GetUserByPhone(ctx, receiverPhone)
@@ -416,21 +434,21 @@ func (s *Service) CreateDisbursement(ctx context.Context, actorID, orgID uuid.UU
 	qtx := s.q.WithTx(tx)
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
-		RefCode: wallet.NewRefCode(), IdempotencyKey: pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		RefCode: wallet.NewRefCode(), IdempotencyKey: wallet.KeyText(idemKey), RequestHash: wallet.HashText(hash),
 		Type:           store.TxnTypeOrgDisbursement,
 		SenderWalletID: orgWallet.ID, ReceiverWalletID: receiverWallet.ID,
 		Amount: amount, Fee: feeAmt,
 		Note: noteText(note), InitiatedBy: actorID,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
-			old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
+		if wallet.IsIdempotencyConflict(err) { // a concurrent request with the same key won the race
+			old, gerr := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash)
 			if gerr != nil {
 				return DisbursementResult{}, gerr
 			}
-			return DisbursementResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
-				Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
+			if old != nil {
+				return replayDisbursement(old), nil
+			}
 		}
 		return DisbursementResult{}, err
 	}

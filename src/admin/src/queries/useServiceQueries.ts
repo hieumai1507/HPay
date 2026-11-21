@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
+import { idempotencyHeaders } from '@/lib/idempotency';
 import type { ActionStepConfig, InputFieldRule } from '@/features/services/ServicePipelineModal';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
@@ -24,27 +25,11 @@ export interface ServiceItem {
   inputFields?: InputFieldRule[];
 }
 
-export function useServicesQuery(params?: AdminQueryParams) {
-  return useQuery({
-    queryKey: ['admin', 'services', params],
-    queryFn: async (): Promise<ServiceItem[]> => {
-      try {
-        const res = await apiRequest<{ services: ServiceItem[] }>(
-          `/v1/admin/services${buildQueryString(params)}`
-        );
-        return res?.services || [];
-      } catch {
-        return [];
-      }
-    },
-  });
-}
-
 export function useServices(params?: AdminQueryParams) {
   return useQuery({
     queryKey: ['admin', 'services', params],
     queryFn: async (): Promise<Paged<ServiceItem>> => {
-      const res = await apiRequest<{ services: ServiceItem[]; total?: number }>(
+      const res = await apiRequest<{ services: ServiceItem[] | null; total?: number }>(
         `/v1/admin/services${buildQueryString(params)}`
       );
       const rows = res?.services ?? [];
@@ -53,62 +38,22 @@ export function useServices(params?: AdminQueryParams) {
   });
 }
 
-export function useUpdateServiceStatusMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: ServiceItem['status'] }) => {
-      return await apiRequest(`/v1/admin/services/${id}/status`, {
-        method: 'PATCH',
-        body: { status },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
-    },
-  });
-}
-
+/** PUT /v1/admin/services/{id} body {status: active|maintenance|disabled} -> the updated service. */
 export function useUpdateServiceStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: ServiceItem['status'] }) => {
-      return await apiRequest<ServiceItem>(`/v1/admin/services/${id}`, {
+    mutationFn: ({ id, status }: { id: string; status: ServiceItem['status'] }) =>
+      apiRequest<ServiceItem>(`/v1/admin/services/${id}`, {
         method: 'PUT',
         body: { status },
-      });
-    },
+        headers: idempotencyHeaders(),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'services'] });
     },
   });
 }
 
-export function useCreateServiceMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Partial<ServiceItem>) => {
-      return await apiRequest('/v1/admin/services', {
-        method: 'POST',
-        body: payload,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
-    },
-  });
-}
-
-export function useCreateService() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Partial<ServiceItem>) => {
-      return await apiRequest<ServiceItem>('/v1/admin/services', {
-        method: 'POST',
-        body: payload,
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'services'] });
-    },
-  });
-}
+// Backend gap: there is no POST /v1/admin/services route (docs/reference/api.md).
+// The hook that called it was removed; ServiceCatalogPage shows the "create"
+// action as disabled with a visible reason until the backend adds the route.

@@ -109,8 +109,18 @@ func (w *Wallet) Execute(ctx context.Context, in workflow.StepInput) (workflow.S
 	if err != nil {
 		return workflow.StepOutput{}, err
 	}
-	if err := ledger.Post(ctx, tx, txn.ID, legs); err != nil {
-		if errors.Is(err, ledger.ErrInsufficientBalance) || errors.Is(err, ledger.ErrWalletNotFound) {
+	kind := ledger.KindForward
+	if in.Compensating {
+		kind = ledger.KindCompensate
+	}
+	if err := ledger.Post(ctx, tx, txn.ID, kind, legs); err != nil {
+		switch {
+		case errors.Is(err, ledger.ErrAlreadyPosted):
+			// Replay or redelivery (ADR-0010, BE-C1): the money already moved in an
+			// earlier attempt whose step record was lost. Nothing was changed by
+			// this call; report the same outcome as the first attempt.
+			return workflow.StepOutput{Context: map[string]any{"funds_moved": !in.Compensating, "replayed": true}}, nil
+		case errors.Is(err, ledger.ErrInsufficientBalance), errors.Is(err, ledger.ErrWalletNotFound), errors.Is(err, ledger.ErrPostingConflict):
 			return workflow.StepOutput{}, err // terminal
 		}
 		return workflow.StepOutput{}, workflow.RetryableError{Err: err}

@@ -35,6 +35,16 @@ var errTable = []struct {
 	out   AppError
 }{
 	{auth.ErrPhoneTaken, AppError{"ERR_PHONE_TAKEN", "phone already registered", http.StatusConflict}},
+	{auth.ErrWeakPIN, AppError{"ERR_PIN_WEAK", "PIN must be 6 digits and not all the same digit or a sequence", http.StatusBadRequest}},
+	{auth.ErrPINNotSet, AppError{"ERR_PIN_NOT_SET", "set a PIN first", http.StatusForbidden}},
+	{auth.ErrPINIncorrect, AppError{"ERR_PIN_INCORRECT", "PIN incorrect", http.StatusForbidden}},
+	{auth.ErrPINLocked, AppError{"ERR_PIN_LOCKED", "PIN locked after too many failed attempts; try again later", http.StatusTooManyRequests}},
+	{transfer.ErrTxnNotFound, AppError{"ERR_TXN_NOT_FOUND", "transaction not found", http.StatusNotFound}},
+	{transfer.ErrAuthMethodUnavailable, AppError{"ERR_AUTH_METHOD_UNAVAILABLE", "the required authentication method is not available yet", http.StatusUnprocessableEntity}},
+	{transfer.ErrAuthExpired, AppError{"ERR_AUTH_EXPIRED", "the request expired before it was confirmed; start again", http.StatusGone}},
+	{transfer.ErrCredentialRequired, AppError{"ERR_CREDENTIAL_REQUIRED", "a credential is required to confirm this transaction", http.StatusBadRequest}},
+	{transfer.ErrAlreadyConfirmed, AppError{"ERR_ALREADY_CONFIRMED", "transaction is not waiting for authentication", http.StatusConflict}},
+	{transfer.ErrAuthNotConfigured, AppError{"ERR_AUTH_NOT_CONFIGURED", "transaction authentication is not configured", http.StatusServiceUnavailable}},
 	{auth.ErrInvalidCredentials, AppError{"ERR_INVALID_CREDENTIALS", "invalid phone or password", http.StatusUnauthorized}},
 	{auth.ErrAccountLocked, AppError{"ERR_ACCOUNT_LOCKED", "account is locked", http.StatusForbidden}},
 	{auth.ErrTokenReused, AppError{"ERR_TOKEN_REUSED", "refresh token reused; all sessions revoked", http.StatusUnauthorized}},
@@ -48,6 +58,9 @@ var errTable = []struct {
 	{wallet.ErrLimitExceeded, AppError{"ERR_LIMIT_EXCEEDED", "amount exceeds your kyc tier limit", http.StatusBadRequest}},
 	{wallet.ErrWalletNotFound, AppError{"ERR_WALLET_NOT_FOUND", "wallet not found", http.StatusNotFound}},
 	{wallet.ErrTxnNotFound, AppError{"ERR_TXN_NOT_FOUND", "transaction not found", http.StatusNotFound}},
+	// C-03 / ADR-0011: per-user, request-bound idempotency.
+	{wallet.ErrIdempotencyKeyReused, AppError{"ERR_IDEMPOTENCY_KEY_REUSED", "Idempotency-Key was already used with a different request", http.StatusConflict}},
+	{wallet.ErrIdempotencyKeyRequired, AppError{"ERR_IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header (<=64 chars) is required", http.StatusBadRequest}},
 	{transfer.ErrReceiverNotFound, AppError{"ERR_RECEIVER_NOT_FOUND", "receiver not found", http.StatusNotFound}},
 	// Vaults (docs 04 §2.2) — a foreign vault id is reported as not-found so we
 	// never confirm that somebody else's pocket exists.
@@ -56,6 +69,7 @@ var errTable = []struct {
 	{vault.ErrLabelRequired, AppError{"ERR_VALIDATION", "vault name is required", http.StatusBadRequest}},
 	{vault.ErrDirectionInvalid, AppError{"ERR_VAULT_DIRECTION_INVALID", "direction must be deposit or withdraw", http.StatusBadRequest}},
 	{offerguard.ErrServiceNotInOffer, AppError{"ERR_SERVICE_NOT_IN_OFFER", "service not available in your offer", http.StatusForbidden}},
+	{offerguard.ErrOfferInactive, AppError{"ERR_OFFER_INACTIVE", "your offer is not active", http.StatusForbidden}},
 	{offerguard.ErrServiceDisabled, AppError{"ERR_SERVICE_DISABLED", "service disabled for your offer", http.StatusForbidden}},
 	{offerguard.ErrBelowMin, AppError{"ERR_AMOUNT_BELOW_MIN", "amount below service minimum", http.StatusBadRequest}},
 	{offerguard.ErrLimitPerTxn, AppError{"ERR_LIMIT_PER_TXN", "amount exceeds per-transaction limit", http.StatusBadRequest}},
@@ -94,7 +108,7 @@ var errTable = []struct {
 	// F8 — kyc & admin review
 	{kyc.ErrAlreadyPending, AppError{"ERR_KYC_ALREADY_PENDING", "a kyc request is already in progress", http.StatusConflict}},
 	{kyc.ErrAlreadyVerified, AppError{"ERR_KYC_ALREADY_VERIFIED", "kyc already verified", http.StatusConflict}},
-	{kyc.ErrBadImage, AppError{"ERR_VALIDATION", "invalid kyc image (jpeg/png, max 5MB)", http.StatusBadRequest}},
+	{kyc.ErrBadImage, AppError{"ERR_VALIDATION", "invalid kyc image: a real jpeg or png, 200 to 8000 pixels per side, max 5MB", http.StatusBadRequest}},
 	{kyc.ErrKYCNotFound, AppError{"ERR_KYC_NOT_FOUND", "kyc request not found", http.StatusNotFound}},
 	{kyc.ErrAlreadyReviewed, AppError{"ERR_ALREADY_REVIEWED", "kyc request already reviewed", http.StatusConflict}},
 	{storage.ErrInvalidSignature, AppError{"ERR_INVALID_SIGNATURE", "invalid file signature", http.StatusForbidden}},

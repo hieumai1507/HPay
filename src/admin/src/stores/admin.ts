@@ -13,7 +13,7 @@ export type Permission =
 
 // FE-side visibility only (UX). The backend is the real enforcement point —
 // nothing here grants any capability the API would not verify again.
-const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
+export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
   viewer: [],
   kyc_reviewer: ['kyc.review'],
   risk_officer: ['fraud.resolve', 'workflow.action'],

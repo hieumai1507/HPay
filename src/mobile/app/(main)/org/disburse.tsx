@@ -15,13 +15,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDisburseOrgMoney } from '@/src/queries';
-import { generateIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountVND } from '@/src/lib/money';
+import { withIntentKey } from '@/src/lib/intentKey';
+import { formatAmountVND, formatAmountWhileTyping, parseAmountStrict } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useOrgStore } from '@/src/stores/org';
 
 export default function DisburseScreen() {
   const activeOrg = useOrgStore((s) => s.activeOrg);
   const disburseMutation = useDisburseOrgMoney();
+  const guard = useSubmitGuard();
 
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
@@ -40,31 +42,38 @@ export default function DisburseScreen() {
     );
   }
 
-  const amountNum = parseInt(amount.replace(/\./g, ''), 10) || 0;
+  const parsed = parseAmountStrict(amount);
 
-  const handleSend = async () => {
-    if (!phone.trim() || amountNum <= 0) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ SĐT và số tiền hợp lệ.');
-      return;
-    }
-    try {
-      const res = await disburseMutation.mutateAsync({
-        orgId: activeOrg.orgId,
-        recipientPhone: phone.trim(),
-        amount: amountNum,
-        note: note.trim() || undefined,
-        idempotencyKey: generateIdempotencyKey(),
-      });
-      router.replace({ pathname: '/(main)/org/order-status', params: { refCode: res.ref_code } });
-    } catch (e: unknown) {
-      Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
-    }
-  };
+  const handleSend = () =>
+    guard.run(async () => {
+      if (!phone.trim() || !parsed.ok) {
+        Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ SĐT và số tiền hợp lệ.');
+        return;
+      }
+      const orgId = activeOrg.orgId;
+      const recipientPhone = phone.trim();
+      const trimmedNote = note.trim();
+      try {
+        // One key per disbursement intent: a retry after a timeout replays the same key.
+        const res = await withIntentKey(
+          `disburse:${orgId}:${recipientPhone}:${parsed.value}:${trimmedNote}`,
+          (idempotencyKey) =>
+            disburseMutation.mutateAsync({
+              orgId,
+              recipientPhone,
+              amount: parsed.value,
+              note: trimmedNote || undefined,
+              idempotencyKey,
+            }),
+        );
+        router.replace({ pathname: '/(main)/org/order-status', params: { refCode: res.ref_code } });
+      } catch (e: unknown) {
+        Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+      }
+    });
 
   const handleAmountChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, '');
-    const formatted = digits ? parseInt(digits, 10).toLocaleString('vi-VN') : '';
-    setAmount(formatted);
+    setAmount(formatAmountWhileTyping(raw));
   };
 
   return (
@@ -142,10 +151,10 @@ export default function DisburseScreen() {
 
           <Pressable
             onPress={handleSend}
-            disabled={disburseMutation.isPending}
-            className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${disburseMutation.isPending ? 'opacity-70' : ''}`}
+            disabled={guard.isPending}
+            className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${guard.isPending ? 'opacity-70' : ''}`}
           >
-            {disburseMutation.isPending ? (
+            {guard.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-base font-bold text-white">Gửi lệnh chờ duyệt</Text>

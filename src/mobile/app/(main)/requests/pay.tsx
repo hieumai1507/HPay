@@ -5,10 +5,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRequestDetail, usePayRequest, useFeePreview, useMainWallet } from '@/src/queries';
-import { useIdempotencyKey } from '@/src/lib/idempotency';
+import { FEATURE_AVAILABILITY } from '@/src/lib/availability';
+import { withIntentKey } from '@/src/lib/intentKey';
 import { formatAmountVND } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
+import { NotAvailable } from '@/src/ui';
 
+/**
+ * BACKEND GAP: POST /v1/money-requests/:id/pay is not mounted (docs/reference/api.md).
+ * Paying through the engine (service MONEY_REQUEST) moves the money but never marks the
+ * request as paid, so it is not an equivalent. Gated by one constant until the backend
+ * mounts the route.
+ */
 export default function PayRequestScreen() {
+  if (!FEATURE_AVAILABILITY.payRequest) return <NotAvailable />;
+  return <PayRequestForm />;
+}
+
+function PayRequestForm() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -19,7 +33,7 @@ export default function PayRequestScreen() {
   const feeQuery = useFeePreview(amountStr);
   const payMutation = usePayRequest();
 
-  const idempotencyKey = useIdempotencyKey(`pay:${id}`);
+  const guard = useSubmitGuard();
 
   const isLoading = detailQuery.isLoading || feeQuery.isLoading;
 
@@ -55,26 +69,26 @@ export default function PayRequestScreen() {
   const totalAmountBig = feeData ? BigInt(feeData.total) : BigInt(req.amount);
   const hasInsufficientFunds = walletBalanceBig < totalAmountBig;
 
-  const handlePay = async () => {
-    if (hasInsufficientFunds) {
-      Alert.alert('Không đủ số dư', 'Số dư ví của bạn không đủ để thanh toán yêu cầu này.');
-      return;
-    }
+  const handlePay = () =>
+    guard.run(async () => {
+      if (hasInsufficientFunds) {
+        Alert.alert('Không đủ số dư', 'Số dư ví của bạn không đủ để thanh toán yêu cầu này.');
+        return;
+      }
 
-    try {
-      const res = await payMutation.mutateAsync({
-        id: req.id,
-        idempotencyKey,
-      });
+      try {
+        const res = await withIntentKey(`pay:${req.id}`, (idempotencyKey) =>
+          payMutation.mutateAsync({ id: req.id, idempotencyKey }),
+        );
 
-      router.replace({
-        pathname: '/(main)/transfer/processing',
-        params: { refCode: res.ref_code, amount: req.amount.toString() },
-      });
-    } catch (err: any) {
-      Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra khi thực hiện thanh toán.');
-    }
-  };
+        router.replace({
+          pathname: '/(main)/transfer/processing',
+          params: { refCode: res.ref_code, amount: req.amount.toString() },
+        });
+      } catch (err: unknown) {
+        Alert.alert('Lỗi', err instanceof Error && err.message ? err.message : 'Có lỗi xảy ra khi thực hiện thanh toán.');
+      }
+    });
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
@@ -149,12 +163,12 @@ export default function PayRequestScreen() {
       <View className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
         <Pressable
           onPress={handlePay}
-          disabled={payMutation.isPending || hasInsufficientFunds}
+          disabled={guard.isPending || hasInsufficientFunds}
           className={`w-full h-12 rounded-xl bg-brand items-center justify-center active:bg-brand-600 ${
-            payMutation.isPending || hasInsufficientFunds ? 'opacity-60' : ''
+            guard.isPending || hasInsufficientFunds ? 'opacity-60' : ''
           }`}
         >
-          {payMutation.isPending ? (
+          {guard.isPending ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text className="text-white text-base font-bold">Xác nhận & Thanh toán</Text>

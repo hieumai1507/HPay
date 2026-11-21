@@ -5,47 +5,60 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMe, useTopup } from '@/src/queries';
 import { describeError, isApiError } from '@/src/lib/errors';
-import { useIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountVND, parseAmountToBigInt } from '@/src/lib/money';
-import { AmountInput, Button } from '@/src/ui';
+import { FEATURE_AVAILABILITY } from '@/src/lib/availability';
+import { withIntentKey } from '@/src/lib/intentKey';
+import { formatAmountVND, parseAmountStrict } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
+import { AmountInput, Button, NotAvailable } from '@/src/ui';
 
+/**
+ * BACKEND GAP: POST /v1/wallets/topup is not mounted (docs/reference/api.md). The engine
+ * service TOPUP_BANK would credit the wallet from SYSTEM_CASH_IN with no bank step, so it is
+ * not an equivalent. Until the backend decides, the screen is gated by one constant.
+ */
 export default function TopupAmountScreen() {
+  if (!FEATURE_AVAILABILITY.topup) return <NotAvailable />;
+  return <TopupForm />;
+}
+
+function TopupForm() {
   const [display, setDisplay] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const meQ = useMe();
   const topup = useTopup();
+  const guard = useSubmitGuard();
 
-  const amount = useMemo(() => parseAmountToBigInt(display), [display]);
+  const parsed = useMemo(() => parseAmountStrict(display), [display]);
+  const amount = parsed.ok ? parsed.value : null;
   const txnLimit = meQ.data ? BigInt(meQ.data.txn_limit) : null;
-
-  const idempotencyKey = useIdempotencyKey(`topup:${amount ?? ''}`);
 
   const validationError =
     amount !== null && txnLimit !== null && amount > txnLimit
       ? `Vượt hạn mức KYC (tối đa ${formatAmountVND(txnLimit)})`
-      : null;
+      : !parsed.ok && parsed.reason === 'too_large'
+        ? 'Số tiền quá lớn'
+        : null;
 
-  const canSubmit = amount !== null && amount > 0n && !validationError && !topup.isPending;
+  const canSubmit = amount !== null && !validationError && !guard.isPending;
 
-  const submit = () => {
-    if (!canSubmit || amount === null) return;
-    setSubmitError(null);
-    topup.mutate(
-      { amount, idempotencyKey },
-      {
-        onSuccess: (res) =>
-          router.replace({
-            pathname: '/(main)/topup/result',
-            params: { refCode: res.ref_code, amount: amount.toString() },
-          }),
-        onError: (err) => {
-          setSubmitError(describeError(err));
-          if (isApiError(err) && err.code === 'ERR_LIMIT_EXCEEDED') meQ.refetch();
-        },
-      },
-    );
-  };
+  const submit = () =>
+    guard.run(async () => {
+      if (!canSubmit || amount === null) return;
+      setSubmitError(null);
+      try {
+        const res = await withIntentKey(`topup:${amount}`, (idempotencyKey) =>
+          topup.mutateAsync({ amount, idempotencyKey }),
+        );
+        router.replace({
+          pathname: '/(main)/topup/result',
+          params: { refCode: res.ref_code, amount: amount.toString() },
+        });
+      } catch (err) {
+        setSubmitError(describeError(err));
+        if (isApiError(err) && err.code === 'ERR_LIMIT_EXCEEDED') meQ.refetch();
+      }
+    });
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['top']}>
@@ -76,7 +89,7 @@ export default function TopupAmountScreen() {
         <View className="p-4">
           <Button
             label="Nạp tiền"
-            loading={topup.isPending}
+            loading={guard.isPending}
             disabled={!canSubmit}
             onPress={submit}
           />

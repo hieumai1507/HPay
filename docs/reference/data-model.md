@@ -25,7 +25,7 @@ Migration index: 01 users/admin/auth, 02 wallets+ledger+system seed, 03 services
 | `entry_direction` | debit, credit | 02 |
 | `owner_type` | user, organization, system | 02 |
 | `service_status` | active, maintenance, disabled | 03 |
-| `wf_status` | running, waiting_approval, compensating, completed, failed, compensated, recovering | 03 |
+| `wf_status` | running, waiting_approval, compensating, completed, failed, compensated, recovering, compensation_failed (000022) | 03 |
 | `step_status` | completed, failed | 03 |
 | `offer_role` | customer, agent, merchant, biller, operator | 04 |
 | `auth_method_enum` | none, pin, otp, 2fa | 04 |
@@ -37,7 +37,7 @@ Migration index: 01 users/admin/auth, 02 wallets+ledger+system seed, 03 services
 | `approval_status` | pending, approved, rejected, expired, cancelled | 05, `cancelled` in 11 |
 | `approval_decision` | approve, reject | 05 |
 
-Notes: `compensation_failed` is NOT a `wf_status` value. `money_request_status` uses the American spelling `canceled`; `approval_status` uses `cancelled`. Migrations 01 to 05 start with `DROP TYPE IF EXISTS ... CASCADE`, so re-running them on a populated database drops dependent columns; they are intended for a fresh database only.
+Notes: `money_request_status` uses the American spelling `canceled`; `approval_status` uses `cancelled`. Migrations 01 to 05 start with `DROP TYPE IF EXISTS ... CASCADE`, so re-running them on a populated database drops dependent columns; they are intended for a fresh database only.
 
 ## Identity
 
@@ -109,7 +109,8 @@ Triggers (07): `trg_ledger_entries_no_update` BEFORE UPDATE and `trg_ledger_entr
 | fee | BIGINT | no | 0, CHECK (fee >= 0) |
 | status | txn_status | no | 'created' |
 | initiated_by | UUID | no | FK users |
-| idempotency_key | VARCHAR(80) | yes | UNIQUE (global, not per user) |
+| idempotency_key | VARCHAR(80) | yes | `UNIQUE (initiated_by, idempotency_key)` `uq_txn_user_idempotency` (000015; was globally UNIQUE until 000014). NULL keys are unconstrained |
+| request_hash | VARCHAR(64) | yes | SHA-256 hex of the canonical request (000015). NULL = row older than 000015, replay accepted |
 | failure_reason | TEXT | yes | |
 | note | VARCHAR(255) | yes | |
 | reversal_of | UUID | yes | FK transactions |
@@ -134,7 +135,7 @@ Indexes: `idx_txn_sender(sender_wallet_id, created_at DESC)`, `idx_txn_receiver(
 - **offer_auth_matrix**: id UUID PK; offer_service_id FK offer_services CASCADE; min_amount BIGINT 0; max_amount BIGINT NULL (open ended); auth_method auth_method_enum 'pin'; created_at. Standard tiers: pin 0-2,000,000; otp 2,000,000-50,000,000; 2fa above 50,000,000. Ranges are not checked for overlap.
 - **user_offers** (06): user_id UUID PK FK users CASCADE; offer_id FK offers NOT NULL; assigned_by VARCHAR(80) 'system'; assigned_at. Index `idx_user_offers_offer`. Backfill gives every user OFFER_CUST_L2; seed phones 0900000011..14 get OFFER_BIZ_STARTER.
 - **fee_policies**: id UUID PK; txn_type txn_type NOT NULL; kyc_status kyc_status NULL (any); fixed_fee BIGINT 0; percent_bp INT 0; min_fee BIGINT 0; max_fee BIGINT NULL; is_active true; version INT 1. Seed: p2p fixed 1000, topup 0, disbursement 0 (note: not `org_disbursement`).
-- **money_requests**: id UUID PK; requester_id, payer_id FK users NOT NULL; amount BIGINT CHECK (amount > 0); note VARCHAR(255); split_group_id UUID NULL (no table); status money_request_status 'pending'; paid_txn_id FK transactions NULL; last_reminded_at; expires_at NOT NULL; created_at; `no_self_request CHECK (requester_id <> payer_id)`. Index `idx_money_req_payer(payer_id, status)`.
+- **money_requests**: id UUID PK; requester_id, payer_id FK users NOT NULL; amount BIGINT CHECK (amount > 0); note VARCHAR(255); split_group_id UUID NULL (no table); status money_request_status 'pending'; paid_txn_id FK transactions NULL; last_reminded_at; expires_at NOT NULL; created_at; `no_self_request CHECK (requester_id <> payer_id)`. Index `idx_money_req_payer(payer_id, status)`. Added by 000015: `idempotency_key VARCHAR(80) NULL`, `request_hash VARCHAR(64) NULL`, partial unique index `uq_money_req_user_idempotency (requester_id, idempotency_key) WHERE idempotency_key IS NOT NULL AND split_group_id IS NULL` (single requests; splits are serialized by an advisory lock).
 
 ## Approval and organization
 
@@ -225,7 +226,7 @@ Guarantees the code relies on or the design states, that the schema does NOT enf
 
 | # | Missing guarantee | Current state | Consequence |
 |---|---|---|---|
-| 1 | Idempotency key unique per user and payload-bound | `transactions.idempotency_key` is globally UNIQUE (02) | One user reusing another user's key receives or collides with that transaction |
+| 1 | ~~Idempotency key unique per user and payload-bound~~ | Fixed by 000015: `UNIQUE (initiated_by, idempotency_key)` + `request_hash` (ADR-0011). Rows older than 000015 have a NULL hash and accept any replay | Org package still compares the key only (follow-up) |
 | 2 | Debits equal credits per transaction | Checked only in Go (`ledger.Post`, `ErrUnbalanced`); no constraint trigger | A buggy writer can persist unbalanced entries |
 | 3 | No double posting of the same movement | No UNIQUE on `ledger_entries` (e.g. transaction_id + kind); `ledger.Post` does not check | Redelivered MOVE_FUNDS can post twice (BE-C1) |
 | 4 | Entry targets a wallet or an account | No CHECK `wallet_id IS NOT NULL OR account_id IS NOT NULL` | Orphan entries possible |
@@ -251,3 +252,31 @@ Guarantees the code relies on or the design states, that the schema does NOT enf
 | 24 | Platform admin RBAC | `admin_users.role` exists but nothing in the router/DB restricts by role | Any admin can call every `/v1/admin` endpoint |
 
 Verified present (not missing): non-negative balance for non-system wallets, one main wallet per owner, vault needs label, one round-up target per owner, append-only ledger trigger, unique step execution per (instance, step, attempt), one action per checker per request, unique policy version per (org, name), no self money request.
+
+## Added by migration 000014 (ADR-0010)
+
+| Object | Definition |
+|--------|------------|
+| enum posting_kind | orward, compensate, ound_up |
+| table ledger_postings | 	ransaction_id UUID NOT NULL REFERENCES transactions(id), kind posting_kind NOT NULL, 	otal_amount BIGINT NOT NULL CHECK (total_amount > 0) (sum of the debit legs), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (	ransaction_id, kind). One row per posting; claimed by ledger.Post inside the posting transaction. Back-filled with a orward row for every transaction that already had ledger entries. |
+
+In the 'Constraints that are missing' list: the row about nothing preventing a second posting of a transaction is now closed by this table.
+
+## Added by migrations 000016 and 000017 (ADR-0013)
+
+| Object | Definition |
+|--------|------------|
+| enum value pproval_status = 'needs_manual' | request whose approved effect could not be applied; terminal for the decision flow (000016, own file because ALTER TYPE ADD VALUE cannot share a transaction) |
+| unique index one_reversal_per_txn | on 	ransactions (reversal_of) WHERE reversal_of IS NOT NULL (000017; the migration fails with the offending ids if duplicates exist) |
+| unique index one_pending_approval_per_subject | on pproval_requests (subject_type, subject_id) WHERE status = 'pending' (000017) |
+
+Both rows in 'Constraints that are missing' about reversal uniqueness are now closed.
+
+## Added by migrations 000018 to 000021 (ADR-0014)
+
+| Object | Definition |
+|--------|------------|
+| users.pin_failed_attempts INT NOT NULL DEFAULT 0 CHECK (>= 0), users.pin_locked_until TIMESTAMPTZ | PIN attempt counter and lockout (000018). users.pin_hash already existed and is now used |
+| enum value 	xn_status = 'awaiting_auth' | request held until the credential is verified (000019, own file) |
+| 	ransactions.auth_method auth_method_enum | the method the request required, checked at confirm (000020) |
+| 	ransactions.workflow_name VARCHAR(60), 	ransactions.service_code VARCHAR(40) | what the request resolved, so confirm starts exactly that workflow (000021); NULL for old rows and for requests that needed no confirmation |

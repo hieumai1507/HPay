@@ -39,16 +39,41 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
 
   if (res.status === 204) return undefined as T;
 
-  const isJson = res.headers.get('content-type')?.includes('application/json') ?? false;
-  const data: unknown = isJson ? await res.json() : await res.text();
+  const contentType = res.headers.get('content-type') ?? '';
+  const isJson = contentType.includes('application/json');
 
   if (!res.ok) {
-    const { code, message } = extractError(data, res.status);
+    // Error bodies are only trusted when they are JSON ({code, message}).
+    // A proxy's HTML 502 page must not be surfaced as a payload.
+    let errBody: unknown;
+    if (isJson) {
+      try {
+        errBody = await res.json();
+      } catch {
+        errBody = undefined;
+      }
+    }
+    const { code, message } = extractError(errBody, res.status);
     if (res.status === 401) clearSession();
-    throw new ApiError(res.status, code, messageFor(code, message), data);
+    const fallback =
+      errBody === undefined ? `Request failed with HTTP ${res.status} (response was not JSON).` : message;
+    throw new ApiError(res.status, code, messageFor(code, fallback), errBody);
   }
 
-  return data as T;
+  // A 2xx that is not JSON (e.g. an HTML page from a proxy or captive portal)
+  // is a failure, never a value to cast to T.
+  if (!isJson) {
+    throw new ApiError(
+      res.status,
+      'ERR_NON_JSON_RESPONSE',
+      `Unexpected non-JSON response (HTTP ${res.status}, content-type "${contentType || 'none'}"). The server or a proxy returned something other than the API.`,
+    );
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new ApiError(res.status, 'ERR_NON_JSON_RESPONSE', `Malformed JSON in response (HTTP ${res.status}).`);
+  }
 }
 
 export const apiRequest = api;

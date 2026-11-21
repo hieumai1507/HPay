@@ -112,7 +112,15 @@ func (r *RoundUp) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 		{WalletID: txn.SenderWalletID, Direction: store.EntryDirectionDebit, Amount: diff},
 		{WalletID: target.ID, Direction: store.EntryDirectionCredit, Amount: diff},
 	}
-	if err := ledger.Post(ctx, tx, txn.ID, legs); err != nil {
+	if err := ledger.Post(ctx, tx, txn.ID, ledger.KindRoundUp, legs); err != nil {
+		if errors.Is(err, ledger.ErrAlreadyPosted) {
+			// Replay: the round-up was already applied for this transaction.
+			return workflow.StepOutput{Context: map[string]any{
+				"round_up_applied": true,
+				"round_up_amount":  diff,
+				"replayed":         true,
+			}}, nil
+		}
 		if errors.Is(err, ledger.ErrInsufficientBalance) || errors.Is(err, ledger.ErrWalletNotFound) {
 			// Balance moved between our check and posting (e.g. a concurrent
 			// spend) — skip rather than fail an already-completed transaction.

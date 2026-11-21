@@ -52,7 +52,7 @@ SELECT id, step_name, attempt, status, input, output, error, started_at, finishe
 FROM step_executions WHERE instance_id = $1 ORDER BY id;
 
 -- name: ClaimStuckInstances :many
--- Lease pattern (E20, borrowed from TMDS pending->attempt): the UPDATE is the claim — a second
+-- Lease pattern (E20, pending->attempt claim): the UPDATE is the claim — a second
 -- sweeper running in parallel cannot match an already-claimed row.
 UPDATE workflow_instances w
 SET status = 'recovering', updated_at = now()
@@ -73,7 +73,7 @@ WHERE id = $1 AND status = 'recovering';
 -- name: FailTransactionGuarded :exec
 -- Only non-terminal states may move to failed (fintech-review #5).
 UPDATE transactions SET status = 'failed', failure_reason = $2
-WHERE id = $1 AND status IN ('created', 'processing', 'pending_approval', 'processing_async');
+WHERE id = $1 AND status IN ('created', 'processing', 'pending_approval', 'processing_async', 'awaiting_auth');
 
 -- name: GetInstanceByTransactionID :one
 SELECT id, status, current_step FROM workflow_instances WHERE transaction_id = $1;
@@ -115,3 +115,15 @@ WHERE (sqlc.narg('status')::text IS NULL OR i.status::text = sqlc.narg('status')
   AND (sqlc.narg('from_at')::timestamptz IS NULL OR i.created_at >= sqlc.narg('from_at')::timestamptz)
   AND (sqlc.narg('to_at')::timestamptz IS NULL OR i.created_at <= sqlc.narg('to_at')::timestamptz);
 
+-- name: ClaimStuckCompensations :many
+-- A compensation whose step never reported back (worker crash before the result event).
+-- The UPDATE bumps updated_at, which is the lease: a second sweeper skips the row.
+UPDATE workflow_instances w
+SET updated_at = now()
+WHERE w.id IN (
+    SELECT i.id FROM workflow_instances i
+    WHERE i.status = 'compensating' AND i.updated_at < $1
+    ORDER BY i.updated_at LIMIT $2
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING w.id, w.definition_id, w.current_step;

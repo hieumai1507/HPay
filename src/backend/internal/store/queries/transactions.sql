@@ -1,11 +1,18 @@
 -- name: InsertTransaction :one
-INSERT INTO transactions (ref_code, idempotency_key, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, initiated_by)
-VALUES ($1, $2, $3, 'processing', $4, $5, $6, $7, $8, $9)
+INSERT INTO transactions (ref_code, idempotency_key, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, initiated_by, request_hash)
+VALUES ($1, $2, $3, 'processing', $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, ref_code, status, created_at;
 
 -- name: GetTransactionByIdempotencyKey :one
+-- LEGACY, not user-scoped: only internal/org still calls it (follow-up of ADR-0011).
+-- New code must use GetUserTransactionByIdempotencyKey.
 SELECT id, ref_code, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, created_at, completed_at
-FROM transactions WHERE idempotency_key = $1;
+FROM transactions WHERE idempotency_key = $1 ORDER BY created_at LIMIT 1;
+
+-- name: GetUserTransactionByIdempotencyKey :one
+-- Scoped per user (ADR-0011): another user's transaction is never returned.
+SELECT id, ref_code, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, created_at, completed_at, request_hash
+FROM transactions WHERE initiated_by = $1 AND idempotency_key = $2;
 
 -- name: GetTransactionByRefCode :one
 -- Counterparty identity joined for the owner-facing detail view (m3-api-support).
@@ -94,3 +101,38 @@ FOR UPDATE;
 -- Guarded transition: only created -> completed (bank callback path).
 UPDATE transactions SET status = 'completed', completed_at = now()
 WHERE id = $1 AND status = 'created';
+
+-- name: GetTransactionForUpdate :one
+-- Lock the row so a state check and the work that depends on it are atomic
+-- (the reversal executor requires the original to still be completed).
+SELECT id, ref_code, status, type, sender_wallet_id, receiver_wallet_id, amount, fee, initiated_by
+FROM transactions WHERE id = $1 FOR UPDATE;
+
+-- name: HoldTransactionForAuth :exec
+-- ADR-0014: park a freshly created request until the credential is verified.
+-- Records what the request resolved so confirm starts exactly that workflow.
+-- Guarded: only a row that is still processing and has no instance yet.
+UPDATE transactions
+SET status = 'awaiting_auth', auth_method = $2, workflow_name = $3, service_code = $4
+WHERE id = $1 AND status = 'processing';
+
+-- name: GetOwnedTransactionForUpdate :one
+-- Ownership predicate lives in SQL (constitution C-08): a transaction id that
+-- belongs to someone else is indistinguishable from one that does not exist.
+SELECT id, ref_code, status, type, sender_wallet_id, receiver_wallet_id, amount, fee, initiated_by, created_at,
+       auth_method, coalesce(workflow_name, '') AS workflow_name, coalesce(service_code, '') AS service_code,
+       coalesce(failure_reason, '') AS failure_reason
+FROM transactions WHERE id = $1 AND initiated_by = $2 FOR UPDATE;
+
+-- name: StartAwaitingAuthTransaction :one
+-- Guarded awaiting_auth -> processing. Whoever loses a race gets no row.
+UPDATE transactions SET status = 'processing'
+WHERE id = $1 AND status = 'awaiting_auth'
+RETURNING id, ref_code;
+
+-- name: ExpireAwaitingAuth :many
+-- awaiting_auth -> failed for requests nobody confirmed. Moves no money (the ledger
+-- is untouched before MOVE_FUNDS). Returns the ids it expired.
+UPDATE transactions SET status = 'failed', failure_reason = 'auth_expired'
+WHERE status = 'awaiting_auth' AND created_at < $1
+RETURNING id;

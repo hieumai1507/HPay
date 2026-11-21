@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
+import { idempotencyHeaders } from '@/lib/idempotency';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
 /** One row of the admin approval inbox (reversal / account_lock / policy_change). */
@@ -80,6 +81,7 @@ export function useDecideApproval() {
       apiRequest(`/v1/admin/approvals/${id}/decide`, {
         method: 'POST',
         body: { action, reason },
+        headers: idempotencyHeaders(),
       }),
     onSettled: () => {
       // Refetch either way: on 409 the row is already gone from the inbox.

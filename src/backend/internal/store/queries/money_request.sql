@@ -1,8 +1,16 @@
 -- name: InsertMoneyRequest :one
 -- split_group_id: pass uuid.Nil for a standalone request (NULLIF -> NULL).
-INSERT INTO money_requests (requester_id, payer_id, amount, note, split_group_id, expires_at)
-VALUES ($1, $2, $3, $4, NULLIF(sqlc.arg(split_group_id)::uuid, '00000000-0000-0000-0000-000000000000'::uuid), $5)
+-- created_at uses clock_timestamp() so rows of one split keep their insertion order (replay order).
+INSERT INTO money_requests (requester_id, payer_id, amount, note, split_group_id, expires_at, idempotency_key, request_hash, created_at)
+VALUES ($1, $2, $3, $4, NULLIF(sqlc.arg(split_group_id)::uuid, '00000000-0000-0000-0000-000000000000'::uuid), $5, $6, $7, clock_timestamp())
 RETURNING id, requester_id, payer_id, amount, note, status, expires_at, created_at;
+
+-- name: ListMoneyRequestsByIdempotencyKey :many
+-- Per requester (ADR-0011). A split returns one row per payer, oldest first.
+SELECT id, amount, status, expires_at, request_hash,
+       COALESCE(split_group_id, '00000000-0000-0000-0000-000000000000'::uuid)::uuid AS split_group_id
+FROM money_requests WHERE requester_id = $1 AND idempotency_key = $2
+ORDER BY created_at, id;
 
 -- name: GetMoneyRequestForUpdate :one
 -- E19: the row lock is what actually closes the expiry race, not a status flag.

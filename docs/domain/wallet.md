@@ -12,6 +12,7 @@ code:
   - src/backend/db/migrations/000002_wallets_double_entry_ledger.up.sql
   - src/backend/db/migrations/000008_vault_wallets.up.sql
   - src/backend/db/migrations/000009_round_up_vault.up.sql
+  - src/backend/db/migrations/000015_idempotency_per_user.up.sql
 related:
   - domain/ledger.md
   - domain/transfer-and-fees.md
@@ -24,7 +25,7 @@ audit:
 # Wallets and vaults
 
 ## 1. Purpose
-Owns the wallet row model (main wallet per user, savings vaults, org and system wallets), per-transaction KYC-tier limits (`wallet.TxnLimit`), the owner-facing transaction history/detail views, the bank top-up callback (`BankCallback`), and vault metadata plus the round-up step. It does NOT move money itself: every balance change goes through `ledger.Post` (see `ledger.md`). Vault deposit/withdraw money movement runs through the transaction engine (service `VAULT_SAVINGS`, see `transfer-and-fees.md`).
+Owns the wallet row model (main wallet per user, savings vaults, org and system wallets), the owner-facing transaction history/detail views, the bank top-up callback (`BankCallback`), and vault metadata plus the round-up step. It does NOT move money itself: every balance change goes through `ledger.Post` (see `ledger.md`). Vault deposit/withdraw money movement runs through the transaction engine (service `VAULT_SAVINGS`, see `transfer-and-fees.md`).
 
 ## 2. Key concepts
 - **Main wallet**: `purpose='main'`, one per (owner, currency); created by `EnsureMainWallet` on register/login (`api/router.go:87`).
@@ -41,8 +42,8 @@ Owns the wallet row model (main wallet per user, savings vaults, org and system 
 | BR-WAL-01 | A user has at most one main wallet per currency. | partial unique index `idx_wallet_one_main_per_owner` (000008:19-21) | none |
 | BR-WAL-02 | `EnsureMainWallet` is idempotent (ON CONFLICT DO NOTHING; unique violation swallowed). | `wallet/service.go:EnsureMainWallet` (55-71); `queries/wallets.sql:CreateUserWallet` | none |
 | BR-WAL-03 | A wallet balance is never negative unless the owner is `system`. | DB `wallet_balance_non_negative` (000002:35; 000006:78); `ledger.go:111` | `TestEdge_E02_ConcurrentOverdraw` |
-| BR-WAL-04 | Per-transaction limit by KYC status: verified/auto_approved 100,000,000; manual_review/pending 5,000,000; none/rejected 2,000,000 (VND minor units). | `wallet/service.go:TxnLimit` (33-42) | `TestEdge_E13_LimitByKycTier` |
-| BR-WAL-05 | `TxnLimit` is applied in: `moneyrequest/service.go:208`, `/users/me` response (`api/user_handler.go:70`), and in dead-code `wallet.Topup` (`service.go:92`) and `transfer.TransferToUser` (`transfer/service.go:96`). It is NOT applied in the mounted engine path `ExecuteEngineRequest`, where limits come from OfferGuard. | grep `TxnLimit(` | `TestUsersMe_TxnLimitMatchesTier` (response only) |
+| BR-WAL-04 | Replaced by BR-WAL-05: per-transaction limits come from the user's offer (L0 2,500,000; L1 62,500,000; L2 250,000,000 VND), no longer from a fixed KYC table. | `offerguard/offerguard.go`, `000023_offer_limits_tiers.up.sql` | `TestOfferLimits_PerTxnCapsByTier` |
+| BR-WAL-05 | `wallet.TxnLimit` no longer exists. Per-transaction limits come from the user's offer: the engine path uses `offerguard.Check`; money-request pay, `wallet.Topup` and `transfer.Transfer*` use `offerguard.CheckAmount`; `/users/me` returns `txn_limit` and an `offer` block from `offerguard.Limits`. | `offerguard/offerguard.go`, `api/user_handler.go` | `TestOfferLimits_*`, `TestUsersMe_ReportsOfferLimits` |
 | BR-WAL-06 | A user may only see transactions where their MAIN wallet is sender or receiver; others get `ErrTxnNotFound` (404, existence not leaked). | `wallet/service.go:Detail` (237-239), `DetailRaw` (268-270) | `TestDetail_CounterpartyMasked` |
 | BR-WAL-07 | Counterparty name and phone in history/detail are always masked; null for system/org counterparties. | `wallet/service.go:counterparty` (173-189), `user.MaskName/MaskPhone` | `TestHistory_CounterpartyMaskedAndDirection` |
 | BR-WAL-08 | History is keyset-paginated; `limit` outside 1..50 becomes 20. | `wallet/service.go:History` (197-199) | none |
@@ -62,6 +63,7 @@ Owns the wallet row model (main wallet per user, savings vaults, org and system 
 | BR-WAL-22 | Round-up diff = `unit - (amount % unit)`; unit defaults to 10,000 VND, overridable by env `ROUND_UP_UNIT_VND` (>0). | `round_up.go:RoundUpUnit`, `roundUpUnitFromEnv` (20-29), line 83 | `TestRoundUp_AppliesDifference` |
 | BR-WAL-23 | Round-up posts debit sender main / credit vault for `diff`, using the original transaction id; a concurrent overdraft is skipped, not failed. | `round_up.go:111-122` | `TestRoundUp_InsufficientBalance_SkippedNotFailed` |
 | BR-WAL-24 | ROUND_UP is never compensated (compensation is a no-op). | `round_up.go:49-53` | none |
+| BR-WAL-25 | Top-up idempotency is per user and bound to the amount (`request_hash` over operation + amount): same user, key and amount returns the original (`Duplicate`); same key with another amount is `ErrIdempotencyKeyReused`; empty key is `ErrIdempotencyKeyRequired`; the same key from another user is independent and never returns the first user's transaction. | `wallet/service.go:Topup`, `wallet/idempotency.go`, `UNIQUE (initiated_by, idempotency_key)` (000015) | `TestEdge_E01_IdempotentTopup`, `TestIdempotency_TwoUsersSameKeyAreIndependent`, `TestIdempotency_Topup_DifferentAmountRejected` (TC-IDM-003, -010, -014) |
 
 ## 4. Lifecycle / state machine
 
@@ -136,35 +138,35 @@ Link: `../reference/data-model.md`.
 | Table / column | Purpose | Constraints |
 |----------------|---------|-------------|
 | `wallets(owner_type, owner_id, currency, purpose, label, balance, status, version, system_code, target_amount, round_up_target)` | all wallets | `wallet_owner_unique`, `idx_wallet_one_main_per_owner`, `wallet_vault_needs_label`, `idx_wallet_round_up_target_unique`, `wallet_balance_non_negative` |
-| `transactions` | topup records | `ref_code UNIQUE`, `idempotency_key UNIQUE` |
+| `transactions` | topup records | `ref_code UNIQUE`, `UNIQUE (initiated_by, idempotency_key)`, `request_hash` (000015) |
 | `bank_statements` | one row per callback | see recon |
 
 `purpose` is VARCHAR(20) with no enum; used values in code: `main`, `vault`, `system_cash`, `system_fee`, `system_suspense` (000002:98-100). Org wallets: `purpose='main'` with `owner_type='organization'` (`queries/wallets.sql:CreateOrgWallet`).
 
 ## 8. Interfaces
 Mounted (`api/router.go`): `GET /v1/wallets` (110), `GET /v1/transactions` (111), `GET /v1/transactions/:refCode` (112), `GET /v1/vaults`, `POST /v1/vaults`, `PATCH /v1/vaults/:id/round-up-target` (124-126), `POST /internal/mock-bank/callback` (82, mounted for every environment when the process serves the public API).
-Not mounted (dead code): `WalletHandler.Topup` (`api/wallet_handler.go:33`), `wallet.Service.Topup`. `POST /v1/vaults` and the round-up PATCH have no `RequireIdempotencyKey`. Link `../reference/api.md`.
+Not mounted (dead code): `WalletHandler.Topup` (`api/wallet_handler.go:33`), `wallet.Service.Topup`. `POST /v1/vaults` and the round-up PATCH have no `RequireIdempotencyKey` on purpose: they change metadata only; vault money moves through `POST /v1/transactions/request` (VAULT_SAVINGS), which requires the key (BR-WAL-25). Link `../reference/api.md`.
 
 ## 9. Edge cases
-- E01 idempotent topup: repeated key returns the first transaction with `Duplicate=true` (`TestEdge_E01_IdempotentTopup`), but `Topup` is dead code in the router.
+- E01 idempotent topup: repeated key from the same user and payload returns the first transaction with `Duplicate=true` (`TestEdge_E01_IdempotentTopup`); a different amount is `ErrIdempotencyKeyReused`, an empty key `ErrIdempotencyKeyRequired`, another user's identical key is independent (BR-WAL-25). `Topup` is still dead code in the router.
 - E15 duplicate bank callback: no second credit; a second statement row (`TestEdge_E15_DuplicateBankCallback`).
 - Vault label collision: 409 `ERR_VAULT_LABEL_TAKEN`.
 - Round-up when balance moved between check and post: skipped (BR-WAL-23).
 
 ## 10. Known gaps (as-is vs intended)
 - Wallet `status` (`locked`, `closed`) is never read or written by Go; locking a wallet has no effect. Only owner (user/org) status is checked in VALIDATE and MOVE_FUNDS.
-- `TxnLimit` is not applied on the mounted engine path (BR-WAL-05); the limits there are only OfferGuard's. The old comment says limits will move to a policy table (`service.go:31-32`); not done.
-- BE-H1: Idempotency-Key is globally unique, not per user and not payload-bound (`transactions.idempotency_key UNIQUE`, 000002:57; `wallet/service.go:121-128`).
+- Per-transaction limits: `wallet.TxnLimit` was removed; see BR-WAL-05.
+- BE-H1 is fixed for the wallet service (BR-WAL-25, BUG-0002) and for org topup and disbursement (BR-ORG-17).
 - BE-H7: mock-bank callback is mounted in every env, secret default is `dev-mock-bank-secret`, no rate limit/allowlist (`router.go:82`).
 - BE-C1: ROUND_UP and MOVE_FUNDS are not protected against re-execution at ledger level; ROUND_UP posts in its own tx separate from the step record.
-- `POST /vaults` and round-up PATCH are not idempotency-protected (audit "Idempotency middleware" item).
+- `POST /vaults` and round-up PATCH have no idempotency key by design (metadata only, decided in `specs/w1-idempotency/spec.md`); creating the same label twice is already rejected by `ERR_VAULT_LABEL_TAKEN`.
 - `vault.Create` returns `Balance`/target from DB; negative `target_amount` is rejected only by the HTTP binding (`min=0`), and a zero target is stored as NULL (`vault.go:81`).
 - The round-up unit is a system constant, not a per-user setting.
 
 ## 11. Code map
 | Path | Responsibility |
 |------|----------------|
-| `internal/wallet/service.go:33,55,84,192,225,275` | `TxnLimit`, `EnsureMainWallet`, `Topup` (dead), `History`, `Detail`, `NewRefCode` |
+| `internal/wallet/service.go:33,55,84,192,225,275` | `EnsureMainWallet`, `Topup` (dead), `History`, `Detail`, `NewRefCode` |
 | `internal/wallet/callback.go:24,61` | `CreatePendingTopup`, `BankCallback` |
 | `internal/vault/vault.go:51,69,99,117` | `List`, `Create`, `Owned`, `SetRoundUpTarget` |
 | `internal/workflow/handlers/round_up.go:48` | ROUND_UP step |

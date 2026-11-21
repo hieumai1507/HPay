@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkflowDetail, useDecideWorkflow } from '@/queries';
 import { Timeline } from '@/ui';
+import { NO_PERMISSION_REASON } from '@/lib/access';
+import { useAdminStore } from '@/stores/admin';
 
 export default function WorkflowDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: instance, isLoading } = useWorkflowDetail(id);
   const decideMutation = useDecideWorkflow();
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canAct = useAdminStore((s) => s.can('workflow.action'));
 
   const [reason, setReason] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -17,6 +21,7 @@ export default function WorkflowDetailPage() {
   }
 
   const handleAction = async (action: 'retry' | 'compensate') => {
+    if (decideMutation.isPending || !canAct) return;
     if (!reason.trim()) {
       alert('Vui lòng nhập lý do thao tác (bắt buộc).');
       return;
@@ -59,7 +64,8 @@ export default function WorkflowDetailPage() {
           <button
             type="button"
             onClick={() => handleAction('retry')}
-            disabled={decideMutation.isPending}
+            disabled={decideMutation.isPending || !canAct}
+            title={canAct ? undefined : NO_PERMISSION_REASON}
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
           >
             ⟳ Retry {failedStep?.name || 'bước'}
@@ -67,7 +73,8 @@ export default function WorkflowDetailPage() {
           <button
             type="button"
             onClick={() => handleAction('compensate')}
-            disabled={decideMutation.isPending}
+            disabled={decideMutation.isPending || !canAct}
+            title={canAct ? undefined : NO_PERMISSION_REASON}
             className="h-9 px-4 rounded-lg bg-white border border-rose-600 text-rose-600 font-semibold text-xs cursor-pointer hover:bg-rose-50"
           >
             Force fail + bồi hoàn
@@ -145,7 +152,8 @@ export default function WorkflowDetailPage() {
               <button
                 type="button"
                 onClick={() => handleAction('retry')}
-                disabled={decideMutation.isPending}
+                disabled={decideMutation.isPending || !canAct}
+            title={canAct ? undefined : NO_PERMISSION_REASON}
                 className="h-10.5 w-full rounded-lg bg-brand text-white font-semibold text-sm cursor-pointer hover:bg-brand-600 shadow-xs"
               >
                 ⟳ Retry {failedStep?.name || 'bước'}
@@ -153,7 +161,8 @@ export default function WorkflowDetailPage() {
               <button
                 type="button"
                 onClick={() => handleAction('compensate')}
-                disabled={decideMutation.isPending}
+                disabled={decideMutation.isPending || !canAct}
+            title={canAct ? undefined : NO_PERMISSION_REASON}
                 className="h-10.5 w-full rounded-lg bg-rose-50 border border-rose-600 text-rose-600 font-semibold text-sm cursor-pointer hover:bg-rose-100 transition-colors"
               >
                 ↩ Bồi hoàn ngay (đảo bút toán)

@@ -3,17 +3,17 @@ package moneyrequest
 import (
 	"context"
 	"errors"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hieumai1507/hpay-backend/internal/fee"
 	"github.com/hieumai1507/hpay-backend/internal/ledger"
+	"github.com/hieumai1507/hpay-backend/internal/offerguard"
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 	"github.com/hieumai1507/hpay-backend/internal/wallet"
 	"github.com/hieumai1507/hpay-backend/internal/workflow"
@@ -36,10 +36,11 @@ type Service struct {
 	q      *store.Queries
 	engine *workflow.Engine
 	fees   *fee.Service
+	guard  *offerguard.Guard
 }
 
 func NewService(pool *pgxpool.Pool, engine *workflow.Engine, fees *fee.Service) *Service {
-	return &Service{pool: pool, q: store.New(pool), engine: engine, fees: fees}
+	return &Service{pool: pool, q: store.New(pool), engine: engine, fees: fees, guard: offerguard.New(pool)}
 }
 
 type Result struct {
@@ -50,7 +51,10 @@ type Result struct {
 }
 
 // Create makes a single request (requester asks payer for amount).
-func (s *Service) Create(ctx context.Context, requesterID uuid.UUID, payerPhone string, amount int64, note string) (Result, error) {
+func (s *Service) Create(ctx context.Context, requesterID uuid.UUID, payerPhone string, amount int64, note, idemKey string) (Result, error) {
+	if idemKey == "" {
+		return Result{}, wallet.ErrIdempotencyKeyRequired
+	}
 	if amount <= 0 {
 		return Result{}, wallet.ErrAmountInvalid
 	}
@@ -64,15 +68,51 @@ func (s *Service) Create(ctx context.Context, requesterID uuid.UUID, payerPhone 
 	if payer.ID == requesterID {
 		return Result{}, ErrSelfRequest
 	}
+	hash := wallet.RequestHash("money_request_create", payer.ID.String(), strconv.FormatInt(amount, 10), note)
+	if prev, err := s.replay(ctx, s.q, requesterID, idemKey, hash); err != nil || prev != nil {
+		if err != nil {
+			return Result{}, err
+		}
+		return prev.Requests[0], nil
+	}
 	row, err := s.q.InsertMoneyRequest(ctx, store.InsertMoneyRequestParams{
 		RequesterID: requesterID, PayerID: payer.ID, Amount: amount,
 		Note: noteText(note), SplitGroupID: uuid.Nil,
-		ExpiresAt: ts(time.Now().Add(requestTTL)),
+		ExpiresAt:      ts(time.Now().Add(requestTTL)),
+		IdempotencyKey: wallet.KeyText(idemKey), RequestHash: wallet.HashText(hash),
 	})
 	if err != nil {
+		if wallet.IsIdempotencyConflict(err) { // concurrent request with the same key won the race
+			if prev, rerr := s.replay(ctx, s.q, requesterID, idemKey, hash); rerr != nil || prev != nil {
+				if rerr != nil {
+					return Result{}, rerr
+				}
+				return prev.Requests[0], nil
+			}
+		}
 		return Result{}, err
 	}
 	return Result{ID: row.ID, Amount: row.Amount, Status: string(row.Status), ExpiresAt: row.ExpiresAt.Time}, nil
+}
+
+// replay returns the money request(s) this requester already created with the
+// key (nil when the key is unused) or ErrIdempotencyKeyReused when the stored
+// hash differs. A NULL stored hash is accepted (pre-000015 rows).
+func (s *Service) replay(ctx context.Context, q *store.Queries, requesterID uuid.UUID, idemKey, hash string) (*SplitResult, error) {
+	rows, err := q.ListMoneyRequestsByIdempotencyKey(ctx, store.ListMoneyRequestsByIdempotencyKeyParams{
+		RequesterID: requesterID, IdempotencyKey: wallet.KeyText(idemKey),
+	})
+	if err != nil || len(rows) == 0 {
+		return nil, err
+	}
+	if !wallet.HashMatches(rows[0].RequestHash, hash) {
+		return nil, wallet.ErrIdempotencyKeyReused
+	}
+	out := &SplitResult{SplitGroupID: rows[0].SplitGroupID}
+	for _, r := range rows {
+		out.Requests = append(out.Requests, Result{ID: r.ID, Amount: r.Amount, Status: string(r.Status), ExpiresAt: r.ExpiresAt.Time})
+	}
+	return out, nil
 }
 
 type SplitItem struct {
@@ -88,7 +128,10 @@ type SplitResult struct {
 // CreateSplit fans out N requests under one split_group_id. amounts, when
 // given, must already sum to totalAmount (validated by the caller/handler via
 // ValidateCustomSplit) — when nil, shares are computed with SplitEven.
-func (s *Service) CreateSplit(ctx context.Context, requesterID uuid.UUID, payerPhones []string, totalAmount int64, note string, amounts []int64) (SplitResult, error) {
+func (s *Service) CreateSplit(ctx context.Context, requesterID uuid.UUID, payerPhones []string, totalAmount int64, note string, amounts []int64, idemKey string) (SplitResult, error) {
+	if idemKey == "" {
+		return SplitResult{}, wallet.ErrIdempotencyKeyRequired
+	}
 	if totalAmount <= 0 {
 		return SplitResult{}, wallet.ErrAmountInvalid
 	}
@@ -126,12 +169,31 @@ func (s *Service) CreateSplit(ctx context.Context, requesterID uuid.UUID, payerP
 		payerIDs[i] = payer.ID
 	}
 
+	hashParts := []string{strconv.FormatInt(totalAmount, 10), note}
+	for i, id := range payerIDs {
+		hashParts = append(hashParts, id.String(), strconv.FormatInt(shares[i], 10))
+	}
+	hash := wallet.RequestHash("money_request_split", hashParts...)
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return SplitResult{}, err
 	}
 	defer tx.Rollback(ctx)
 	qtx := s.q.WithTx(tx)
+
+	// A split writes several rows under one key, so the unique index cannot
+	// serialize concurrent retries; a per-(requester,key) advisory lock does.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, requesterID.String()+":"+idemKey); err != nil {
+		return SplitResult{}, err
+	}
+	prev, err := s.replay(ctx, qtx, requesterID, idemKey, hash)
+	if err != nil {
+		return SplitResult{}, err
+	}
+	if prev != nil {
+		return *prev, nil
+	}
 
 	groupID := uuid.New()
 	expiresAt := ts(time.Now().Add(requestTTL))
@@ -140,7 +202,8 @@ func (s *Service) CreateSplit(ctx context.Context, requesterID uuid.UUID, payerP
 		row, err := qtx.InsertMoneyRequest(ctx, store.InsertMoneyRequestParams{
 			RequesterID: requesterID, PayerID: payerID, Amount: shares[i],
 			Note: noteText(note), SplitGroupID: groupID,
-			ExpiresAt: expiresAt,
+			ExpiresAt:      expiresAt,
+			IdempotencyKey: wallet.KeyText(idemKey), RequestHash: wallet.HashText(hash),
 		})
 		if err != nil {
 			return SplitResult{}, err
@@ -169,6 +232,10 @@ type PayResult struct {
 // P2P transaction and start the engine, then finalize — all in one DB tx so
 // a request is never left "paid" without a transaction or vice versa.
 func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey string) (PayResult, error) {
+	if idemKey == "" {
+		return PayResult{}, wallet.ErrIdempotencyKeyRequired
+	}
+	hash := wallet.RequestHash("money_request_pay", requestID.String())
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return PayResult{}, err
@@ -185,6 +252,16 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 	}
 	if req.PayerID != payerID {
 		return PayResult{}, ErrForbidden
+	}
+	// Replay check runs under the request row lock: a concurrent retry with the
+	// same key waits here, then sees the transaction the first call committed.
+	old, err := wallet.FindReplay(ctx, qtx, payerID, idemKey, hash)
+	if err != nil {
+		return PayResult{}, err
+	}
+	if old != nil {
+		return PayResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
+			Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
 	}
 	if req.Status != store.MoneyRequestStatusPending {
 		return PayResult{}, ErrNotPayable
@@ -205,8 +282,8 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 	if err != nil {
 		return PayResult{}, err
 	}
-	if req.Amount > wallet.TxnLimit(payer.KycStatus) {
-		return PayResult{}, wallet.ErrLimitExceeded
+	if err := s.guard.CheckAmount(ctx, payerID, "MONEY_REQUEST", req.Amount); err != nil {
+		return PayResult{}, err
 	}
 
 	feeAmt, err := s.fees.For(ctx, store.TxnTypeP2p, payer.KycStatus, req.Amount)
@@ -223,21 +300,19 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 	}
 
 	txn, err := qtx.InsertTransaction(ctx, store.InsertTransactionParams{
-		RefCode: wallet.NewRefCode(), IdempotencyKey: pgtype.Text{String: idemKey, Valid: idemKey != ""},
+		RefCode: wallet.NewRefCode(), IdempotencyKey: wallet.KeyText(idemKey),
 		Type:           store.TxnTypeP2p,
 		SenderWalletID: payerWallet.ID, ReceiverWalletID: requesterWallet.ID,
 		Amount: req.Amount, Fee: feeAmt,
 		Note: noteText(req.Note.String), InitiatedBy: payerID,
+		RequestHash: wallet.HashText(hash),
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
-			old, gerr := s.q.GetTransactionByIdempotencyKey(ctx, pgtype.Text{String: idemKey, Valid: true})
-			if gerr != nil {
-				return PayResult{}, gerr
-			}
-			return PayResult{RefCode: old.RefCode, Status: string(old.Status), Amount: old.Amount,
-				Fee: old.Fee, Total: old.Amount + old.Fee, CreatedAt: old.CreatedAt.Time, Duplicate: true}, nil
+		// The key was used by this user between the check above and the insert,
+		// for a different money request (the request row lock rules out the
+		// same one): reject, the transaction is aborted so no lookup is possible.
+		if wallet.IsIdempotencyConflict(err) {
+			return PayResult{}, wallet.ErrIdempotencyKeyReused
 		}
 		return PayResult{}, err
 	}

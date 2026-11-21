@@ -1,6 +1,6 @@
 # hpay-admin
 
-React + Vite + TypeScript Admin Operations SPA for HPay — Featuring TMDS 5-Tab Transaction Design Manager & Offer Factory.
+React + Vite + TypeScript Admin Operations SPA for HPay. Includes the transaction design manager and the offer factory.
 
 ## Features
 

@@ -4,9 +4,11 @@ import {
   getCoreRowModel,
   createColumnHelper,
 } from '@tanstack/react-table';
-import { useServices, useUpdateServiceStatus, useCreateService, type ServiceItem } from '@/queries';
+import { useServices, useUpdateServiceStatus, type ServiceItem } from '@/queries';
+import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
+import { useAdminStore } from '@/stores/admin';
 import { ServicePipelineModal } from '@/features/services/ServicePipelineModal';
-import { Badge, Modal } from '@/ui';
+import { Badge, ErrorNotice, Modal, NotAvailableNote } from '@/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -15,7 +17,9 @@ const columnHelper = createColumnHelper<ServiceItem>();
 export default function ServiceCatalogPage() {
 
   const updateStatusMutation = useUpdateServiceStatus();
-  const createServiceMutation = useCreateService();
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canConfigure = useAdminStore((s) => s.can(ACTION_PERMISSION.serviceConfig));
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const [openAddModal, setOpenAddModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
@@ -24,7 +28,7 @@ export default function ServiceCatalogPage() {
     useTableQueryState({ initialPageSize: 10 });
   // Search is server-side (services.name/code ILIKE), so `filtered` below is
   // just the rows this page returned.
-  const { data, isLoading } = useServices({
+  const { data, isLoading, error } = useServices({
     page: queryParams.page,
     limit: queryParams.limit,
     name: globalFilter || undefined,
@@ -51,32 +55,22 @@ export default function ServiceCatalogPage() {
         )
       )
         return;
-      await updateStatusMutation.mutateAsync({ id: service.id, status: newStatus });
+      if (updateStatusMutation.isPending) return;
+      setStatusError(null);
+      try {
+        await updateStatusMutation.mutateAsync({ id: service.id, status: newStatus });
+      } catch (e: unknown) {
+        setStatusError(e instanceof Error ? e.message : String(e));
+      }
     },
     [updateStatusMutation]
   );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim()) {
-      alert('Vui lòng nhập mã và tên dịch vụ.');
-      return;
-    }
-    await createServiceMutation.mutateAsync({
-      code: code.trim().toUpperCase(),
-      name: name.trim(),
-      fullName: fullName.trim() || name.trim(),
-      category,
-      transactionType,
-      actionPriority,
-      status: 'active',
-      channels: ['Mobile'],
-    });
-    setOpenAddModal(false);
-    setCode('');
-    setName('');
-    setFullName('');
-    alert('Đã tạo Dịch vụ mới thành công!');
+    // Backend gap: there is no POST /v1/admin/services route, so nothing can be created.
+    // The submit button is disabled; this guard keeps Enter-key submits from doing anything.
+    return;
   };
 
   const columns = useMemo(
@@ -140,6 +134,8 @@ export default function ServiceCatalogPage() {
           <button
             type="button"
             onClick={() => handleToggleMaintenance(info.row.original)}
+            disabled={!canConfigure || updateStatusMutation.isPending}
+            title={canConfigure ? undefined : NO_PERMISSION_REASON}
             className={`font-semibold cursor-pointer text-xs ${
               info.row.original.status === 'maintenance' ? 'text-emerald-600 hover:underline' : 'text-amber-600 hover:underline'
             }`}
@@ -149,7 +145,7 @@ export default function ServiceCatalogPage() {
         ),
       }),
     ],
-    [handleToggleMaintenance]
+    [handleToggleMaintenance, canConfigure, updateStatusMutation.isPending]
   );
 
   const table = useReactTable({
@@ -184,13 +180,22 @@ export default function ServiceCatalogPage() {
           />
           <button
             type="button"
-            onClick={() => setOpenAddModal(true)}
+            disabled
+            title="Not available yet: the backend has no create-service endpoint (POST /v1/admin/services)."
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
           >
             + Thêm dịch vụ mới
           </button>
         </div>
       </div>
+
+      <ErrorNotice error={error} what="services" />
+      {statusError && (
+        <div role="alert" className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-r-lg text-sm">
+          {statusError}
+        </div>
+      )}
+      <NotAvailableNote>{'creating services (no POST /v1/admin/services) and saving pipeline designs (no endpoint) are not supported by the backend.'}</NotAvailableNote>
 
       <div className="flex flex-col gap-3">
         <DataTable
@@ -297,10 +302,11 @@ export default function ServiceCatalogPage() {
             </button>
             <button
               type="submit"
-              disabled={createServiceMutation.isPending}
+              disabled
+              title="Not available yet: the backend has no create-service endpoint."
               className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
             >
-              {createServiceMutation.isPending ? 'Đang tạo…' : 'Xác nhận tạo Dịch vụ'}
+              Xác nhận tạo Dịch vụ
             </button>
           </div>
         </form>

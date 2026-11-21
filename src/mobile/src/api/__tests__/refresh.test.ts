@@ -106,3 +106,57 @@ describe('TestEdge_M05_RefreshRevoked_ForceLogout', () => {
     expect(useSessionStore.getState().logoutReason).toBe('refresh_expired');
   });
 });
+
+describe('TestEdge_M04_Refresh_TransientFailure_KeepsSession', () => {
+  const stored = async () => {
+    await storeRefreshToken('valid-refresh-token');
+  };
+
+  it.each([500, 502, 503, 429])('keeps the refresh token and session on HTTP %i and surfaces a retryable error', async (status) => {
+    await stored();
+    (global.fetch as jest.Mock).mockImplementation(async () =>
+      jsonResponse(status, { code: 'ERR_INTERNAL', message: 'try later' }),
+    );
+
+    await expect(refreshAccessToken()).rejects.toMatchObject({ status });
+
+    await expect(getStoredRefreshToken()).resolves.toBe('valid-refresh-token');
+    expect(useSessionStore.getState().status).toBe('authenticated');
+    expect(useSessionStore.getState().accessToken).toBe('stale-token');
+  });
+
+  it('keeps the refresh token and session when the network is down', async () => {
+    await stored();
+    (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Network request failed'));
+
+    await expect(refreshAccessToken()).rejects.toMatchObject({ name: 'NetworkError' });
+
+    await expect(getStoredRefreshToken()).resolves.toBe('valid-refresh-token');
+    expect(useSessionStore.getState().status).toBe('authenticated');
+  });
+
+  it.each([401, 403])('clears the token and session on HTTP %i (token invalid)', async (status) => {
+    await stored();
+    (global.fetch as jest.Mock).mockImplementation(async () =>
+      jsonResponse(status, { code: 'ERR_INVALID_TOKEN', message: 'nope' }),
+    );
+
+    await expect(refreshAccessToken()).rejects.toMatchObject({ status });
+
+    await expect(getStoredRefreshToken()).resolves.toBeNull();
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+    expect(useSessionStore.getState().logoutReason).toBe('refresh_expired');
+  });
+
+  it('a retryable refresh failure does not log the user out of an apiRequest; the original 401 surfaces', async () => {
+    await stored();
+    (global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+      if (url.includes('/v1/auth/refresh')) return jsonResponse(503, { code: 'ERR_INTERNAL' });
+      return jsonResponse(401, { code: 'ERR_TOKEN_EXPIRED' });
+    });
+
+    await expect(apiRequest('/v1/protected')).rejects.toMatchObject({ status: 401 });
+    expect(useSessionStore.getState().status).toBe('authenticated');
+    await expect(getStoredRefreshToken()).resolves.toBe('valid-refresh-token');
+  });
+});

@@ -16,7 +16,9 @@ type KYCHandler struct {
 
 func NewKYCHandler(svc *kyc.Service) *KYCHandler { return &KYCHandler{svc: svc} }
 
-// Submit takes multipart fields id_card + selfie (jpeg/png, ≤5MB each).
+// Submit takes multipart fields id_card + selfie (real jpeg/png, 200..8000 px, <=5MB each).
+// The whole request is capped by limitKYCBody before parsing; the images are decoded
+// and validated by kyc.InspectImage.
 func (h *KYCHandler) Submit(c *gin.Context) {
 	idCard, ok := readImagePart(c, "id_card")
 	if !ok {
@@ -46,7 +48,7 @@ func (h *KYCHandler) Status(c *gin.Context) {
 func readImagePart(c *gin.Context, field string) ([]byte, bool) {
 	fh, err := c.FormFile(field)
 	if err != nil {
-		respondValidation(c, "multipart field "+field+" is required")
+		respondTooLarge(c, err) // 413 when the request body cap was hit, else a validation error
 		return nil, false
 	}
 	f, err := fh.Open()

@@ -20,7 +20,7 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 | MOVE_FUNDS double-post (BE-C1) | **CONFIRMED**, looked for a guard that would refute it but found none | `handlers.go` ~82-122: separate tx `Begin→ledger.Post→Commit`; `consumer.go:164-212 recordAndEmit` is another tx. `ledger_entries` has only `idx_ledger_txn`, not UNIQUE (000002:83). `PostWithQueries` does not check whether the txn already has entries |
 | Compensation fail | **PARTIAL** | `engine.go:301-310`: only logs Error, then sets `failed`. The `wf_status` enum has no `compensation_failed`. This branch does not call `FailTransactionGuarded`, so the transaction may be stuck in `processing`. `ev.Retryable` is ignored. `ClaimStuckInstances` only claims `running`, so an instance stuck in `compensating` is not recovered |
 | `dispatchCompensate` Attempt=101 | **CONFIRMED** (cannot be retried) | `engine.go:337`; `consumer.go:111-114` when it sees an existing record it only re-emits the old result |
-| SSRF gateway | **CONFIRMED** | `action_pipeline.go:81-107`: URL comes from `srv.Actions` in the DB, only the `http` prefix is checked; `gateway.go:59` calls it directly. No allowlist, no blocking of private/metadata IPs, no redirect limit. There is a 10s timeout, body max 64KB. Real HTTP is enabled only when `Env=="production"` |
+| SSRF gateway (FIXED in the working tree 2026-11-21, not yet committed: BUG-0014) | **CONFIRMED** | `action_pipeline.go:81-107`: URL comes from `srv.Actions` in the DB, only the `http` prefix is checked; `gateway.go:59` calls it directly. No allowlist, no blocking of private/metadata IPs, no redirect limit. There is a 10s timeout, body max 64KB. Real HTTP is enabled only when `Env=="production"` |
 | Org self-approval | **CONFIRMED** | `org_members` has `UNIQUE(org_id,user_id)` (000005:36). `eligibility()` (`approval/service.go:221-250`) has no `checkerID != CreatedBy`. Only the admin flow has it (`admin.go:67`) |
 | Idempotency middleware | **PARTIAL** | `RequireIdempotencyKey` is attached only at `router.go:118` and `:156`. It is **not** attached to `/money-requests`, `/money-requests/split`, `POST /vaults`, `PATCH /vaults/:id/round-up-target` |
 | `WalletHandler.Topup`, `TransferToUser` | **Dead code** (not mounted) | Downgrade BE-M5 (legacy bypasses offerguard) to Low because it is not reachable |
@@ -32,6 +32,7 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 **Endpoints the frontend calls but backend/openapi does not have:**
 - Mobile: `/v1/auth/verify-otp`, `/v1/engine/status`, `/v1/money-requests/{id}/pay`, `/v1/wallets/topup`, `/v1/transactions/transfer`.
 - Admin: `/v1/admin/fraud/flags` (+`/{id}/resolve`) whereas the backend is `/fraud-flags`; `/v1/admin/kyc/{id}/decision` (backend is `/kyc/:id/review`); `/v1/admin/services/{id}/status` (backend `PUT /services/:id`); `POST /v1/admin/services`; `POST/PUT /v1/admin/offers/{id}` (backend has only GET); `/v1/p2p-notify`.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** hooks now use the real routes (`/fraud-flags`, `/kyc/:id/review`, `PUT /services/:id`); the dead hooks were removed. `POST /v1/admin/services` and `PUT/POST /v1/admin/offers/:id` have no backend: the UI actions are disabled with a visible reason (backend gaps). `/v1/p2p-notify` is only a sample string in `ServicePipelineModal`, not a call.
 - The workflow instance status enum in openapi (~line 1726) lacks `waiting_approval`, `compensating`, `recovering`. Mobile uses a string for amount in `useFeePreview` but the response type is number.
 - **Not done:** comparing the transaction/money-request/KYC status enums with the DB, and comparing each response field.
 
@@ -56,13 +57,13 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 
 ### Critical
 
-**BE-C1. MOVE_FUNDS can debit twice** (`internal/workflow/handlers/handlers.go:82-122`, `workflow/consumer.go:102-161`, migration 000002:70-84)
+**BE-C1. MOVE_FUNDS can debit twice** *(FIXED in the working tree 2026-11-21, not yet committed: BUG-0001, ADR-0010)* (`internal/workflow/handlers/handlers.go:82-122`, `workflow/consumer.go:102-161`, migration 000002:70-84)
 - `Wallet.Execute` commits `ledger.Post` in one tx, while `step_executions` is written in another tx (`recordAndEmit`).
 - If a crash happens between the two txs, or the outbox redelivers (at-least-once), the step runs again and posts to the ledger a second time.
 - `ledger.Post` does not check whether `txnID` was already posted. `ledger_entries` has no UNIQUE preventing this. Compensate has the same flaw.
 - Fix: write the step claim and the ledger in the same tx, or INSERT a `step_execution` with status `running` first. Add UNIQUE `(transaction_id, posting_kind)` on the ledger.
 
-**BE-C2. Engine confirm/verify is unauthenticated and has an IDOR** (`internal/transfer/service.go:515-540`, `internal/api/transaction_engine_handler.go:66-127`)
+**BE-C2. Engine confirm/verify is unauthenticated and has an IDOR** *(FIXED in the working tree 2026-11-21, not yet committed: BUG-0012, ADR-0008, ADR-0014)* (`internal/transfer/service.go:515-540`, `internal/api/transaction_engine_handler.go:66-127`)
 - `ExecuteEngineConfirm` and `ExecuteEngineVerify` accept PIN, OTP, `SenderUserID` but do not use them. They only look up `GetTransactionByWorkflow` and then return `ref_code`, `amount`, `fee`, `status` of any transaction if the UUID is known.
 - `ExecuteEngineRequest` calls `engine.Start` immediately (line ~390), so money moves without PIN/OTP. `AuthRequired` is only a returned label, the server does not enforce it, contradicting the `offer_auth_matrix` spec. The backend has no PIN route at all.
 - DB errors are swallowed and converted to "transaction not found". This error string is not in `errTable`, so it returns 500.
@@ -70,24 +71,24 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 
 ### High
 
-**BE-H1. Global Idempotency-Key** (migration 000002:57; `transfer/service.go:141-149,369-386`; `wallet/service.go:121-128`; `moneyrequest/service.go:233-241`)
+**BE-H1. Global Idempotency-Key** *(FIXED in the working tree 2026-11-21, not yet committed: BUG-0002, BUG-0003, ADR-0011, migration 000015; residual: `internal/org` still replays by key only, see `docs/specs/w1-idempotency/spec.md`)* (migration 000002:57; `transfer/service.go:141-149,369-386`; `wallet/service.go:121-128`; `moneyrequest/service.go:233-241`)
 - If user B reuses A's key, B receives A's transaction result. The same user changing the payload still receives the old result, with no 409.
 - When the client sends no key, `ExecuteEngineRequest` generates a UUID itself, so it is not idempotent. A network retry will create a second transaction.
 - Fix: UNIQUE `(initiated_by, idempotency_key)` plus a request hash, return 409 if different. Require a key on every money-writing endpoint.
-- Additionally: `/money-requests`, `/money-requests/split`, `/vaults` do not appear to have `RequireIdempotencyKey` (`router.go:128-129`). **[unverified]**
+- Additionally: `/money-requests`, `/money-requests/split`, `/vaults` do not appear to have `RequireIdempotencyKey` (`router.go:128-129`). **[verified, then fixed]**: money requests had no idempotency at all (create and split now require the key and replay per requester); `/vaults` and the round-up PATCH only change metadata and were deliberately left without a key.
 
 **BE-H2. Offer limit has a TOCTOU race** (`internal/offerguard/offerguard.go:92-121`, called from `transfer/service.go:315`)
 - SUM the volume, compare against the limit, then INSERT in another tx. N parallel requests with different keys all pass. The `IntervalSeconds` throttle can also be bypassed.
 - Day/month boundaries use the server timezone, not a fixed Vietnam time.
 - Fix: `pg_advisory_xact_lock(hash(user,type))` or lock a counter row in the same tx as the INSERT.
 
-**BE-H3. The double-reversal constraint exists only in a comment** (`reversal/reversal.go:106,126-172`, `queries/transactions.sql:63-66`)
+**BE-H3. The double-reversal constraint exists only in a comment** *(FIXED in the working tree 2026-11-21, not yet committed: BUG-0011, ADR-0013)* (`reversal/reversal.go:106,126-172`, `queries/transactions.sql:63-66`)
 - There is no `one_reversal_per_txn` or `UNIQUE(subject_type, subject_id)` in the migrations.
 - It is currently still blocked thanks to `idempotency_key = "rev-<id>"`, but the error surfaces as a raw 23505 and the approval can get stuck.
 - The executor does not check `orig.Status == completed` and ignores the row count of `MarkTransactionReversed`.
 - Fix: partial UNIQUE `transactions(reversal_of)`, partial UNIQUE on pending approvals, `FOR UPDATE` on the original transaction and check `n == 1`.
 
-**BE-H4. Reversal/compensate when the receiver has already spent the money** (`reversal.go:153-166`, `handlers.go:113-116`)
+**BE-H4. Reversal/compensate when the receiver has already spent the money** *(reversal part FIXED in the working tree 2026-11-21, not yet committed: BUG-0011, ADR-0013; the workflow compensation part is still open)* (`reversal.go:153-166`, `handlers.go:113-116`)
 - `ErrInsufficientBalance` rolls back the whole finalize, the approval is stuck in `pending`. Compensate treats this as a terminal error, the workflow is failed while the money remains with the receiver.
 - Fix: add a `reversal_failed` or `needs_manual` status with an audit record. Consider a debt account (receivable) or a hold.
 
@@ -95,12 +96,12 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 - `paid` is set in the tx that creates the transaction, before MOVE_FUNDS runs asynchronously. If the workflow fails, the request stays `paid`.
 - Fix: keep `pending` until the transaction is `completed`, or add a `paying` status and revert to `pending` on failure.
 
-**BE-H6. Access token is not revocable and status is not checked; admin has no RBAC** (`api/middleware.go:16-34`, `auth/jwt.go`, `api/admin_handler.go:25-42`, `auth/admin.go`)
+**BE-H6. Access token is not revocable and status is not checked; admin has no RBAC** *(admin part FIXED in the working tree 2026-11-21, not yet committed: BUG-0013, ADR-0015; user access-token revocation and a separate admin signing secret are still open)* (`api/middleware.go:16-34`, `auth/jwt.go`, `api/admin_handler.go:25-42`, `auth/admin.go`)
 - A locked user can still use the access token for up to 15 minutes and can still refresh. Logout only revokes the refresh family.
 - `RequireAdmin` grants every admin every permission, including `UpdateAISetting`, creating AI keys, reversal. Admin has no refresh. It shares `JWT_SECRET` with users, separated only by `aud`.
 - Fix: add jti or a token version and check status (Redis cache). Per-route RBAC by role. Use a separate secret for admin.
 
-**BE-H7. Weak default configuration** (`platform/config/config.go:64,81,95`, `cmd/server/main.go:117`, `api/router.go:45`, `approval_handler.go:43-45`)
+**BE-H7. Weak default configuration** *(FIXED in the working tree 2026-11-21, not yet committed: BUG-0010, ADR-0012)* (`platform/config/config.go:64,81,95`, `cmd/server/main.go:117`, `api/router.go:45`, `approval_handler.go:43-45`)
 - `APP_ENV` defaults to `dev`. In dev, `otp_dev` is returned in the `/approvals/:id/challenge` response, and a short JWT secret is still accepted.
 - `MOCK_BANK_SECRET` defaults to `dev-mock-bank-secret`.
 - The valid env list (comment) is `dev|ci|demo`, but `main.go` compares `!= "production"`. Consequence: every env currently uses the Mock gateway, and there is no deliberate way to enable the real gateway.
@@ -204,38 +205,55 @@ Points confirmed to be correct:
    - `src/queries/useTransactionQueries.ts:155,166,179`.
    - `src/queries/useVaultQueries.ts:81`.
    - The app sends a fixed PIN by itself. Combined with BE-C2, transaction authentication is currently void at both ends.
+   - _Fixed in working tree, 2026-11-21, not yet committed (client side only):_ literals removed, user is asked via `usePin()`; server verification (ADR-0008, BE-C2) is still missing, so this is NOT closed end to end.
 2. **App lock compares a hard-coded PIN on the client** (HIGH): `SecurityWrapper.tsx:111-112` (`pinInput === '123456'`, comment "Mock"). No lockout. Biometrics only call `setLocked(false)`.
+   - _Fixed in working tree, 2026-11-21, not yet committed:_ no client PIN; OS biometric/device-credential unlock only; sign-out after 5 failed attempts; server verification is a TODO (ADR-0008).
 3. **Transfer double-submit** (HIGH):
    - The guard `transfer.isPending` uses the `useTransfer` mutation, while the actual submit uses `engine.requestTransaction/confirmTransaction`, so `isPending` is always false.
    - The `useMemo` key is regenerated on remount. The confirm step has no idempotency key.
    - Fix: lock the button with `isRequesting || isConfirming` plus a `useRef` flag. Store the key per transaction id.
+   - _Fixed in working tree, 2026-11-21, not yet committed:_ `useSubmitGuard` (ref flag) on every money action and a persisted key per intent (`lib/intentKey.ts`).
 4. **Admin does not block routes by role** (`router.tsx:36-56`, `RequireAdmin.tsx`):
    - Only checks for a token. A viewer can reach `/orgs`, `/ai-settings`, `/services`, `/offers`, `/recon`, `/audit`.
    - `can()` is used only in `KYCDetailPage` and `MyTasksPage`. The permissions `recon.run`, `orgs.edit`, `ai.manage`, `fraud.resolve`, `admins.manage` are declared but unused. Combined with BE-H6.
+   - **Status (fixed in working tree, 2026-11-21, not yet committed):** a `RequirePermission` wrapper guards `/orgs`, `/ai-settings`, `/services`, `/offers`, `/recon`, `/audit`, `/fraud`, and action buttons use `can()` (`fraud.resolve`, `recon.run`, `orgs.edit`, `ai.manage`). UX only: the backend still has no role enforcement (BE-H6), so this is not a security control.
 5. **Mock data hides real errors** (HIGH):
    - `useReconQueries.ts:107-112,140-143` (fallback `?? 2173`, `duration_ms || 4200`).
    - `useAIQueries.ts:20-79` (fake strings that look like API keys).
    - `useOrgsQueries.ts`, `useAuditQueries.ts:54`.
    - `DashboardPage.tsx:7-17` (KPIs entirely mock).
    - `catch {}` swallows even 401/500 and returns fake numbers. The operator thinks they are looking at real numbers. Enable mock only when `import.meta.env.DEV`.
+   - **Status (fixed in working tree, 2026-11-21, not yet committed):** mock data now requires `import.meta.env.DEV` and `VITE_USE_MOCKS=true` (loaded from `src/mocks/*`, absent from the production bundle); empty `catch {}` fallbacks removed from recon, AI, orgs, audit, fraud, workflows, services; missing numbers show an em dash; failed writes are failures. Dashboard KPIs show an em dash in production.
 6. **Admin JWT** in `sessionStorage`, no refresh (MEDIUM). Consider an httpOnly cookie and CSP.
+   - **Status (fixed in working tree, 2026-11-21, not yet committed):** a Content-Security-Policy meta tag is injected into the production build (script-src self). Token storage and refresh are unchanged.
 
 ### Medium
 
 - **`Number()/parseInt()` on amounts** violates convention M06 (`money.ts` uses BigInt): `confirm.tsx:45`, `vaults/[id].tsx:60`, `vaults/index.tsx:43`, `org/admin.tsx:145`, `org/disburse.tsx:43`.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** admin part fixed (`OfferDetailPage`, `OrgsPage`): integer parsing with validation and upper bound via `src/admin/src/lib/money.ts`. The mobile locations listed here are NOT fixed by this change.
+  - _Fixed in working tree, 2026-11-21, not yet committed:_ bigint parsing with an upper bound (`parseAmountStrict`), bigint to the API, lint rule and jest guard.
 - **Admin does not use Idempotency-Key** for write operations (approving workflows, resolving fraud, running recon).
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** admin mutations now send one Idempotency-Key per user action and disable while pending. The backend ignores the header on admin routes, so this is client readiness only.
 - **Mobile refresh clears the session on a transient error** (`refresh.ts:31-40`): every `!res.ok` including 5xx/429 clears the refresh token. It should clear only on 401/403.
+  - _Fixed in working tree, 2026-11-21, not yet committed:_ only 401/403 clear; network, 5xx and 429 keep the session.
 - `OfferDetailPage.tsx:181-214`: `Number(e.target.value)` with no validation of negative/NaN. `OrgsPage.tsx:146` divides `/1000000` as a float.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** fixed (validated integer inputs; save disabled because the backend has no offer write route). `OrgsPage` float division replaced by integer `formatMillions`.
 - `kyc-draft.ts` stores the draft in SecureStore (size limit; need to check whether it stores images). **[unverified]**
+  - _Checked 2026-11-21:_ it stores only short file URIs, not image bytes; no change needed (see `docs/architecture/mobile-app.md`).
 
 ### Low / infrastructure
 
 - `hpay-mobile/app.config.ts:10`: env `dev` points to the real server `https://hpay.demaciahieu.store`. Staging/demo are the placeholder `HPay.example.com`. Missing `ios.bundleIdentifier` and `android.package`.
+  - _Fixed in working tree, 2026-11-21, not yet committed:_ dev uses `EXPO_PUBLIC_API_URL` (default `http://localhost:8080`); identifiers `com.hieumai1507.hpay` added.
 - `hpay-admin/e2e/.auth/sessions.json` contains real JWTs of the e2e accounts (already in `.gitignore`), should be deleted after running. The e2e password is hard-coded in `e2e/fixtures/auth.ts`.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** the e2e password is now read from `E2E_ADMIN_PASSWORD` (default is the backend seed value, e2e folder only). `sessions.json` still has to be deleted manually after a run.
 - Stray files to clean up: `hpay-backend/hpay-server-local.exe`, `integration_test.exe`, `hpay-backend/tmp/go-build*`, `hpay-docs/push-to-github.ps1`.
 - `ServicePipelineModal.tsx:66`: sample URL `https://api.bankpartner.vn/...`. Check whether it is a default sent to the backend.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** it is display-only sample data inside the pipeline preview and is never sent; there is no `/v1/p2p-notify` call. The modal save button was a fake success and is now disabled (no backend endpoint).
 - Admin `api/client.ts`: non-JSON (HTML 502) still returns `res.text()` cast to `T`.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** fixed: a non-JSON response is an `ApiError` (`ERR_NON_JSON_RESPONSE`); tests in `src/admin/src/api/client.test.ts`.
 - `pages/Placeholder.tsx` is suspected dead code.
+  - **Status (fixed in working tree, 2026-11-21, not yet committed):** removed (grep showed no importer).
 - **Mojibake (UTF-8 read incorrectly)** seen in many files via PowerShell: `router.tsx`, `LoginPage.tsx`, `transfer/service.go:426-540`, README. **[unverified]** It may only be a terminal display issue. It needs to be opened in a UTF-8 editor. If the files really are wrong, Vietnamese error messages would show corrupted text.
 
 Good points: the mobile access token lives only in memory, refresh is in SecureStore, refresh single-flight has a test, `money.ts` uses BigInt, mobile has an Idempotency-Key for transfer/request/split/topup/vault/disburse.

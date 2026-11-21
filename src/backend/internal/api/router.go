@@ -42,11 +42,16 @@ type Deps struct {
 
 // NewRouter builds the Gin engine for the process role.
 func NewRouter(d Deps) *gin.Engine {
-	if d.Cfg.Env != "dev" {
+	if !d.Cfg.IsDev() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
-	r.Use(gin.Recovery(), requestID(), accessLog(d.Log))
+	r.MaxMultipartMemory = 8 << 20 // multipart parts above this go to temp files instead of memory
+	if err := applyTrustedProxies(r, d.Cfg); err != nil {
+		d.Log.Error("invalid TRUSTED_PROXIES; falling back to trusting none", "err", err)
+		_ = r.SetTrustedProxies(nil)
+	}
+	r.Use(gin.Recovery(), requestID(), securityHeaders(d.Cfg), accessLog(d.Log))
 
 	r.GET("/healthz", healthz(d))
 	// Gin doesn't auto-answer HEAD for a GET-only route (unlike some
@@ -78,8 +83,7 @@ func NewRouter(d Deps) *gin.Engine {
 	if d.Cfg.Role.MountsPublicAPI() {
 		// Mock bank callback (F10 E15): shared-secret header, no JWT. Under
 		// /internal/ — a real deploy must block this prefix at the proxy.
-		mockBankH := NewMockBankHandler(walletSvc, d.Cfg.MockBankSecret)
-		r.POST("/internal/mock-bank/callback", mockBankH.Callback)
+		registerMockBank(r, d.Cfg, walletSvc)
 
 		v1 := r.Group("/v1")
 
@@ -88,6 +92,7 @@ func NewRouter(d Deps) *gin.Engine {
 		walletH := NewWalletHandler(walletSvc)
 
 		transferSvc := transfer.NewService(d.Pool, engine, fees)
+		transferSvc.SetAuthenticator(authSvc) // ADR-0014: confirm verifies PIN/OTP on the server
 		qrSvc := qr.NewService(signer)
 		transferH := NewTransferHandler(transferSvc, walletSvc, qrSvc)
 		qrH := NewQRHandler(d.Pool, qrSvc)
@@ -114,9 +119,13 @@ func NewRouter(d Deps) *gin.Engine {
 		me.GET("/fees/preview", transferH.FeePreview)
 
 		// Service Engine Core — Unified 3-Step Execution API for ALL transaction services
-		engineH := NewTransactionEngineHandler(transferSvc)
+		pinH := NewPINHandler(authSvc)
+		me.PUT("/me/pin", RateLimitUser(d.Redis, 10, time.Minute), pinH.Set)
+		me.PATCH("/me/pin", RateLimitUser(d.Redis, 10, time.Minute), pinH.Change)
+		engineH := NewTransactionEngineHandler(transferSvc, d.Cfg)
 		me.POST("/transactions/request", RequireIdempotencyKey(), engineH.RequestTransaction)
-		me.POST("/transactions/confirm", engineH.ConfirmTransaction)
+		me.POST("/transactions/confirm", RateLimitUser(d.Redis, 20, time.Minute), engineH.ConfirmTransaction)
+		me.POST("/transactions/challenge", RateLimitUser(d.Redis, 10, time.Minute), engineH.ChallengeTransaction)
 		me.POST("/transactions/verify", engineH.VerifyTransaction)
 
 		// Vaults: metadata only — money moves via the engine (VAULT_SAVINGS).
@@ -125,8 +134,8 @@ func NewRouter(d Deps) *gin.Engine {
 		me.POST("/vaults", vaultH.Create)
 		me.PATCH("/vaults/:id/round-up-target", vaultH.SetRoundUpTarget)
 
-		me.POST("/money-requests", requestH.Create)
-		me.POST("/money-requests/split", requestH.CreateSplit)
+		me.POST("/money-requests", RequireIdempotencyKey(), requestH.Create)
+		me.POST("/money-requests/split", RequireIdempotencyKey(), requestH.CreateSplit)
 		me.GET("/money-requests/inbox", requestH.Inbox)
 		me.GET("/money-requests/sent", requestH.Sent)
 		me.GET("/money-requests/:id", requestH.Detail)
@@ -136,7 +145,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 		kycSvc := kyc.NewService(d.Pool, engine, files)
 		kycH := NewKYCHandler(kycSvc)
-		me.POST("/kyc/submit", kycH.Submit)
+		me.POST("/kyc/submit", limitKYCBody(), kycH.Submit)
 		me.GET("/kyc/status", kycH.Status)
 	}
 	if d.Cfg.Role.MountsAdminAPI() {
@@ -146,7 +155,7 @@ func NewRouter(d Deps) *gin.Engine {
 		orgSvc := org.NewService(d.Pool, engine, fees)
 		orgH := NewOrgHandler(orgSvc)
 		approvalSvc := approval.NewService(d.Pool, authSvc, d.Log)
-		approvalH := NewApprovalHandler(approvalSvc, d.Cfg.Env)
+		approvalH := NewApprovalHandler(approvalSvc, d.Cfg)
 
 		og := r.Group("/v1/org", RequireAuth(issuer))
 		og.GET("", orgH.ListMyOrgs)
@@ -185,31 +194,44 @@ func NewRouter(d Deps) *gin.Engine {
 		)
 		adm := r.Group("/v1/admin")
 		adm.POST("/auth/login", RateLimit(d.Redis, 5, time.Minute), adminH.Login)
-		adg := adm.Group("", RequireAdmin(adminIssuer))
-		adg.GET("/kyc", adminH.KYCQueue)
-		adg.POST("/kyc/:id/review", adminH.KYCReview)
-		adg.GET("/fraud-flags", adminH.FraudFlags)
-		adg.POST("/fraud-flags/:id/resolve", adminH.ResolveFraudFlag)
-		adg.POST("/reversals", adminH.CreateReversal)
-		adg.GET("/approvals", adminH.AdminApprovals)
-		adg.POST("/approvals/:id/decide", adminH.AdminDecide)
-		adg.POST("/recon/run", adminH.ReconRun)
-		adg.GET("/recon/runs/:date", adminH.ReconGet)
-		adg.GET("/services", adminH.ListServices)
-		adg.GET("/services/:id", adminH.GetService)
-		adg.PUT("/services/:id", adminH.UpdateServiceStatus)
-		adg.GET("/offers", adminH.ListOffers)
-		adg.GET("/offers/:id", adminH.GetOffer)
-		adg.GET("/workflows", adminH.ListWorkflows)
-		adg.GET("/workflows/:id", adminH.GetWorkflow)
-		adg.GET("/audit", adminH.ListAuditLogs)
-		adg.GET("/orgs", adminH.ListOrgs)
-		adg.PUT("/orgs/:id/policies", adminH.UpdateOrgPolicy)
-		adg.GET("/ai/keys", adminH.ListAIKeys)
-		adg.POST("/ai/keys", adminH.CreateAIKey)
-		adg.PUT("/ai/keys/:id", adminH.UpdateAIKey)
-		adg.GET("/ai/settings", adminH.ListAISettings)
-		adg.PUT("/ai/settings", adminH.UpdateAISetting)
+		adg := adm.Group("", RequireAdmin(adminIssuer, d.Pool))
+		// ADR-0015: every admin route names the permission it needs. A route without a
+		// permission entry fails TestEveryAdminRouteHasAPermission.
+		var (
+			kycP      = RequirePermission(auth.PermKYCReview)
+			fraudP    = RequirePermission(auth.PermFraudResolve)
+			workflowP = RequirePermission(auth.PermWorkflowAction)
+			reconP    = RequirePermission(auth.PermReconRun)
+			orgsReadP = RequirePermission(auth.PermOrgsEdit, auth.PermWorkflowAction)
+			orgsEditP = RequirePermission(auth.PermOrgsEdit)
+			aiP       = RequirePermission(auth.PermAIManage)
+			catalogP  = RequirePermission(auth.PermAdminsManage)
+			anyP      = RequirePermission() // any permission at all: a viewer sees nothing
+		)
+		adg.GET("/kyc", kycP, adminH.KYCQueue)
+		adg.POST("/kyc/:id/review", kycP, adminH.KYCReview)
+		adg.GET("/fraud-flags", fraudP, adminH.FraudFlags)
+		adg.POST("/fraud-flags/:id/resolve", fraudP, adminH.ResolveFraudFlag)
+		adg.POST("/reversals", workflowP, adminH.CreateReversal)
+		adg.GET("/approvals", workflowP, adminH.AdminApprovals)
+		adg.POST("/approvals/:id/decide", workflowP, adminH.AdminDecide)
+		adg.POST("/recon/run", reconP, adminH.ReconRun)
+		adg.GET("/recon/runs/:date", reconP, adminH.ReconGet)
+		adg.GET("/services", anyP, adminH.ListServices)
+		adg.GET("/services/:id", anyP, adminH.GetService)
+		adg.PUT("/services/:id", catalogP, adminH.UpdateServiceStatus)
+		adg.GET("/offers", anyP, adminH.ListOffers)
+		adg.GET("/offers/:id", anyP, adminH.GetOffer)
+		adg.GET("/workflows", workflowP, adminH.ListWorkflows)
+		adg.GET("/workflows/:id", workflowP, adminH.GetWorkflow)
+		adg.GET("/audit", anyP, adminH.ListAuditLogs)
+		adg.GET("/orgs", orgsReadP, adminH.ListOrgs)
+		adg.PUT("/orgs/:id/policies", orgsEditP, adminH.UpdateOrgPolicy)
+		adg.GET("/ai/keys", aiP, adminH.ListAIKeys)
+		adg.POST("/ai/keys", aiP, adminH.CreateAIKey)
+		adg.PUT("/ai/keys/:id", aiP, adminH.UpdateAIKey)
+		adg.GET("/ai/settings", aiP, adminH.ListAISettings)
+		adg.PUT("/ai/settings", aiP, adminH.UpdateAISetting)
 
 		// Stored artifacts (KYC images, recon xlsx) are self-authorizing
 		// (HMAC + 5' expiry) — no JWT here.
@@ -254,22 +276,18 @@ func healthz(d Deps) gin.HandlerFunc {
 		defer cancel()
 
 		status := http.StatusOK
-		checks := gin.H{}
 
-		if err := d.Pool.Ping(ctx); err != nil {
-			checks["postgres"] = err.Error()
+		pgErr := d.Pool.Ping(ctx)
+		redisErr := d.Redis.Ping(ctx).Err()
+		if pgErr != nil {
+			d.Log.Warn("healthz: postgres ping failed", "err", pgErr)
 			status = http.StatusServiceUnavailable
-		} else {
-			checks["postgres"] = "ok"
 		}
-		if err := d.Redis.Ping(ctx).Err(); err != nil {
-			checks["redis"] = err.Error()
+		if redisErr != nil {
+			d.Log.Warn("healthz: redis ping failed", "err", redisErr)
 			status = http.StatusServiceUnavailable
-		} else {
-			checks["redis"] = "ok"
 		}
-
-		c.JSON(status, gin.H{"status": statusWord(status), "role": d.Cfg.Role, "checks": checks})
+		c.JSON(status, healthBody(d.Cfg, pgErr, redisErr))
 	}
 }
 

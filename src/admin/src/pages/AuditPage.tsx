@@ -5,7 +5,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useAuditQueries, type AuditLogItem } from '@/queries';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -28,7 +28,7 @@ export default function AuditPage() {
     [queryParams.page, queryParams.limit, queryParams.sort, queryParams.order, globalFilter]
   );
 
-  const { data, isLoading } = useAuditQueries(serverParams);
+  const { data, isLoading, error } = useAuditQueries(serverParams);
   const logs = data?.rows ?? [];
   const total = data?.total ?? 0;
 
@@ -109,6 +109,8 @@ export default function AuditPage() {
           className="h-9 w-80 rounded-lg border border-slate-200 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
         />
       </div>
+
+      <ErrorNotice error={error} what="audit log" />
 
       {/* TanStack Table Integration */}
       <DataTable table={table} isLoading={isLoading} totalCount={total} />

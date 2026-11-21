@@ -16,9 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/hieumai1507/hpay-backend/internal/api"
-	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 	"github.com/hieumai1507/hpay-backend/internal/user"
-	"github.com/hieumai1507/hpay-backend/internal/wallet"
 )
 
 // "Test User" (testutil fixture name) masked per the locked format.
@@ -228,32 +226,4 @@ func TestLookup_MaskedAndUniform404(t *testing.T) {
 	}
 }
 
-func TestUsersMe_TxnLimitMatchesTier(t *testing.T) {
-	e := newEnv(t, "")
-	ctx := context.Background()
-	userID, _, _ := e.userWithMoney(t, 0)
-	r := userRouter(t, e, userID)
-
-	for _, tier := range []store.KycStatus{
-		store.KycStatusNone, store.KycStatusPending, store.KycStatusManualReview,
-		store.KycStatusVerified, store.KycStatusAutoApproved, store.KycStatusRejected,
-	} {
-		if _, err := e.pool.Exec(ctx, `UPDATE users SET kyc_status=$1 WHERE id=$2`, tier, userID); err != nil {
-			t.Fatal(err)
-		}
-		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/users/me", nil))
-		if w.Code != http.StatusOK {
-			t.Fatalf("me(%s): want 200, got %d", tier, w.Code)
-		}
-		var body struct {
-			TxnLimit int64 `json:"txn_limit"`
-		}
-		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-			t.Fatal(err)
-		}
-		if want := wallet.TxnLimit(tier); body.TxnLimit != want {
-			t.Errorf("txn_limit(%s): want %d (server truth), got %d", tier, want, body.TxnLimit)
-		}
-	}
-}
+// The per-tier txn_limit now comes from the user's offer: see TestUsersMe_ReportsOfferLimits in offer_limits_test.go.

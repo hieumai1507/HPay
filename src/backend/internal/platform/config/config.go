@@ -6,8 +6,26 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
+)
+
+// Environment names (ADR-0012). APP_ENV is required and must be one of these.
+const (
+	EnvDev        = "dev"
+	EnvCI         = "ci"
+	EnvDemo       = "demo"
+	EnvProduction = "production"
+)
+
+// validEnvs lists the allowed APP_ENV values in the order shown in errors.
+var validEnvs = []string{EnvDev, EnvCI, EnvDemo, EnvProduction}
+
+// Known placeholder secrets that must never be accepted outside dev and ci.
+const (
+	devMockBankSecret = "dev-mock-bank-secret"
+	exampleJWTSecret  = "dev-secret-change-me-32-bytes-min!!"
 )
 
 // Role decides which surfaces a process serves.
@@ -41,7 +59,7 @@ func (r Role) MountsPublicAPI() bool { return r == RoleAPI || r == RoleAll }
 func (r Role) MountsAdminAPI() bool { return r == RoleAdmin || r == RoleAll }
 
 type Config struct {
-	Env         string // dev | ci | demo
+	Env         string // dev | ci | demo | production (required, validated; see ADR-0012)
 	Role        Role
 	HTTPPort    int
 	DatabaseURL string
@@ -56,12 +74,32 @@ type Config struct {
 	CloudinaryCloudName string
 	CloudinaryAPIKey    string
 	CloudinaryAPISecret string
+	// TrustedProxies lists proxy addresses/CIDRs whose X-Forwarded-For is trusted
+	// (env TRUSTED_PROXIES, comma separated). Empty means trust none.
+	TrustedProxies []string
 }
 
+// IsDev is true only for APP_ENV=dev: the single environment that may return
+// OTP codes in responses and load a local .env file.
+func (c Config) IsDev() bool { return c.Env == EnvDev }
+
+// IsProduction is true only for APP_ENV=production: the real outbound gateway,
+// HSTS, and the strictest secret checks.
+func (c Config) IsProduction() bool { return c.Env == EnvProduction }
+
+// AllowsMockBank reports whether the simulated bank callback route may be mounted.
+func (c Config) AllowsMockBank() bool { return c.Env != EnvProduction }
+
+// requiresStrongSecrets is true for every environment except dev and ci.
+func (c Config) requiresStrongSecrets() bool { return c.Env != EnvDev && c.Env != EnvCI }
+
 func Load(role string) (Config, error) {
-	// Dev convenience: read ./.env if present. Existing environment variables
-	// always win (godotenv does not override), so CI/prod are unaffected.
-	_ = godotenv.Load()
+	// Dev convenience: read ./.env if present, but only when the process was
+	// explicitly started as dev. APP_ENV must come from the real environment, so a
+	// stray .env can never switch a process into dev. Existing variables still win.
+	if os.Getenv("APP_ENV") == EnvDev {
+		_ = godotenv.Load()
+	}
 
 	r := Role(role)
 	if !r.Valid() {
@@ -69,7 +107,7 @@ func Load(role string) (Config, error) {
 	}
 
 	cfg := Config{
-		Env:         getenv("APP_ENV", "dev"),
+		Env:         os.Getenv("APP_ENV"),
 		Role:        r,
 		HTTPPort:    getenvInt("HTTP_PORT", 8080),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -78,12 +116,22 @@ func Load(role string) (Config, error) {
 
 		KYCStorageDir: getenv("KYC_STORAGE_DIR", "./data/kyc"),
 
-		MockBankSecret: getenv("MOCK_BANK_SECRET", "dev-mock-bank-secret"),
+		MockBankSecret: os.Getenv("MOCK_BANK_SECRET"),
 
 		StorageProvider:     getenv("STORAGE_PROVIDER", "local"),
 		CloudinaryCloudName: os.Getenv("CLOUDINARY_CLOUD_NAME"),
 		CloudinaryAPIKey:    os.Getenv("CLOUDINARY_API_KEY"),
 		CloudinaryAPISecret: os.Getenv("CLOUDINARY_API_SECRET"),
+		TrustedProxies:      splitList(os.Getenv("TRUSTED_PROXIES")),
+	}
+
+	if !isValidEnv(cfg.Env) {
+		return Config{}, fmt.Errorf("APP_ENV %q is not valid: it is required and must be one of %s", cfg.Env, strings.Join(validEnvs, ", "))
+	}
+	// Outside dev and ci an unset mock bank secret is an error; inside them the
+	// historical dev default keeps local runs and tests working.
+	if cfg.MockBankSecret == "" && !cfg.requiresStrongSecrets() {
+		cfg.MockBankSecret = devMockBankSecret
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -92,8 +140,16 @@ func Load(role string) (Config, error) {
 	if cfg.JWTSecret == "" {
 		return Config{}, fmt.Errorf("JWT_SECRET is required")
 	}
-	if len(cfg.JWTSecret) < 32 && cfg.Env != "dev" {
-		return Config{}, fmt.Errorf("JWT_SECRET must be at least 32 bytes outside dev")
+	if cfg.requiresStrongSecrets() {
+		if len(cfg.JWTSecret) < 32 {
+			return Config{}, fmt.Errorf("JWT_SECRET must be at least 32 bytes when APP_ENV=%s", cfg.Env)
+		}
+		if cfg.JWTSecret == exampleJWTSecret {
+			return Config{}, fmt.Errorf("JWT_SECRET is the placeholder from .env.example; set a random secret when APP_ENV=%s", cfg.Env)
+		}
+		if cfg.MockBankSecret == "" || cfg.MockBankSecret == devMockBankSecret {
+			return Config{}, fmt.Errorf("MOCK_BANK_SECRET must be set to a non-default value when APP_ENV=%s", cfg.Env)
+		}
 	}
 	if cfg.StorageProvider == "cloudinary" {
 		if cfg.CloudinaryCloudName == "" || cfg.CloudinaryAPIKey == "" || cfg.CloudinaryAPISecret == "" {
@@ -101,6 +157,26 @@ func Load(role string) (Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+func isValidEnv(e string) bool {
+	for _, v := range validEnvs {
+		if e == v {
+			return true
+		}
+	}
+	return false
+}
+
+// splitList splits a comma separated list, trimming spaces and dropping empties.
+func splitList(s string) []string {
+	var out []string
+	for _, p := range strings.Split(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func getenv(key, def string) string {

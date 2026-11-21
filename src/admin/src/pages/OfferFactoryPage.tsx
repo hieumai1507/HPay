@@ -6,7 +6,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table';
 import { useOffers, type OfferPackage } from '@/queries';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -16,7 +16,7 @@ export default function OfferFactoryPage() {
   const navigate = useNavigate();
   const { pagination, setPagination, sorting, setSorting, globalFilter, setGlobalFilter, queryParams } =
     useTableQueryState({ initialPageSize: 10 });
-  const { data, isLoading } = useOffers({
+  const { data, isLoading, error } = useOffers({
     page: queryParams.page,
     limit: queryParams.limit,
     name: globalFilter || undefined,
@@ -126,6 +126,7 @@ export default function OfferFactoryPage() {
       </div>
 
       <div className="flex flex-col gap-3">
+        <ErrorNotice error={error} what="offers" />
         <DataTable
           table={table}
           isLoading={isLoading}

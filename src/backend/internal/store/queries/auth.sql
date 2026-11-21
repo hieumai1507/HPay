@@ -59,3 +59,38 @@ SELECT id, phone, full_name, kyc_status, status FROM users WHERE id = $1;
 -- name: GetAdminByEmail :one
 SELECT id, email, password_hash, full_name, role, status
 FROM admin_users WHERE email = $1;
+
+-- name: GetUserPINState :one
+-- Credentials for PIN verification. Never selected by list or profile queries.
+SELECT pin_hash, pin_failed_attempts, pin_locked_until, password_hash
+FROM users WHERE id = $1;
+
+-- name: SetUserPIN :exec
+-- Setting or changing the PIN clears the attempt counter and any lock.
+UPDATE users
+SET pin_hash = $2, pin_failed_attempts = 0, pin_locked_until = NULL, updated_at = now()
+WHERE id = $1;
+
+-- name: RecordPINFailure :one
+-- Atomic increment. If an earlier lock has expired the count restarts at 1. The
+-- fifth consecutive failure locks PIN use for 15 minutes.
+UPDATE users SET
+  pin_failed_attempts = CASE WHEN pin_locked_until IS NOT NULL AND pin_locked_until <= now()
+                             THEN 1 ELSE pin_failed_attempts + 1 END,
+  pin_locked_until = CASE
+    WHEN (CASE WHEN pin_locked_until IS NOT NULL AND pin_locked_until <= now()
+               THEN 1 ELSE pin_failed_attempts + 1 END) >= 5
+      THEN now() + interval '15 minutes'
+    WHEN pin_locked_until IS NOT NULL AND pin_locked_until <= now() THEN NULL
+    ELSE pin_locked_until END
+WHERE id = $1
+RETURNING pin_failed_attempts, pin_locked_until;
+
+-- name: ResetPINFailures :exec
+UPDATE users SET pin_failed_attempts = 0, pin_locked_until = NULL
+WHERE id = $1 AND (pin_failed_attempts <> 0 OR pin_locked_until IS NOT NULL);
+
+-- name: GetAdminByID :one
+-- Loaded on every admin request (ADR-0015): the role and status come from the
+-- database, never from the token, so a lock or demotion takes effect immediately.
+SELECT id, email, full_name, role, status FROM admin_users WHERE id = $1;

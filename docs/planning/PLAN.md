@@ -315,3 +315,36 @@ Wave 5 depends only on W0, so it can run in parallel with W1 to save time. Each 
 | OFFER_CUST_L2 | tier 2 | 100,000,000 (seed) | 500,000,000 (seed) | 2,000,000,000 (seed) | 200,000,000 (seed) |
 
 Cells marked "seed" or "placeholder" exist in the migrations today; "placeholder" means a default inserted so the guard does not block demo flows, not a product decision. Every "?" is a product decision still to be made.
+
+## Status 2026-11-21 (end of the first implementation pass)
+
+State: Waves 1 to 4 and the knowledge base are implemented in one working tree and committed together; Wave 6 is partly done. ADR-0010 to ADR-0015 are accepted by the owner. Evidence: `docs/handoff/final-report.md`, `docs/quality/security-scans.md`, `docs/bugs/INDEX.md`.
+
+### Done
+BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency per user, including org), BE-H3/H4 (reversal integrity, `needs_manual`, `compensation_failed`, stuck-compensation recovery), BE-H6 (admin RBAC from the database), BE-H7 (explicit APP_ENV, environment guards), SSRF guard, KYC upload validation (upload part of BE-H9), KYC limits attached to offers (ADR-0007: L0/L1/L2, KYC outcome selects the offer, `wallet.TxnLimit` removed), admin and mobile hardening, foreign-project names removed from code, documentation as an English Markdown knowledge base.
+
+### Open gaps (each needs its own `hpay-feature` or `hpay-bugfix` run)
+| # | Gap | Why it matters | Next step |
+|---|-----|----------------|-----------|
+| G1 | Go toolchain 1.25 has 18 reachable `govulncheck` findings, all fixed in Go 1.26.x (`net/http`, `crypto/tls`, `x/net`, `x/text`, plus `excelize` pseudo-versions) | known CVEs in the HTTP stack | owner decides on Go 1.26; then bump `go.mod`, CI image and Dockerfile |
+| G2 | Mobile `npm audit`: high findings in `@xmldom/xmldom` (Expo toolchain) | build-time dependency | Expo SDK bump |
+| G3 | `gosec`, `gitleaks` not run (not installed); Playwright e2e not run | static and browser coverage missing | add both scanners to CI; run e2e against backend plus seed |
+| G4 | QA workbooks: only TC-IDM merged; TC-LED, ENV, REV, AUT, RBA, SSRF, KYC, offer-limits cases live only in `docs/specs/*/test-cases.md` | traceability from case to test | run `hpay-qa-testcases` with `--allow-new-ids`, record results |
+| G5 | No 2FA provider; the 2fa band is refused, so amounts above 50M VND cannot be sent | business flow blocked | choose a provider (ADR) and implement |
+| G6 | PIN reset flow and the mobile set-PIN screen do not exist | a user cannot recover a locked or forgotten PIN | feature run |
+| G7 | BE-H8: no login lockout and no constant-time handling | brute force | bugfix run |
+| G8 | BE-H9 remainder: public Cloudinary delivery, file-link signing key is the JWT secret, no identity-bound audited file access, no EXIF strip, no orphan cleanup | KYC images are personal data | ADR plus feature run |
+| G9 | Weekly rolling limits, balance-ceiling enforcement (`primary_pocket_max` is stored only), single-vs-multi currency, per-tier auth thresholds; 25,000 VND per USD is an assumption | the approved T0/T1/T2 table is only partly enforced | spec plus ADR for the window feature |
+| G10 | Nothing assigns `OFFER_CUST_L2`; the L2 qualification is undefined; registration creates no `user_offers` row | tier T2 unreachable except by hand | product decision |
+| G11 | Compliance review per jurisdiction for the limit table | numbers come from third-party blogs, not regulation | legal review |
+| G12 | No admin UI or alert for `needs_manual` approvals or `compensation_failed` instances | parked money cases are invisible | admin feature run |
+| G13 | Admin cannot edit offers (no write route); offers change only by migration | operations | feature run |
+| G14 | Pre-existing lint errors: admin 6, mobile 3 | quality gate | fix or baseline |
+| G15 | Fraud LLM advisory is fire-and-forget; rule errors are retryable (fail-closed verified) but there is no test for an advisor outage | regression guard | add a test |
+| G16 | Wave 5 content fixes still open: some history docs still mention TMDS, DEH, MoMo (kept as history), mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
+| G17 | Key rotation (Neon, Cloudinary, JWT) postponed by the owner; the local `.env` JWT secret is the public placeholder | secrets | owner, when ready |
+| G18 | Daily and monthly windows use the server time zone and read-then-insert (BE-H2) | race on the limit window | bugfix run |
+| G19 | Outbox and consumer idempotency for non-money steps | duplicate side effects | review per handler |
+
+### Breaking changes of this pass
+`APP_ENV` is required; confirming a payment needs a PIN (users must set one); the 2fa band is refused; users without an offer fall to L0 (2,500,000 VND per transaction).

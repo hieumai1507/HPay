@@ -9,9 +9,10 @@ import {
   useDecideApproval,
   type AdminApprovalItem,
 } from '@/queries/useApprovalQueries';
+import { formatVnd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 import { useToastStore } from '@/stores/toast';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
 
 const columnHelper = createColumnHelper<AdminApprovalItem>();
 
@@ -23,8 +24,8 @@ function subjectTone(subject: string): 'danger' | 'warning' | 'info' {
   return 'info';
 }
 
-function formatVnd(v: number) {
-  return v ? `${v.toLocaleString('vi-VN')} ₫` : '—';
+function formatTaskAmount(v: number) {
+  return v ? formatVnd(v) : '—';
 }
 
 export default function MyTasksPage() {
@@ -43,7 +44,7 @@ export default function MyTasksPage() {
     [queryParams.page, queryParams.limit]
   );
 
-  const { data, isLoading } = useAdminApprovals(serverParams);
+  const { data, isLoading, error } = useAdminApprovals(serverParams);
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
 
@@ -98,7 +99,7 @@ export default function MyTasksPage() {
       columnHelper.accessor('amount', {
         header: 'Số tiền',
         cell: (info) => (
-          <span className="tabular-nums font-semibold">{formatVnd(info.getValue())}</span>
+          <span className="tabular-nums font-semibold">{formatTaskAmount(info.getValue())}</span>
         ),
       }),
       columnHelper.accessor('reason', {
@@ -163,6 +164,7 @@ export default function MyTasksPage() {
         </p>
       </div>
 
+      <ErrorNotice error={error} what="approvals" />
       <DataTable
         table={table}
         isLoading={isLoading}
@@ -179,7 +181,7 @@ export default function MyTasksPage() {
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {selected.refCode ? `Giao dịch ${selected.refCode} · ` : ''}
-                {formatVnd(selected.amount)}
+                {formatTaskAmount(selected.amount)}
               </p>
             </div>
 

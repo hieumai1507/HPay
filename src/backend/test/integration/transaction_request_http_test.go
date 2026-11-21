@@ -20,13 +20,14 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/hieumai1507/hpay-backend/internal/api"
+	"github.com/hieumai1507/hpay-backend/internal/platform/config"
 )
 
 func transactionRequestRouter(t *testing.T, e *env, asUser uuid.UUID) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := api.NewTransactionEngineHandler(e.svc)
+	h := api.NewTransactionEngineHandler(e.svc, config.Config{Env: config.EnvCI})
 	auth := func(c *gin.Context) { c.Set("user_id", asUser.String()); c.Next() }
 	r.POST("/v1/transactions/request", auth, api.RequireIdempotencyKey(), h.RequestTransaction)
 	return r

@@ -171,3 +171,11 @@ WHERE r.status = 'pending' AND r.expires_at > now()
     SELECT 1 FROM approval_actions a
     WHERE a.request_id = r.id AND a.checker_id = sqlc.arg(checker_id))
 ORDER BY r.created_at;
+
+-- name: MarkApprovalNeedsManual :one
+-- ADR-0013: a request whose effect could not be applied (for example a reversal
+-- whose receiver no longer holds the money) is parked instead of staying pending.
+-- Guarded pending -> needs_manual; whoever loses the race gets no row.
+UPDATE approval_requests SET status = 'needs_manual', finalized_at = now()
+WHERE id = $1 AND status = 'pending'
+RETURNING id;

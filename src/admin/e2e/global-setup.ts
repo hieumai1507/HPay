@@ -20,9 +20,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CACHE_DIR = path.join(__dirname, '.auth');
 export const SESSIONS_FILE = path.join(CACHE_DIR, 'sessions.json');
 
+// Default matches the backend e2e seed; override with E2E_ADMIN_PASSWORD.
+const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'E2ETest@123';
+
 const CREDENTIALS = [
-  { email: 'e2e-maker@HPay.dev', password: 'E2ETest@123' },
-  { email: 'e2e-checker@HPay.dev', password: 'E2ETest@123' },
+  { email: 'e2e-maker@HPay.dev', password: E2E_ADMIN_PASSWORD },
+  { email: 'e2e-checker@HPay.dev', password: E2E_ADMIN_PASSWORD },
 ];
 
 export default async function globalSetup() {

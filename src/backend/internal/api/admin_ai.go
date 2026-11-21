@@ -1,7 +1,9 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,6 +35,7 @@ func (h *AdminHandler) CreateAIKey(c *gin.Context) {
 		respondErr(c, err)
 		return
 	}
+	h.auditAdmin(c, "ai.key.create", "ai_key "+key.ID.String(), "provider="+req.Provider+" name="+req.Name)
 
 	c.JSON(http.StatusOK, key)
 }
@@ -78,6 +81,9 @@ func (h *AdminHandler) UpdateAIKey(c *gin.Context) {
 		respondErr(c, err)
 		return
 	}
+	// Record WHAT changed, never the key: only whether the secret was replaced.
+	h.auditAdmin(c, "ai.key.update", "ai_key "+id.String(),
+		"name="+req.Name+" active="+strconv.FormatBool(req.IsActive)+" secret_replaced="+strconv.FormatBool(req.APIKey != ""))
 
 	c.JSON(http.StatusOK, key)
 }
@@ -148,6 +154,22 @@ func (h *AdminHandler) UpdateAISetting(c *gin.Context) {
 		respondErr(c, err)
 		return
 	}
+	h.auditAdmin(c, "ai.setting.update", "ai_setting "+req.FunctionName,
+		"provider="+req.Provider+" model="+req.ModelName+" key_id="+keyID.String())
 
 	c.JSON(http.StatusOK, setting)
+}
+
+// auditAdmin writes an audit row for a destructive or configuration action by the
+// calling admin (constitution C-08). The reason must never contain secrets; callers
+// pass identifiers and non-secret attributes only. A failure to write the row is
+// logged and does not undo the action, but is visible to operators.
+func (h *AdminHandler) auditAdmin(c *gin.Context, action, resource, reason string) {
+	if err := h.q.InsertAudit(c.Request.Context(), store.InsertAuditParams{
+		ActorID: mustAdminID(c), ActorType: "admin", Action: action, Resource: resource,
+		Reason: pgtype.Text{String: reason, Valid: reason != ""},
+		Ip:     pgtype.Text{String: c.ClientIP(), Valid: c.ClientIP() != ""},
+	}); err != nil {
+		slog.Default().Error("admin audit write failed", "action", action, "err", err)
+	}
 }

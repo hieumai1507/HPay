@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountVND, percentOf } from '@/src/lib/money';
 import { color } from './tokens';
 
 // Distinct per-person identity colors, cycled by position — mirrors the
@@ -43,7 +43,7 @@ function hoursRemaining(expiresAt?: string): number | null {
  */
 export function SplitAvatarStack({ participants, collectedAmount, totalAmount, expiresAt }: SplitAvatarStackProps) {
   const paidCount = participants.filter((p) => p.paid).length;
-  const pct = totalAmount > 0n ? Math.min(100, Number((collectedAmount * 100n) / totalAmount)) : 0;
+  const pct = percentOf(collectedAmount, totalAmount);
   const hoursLeft = hoursRemaining(expiresAt);
 
   return (

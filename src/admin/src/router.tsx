@@ -4,6 +4,9 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { LoginPage } from '@/features/auth/LoginPage';
 import { RequireAdmin } from '@/features/auth/RequireAdmin';
+import { RequirePermission } from '@/features/auth/RequirePermission';
+import { ROUTE_ACCESS } from '@/lib/access';
+import type { Permission } from '@/stores/admin';
 import { Layout } from '@/ui';
 
 import { ErrorPage } from './pages/ErrorPage';
@@ -22,6 +25,11 @@ const ReconPage = lazy(() => import('@/pages/ReconPage'));
 const OrgsPage = lazy(() => import('@/pages/OrgsPage'));
 const AISettingsPage = lazy(() => import('@/pages/AISettingsPage'));
 const AuditPage = lazy(() => import('@/pages/AuditPage'));
+
+/** UX-only role guard (the backend does not enforce admin roles yet, audit BE-H6). */
+function guarded(anyOf: readonly Permission[], node: ReactNode) {
+  return <RequirePermission anyOf={anyOf}>{page(node)}</RequirePermission>;
+}
 
 function page(node: ReactNode) {
   return <Suspense fallback={<div style={{ padding: 24, color: 'var(--n500)' }}>Đang tải…</div>}>{node}</Suspense>;
@@ -42,17 +50,17 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: page(<DashboardPage />) },
       { path: 'kyc', element: page(<KYCPage />) },
       { path: 'kyc/:id', element: page(<KYCDetailPage />) },
-      { path: 'fraud', element: page(<FraudPage />) },
+      { path: 'fraud', element: guarded(ROUTE_ACCESS['/fraud'], <FraudPage />) },
       { path: 'workflows', element: page(<WorkflowPage />) },
       { path: 'workflows/:id', element: page(<WorkflowDetailPage />) },
       { path: 'tasks', element: page(<MyTasksPage />) },
-      { path: 'recon', element: page(<ReconPage />) },
-      { path: 'services', element: page(<ServiceCatalogPage />) },
-      { path: 'offers', element: page(<OfferFactoryPage />) },
-      { path: 'offers/:id', element: page(<OfferDetailPage />) },
-      { path: 'orgs', element: page(<OrgsPage />) },
-      { path: 'ai-settings', element: page(<AISettingsPage />) },
-      { path: 'audit', element: page(<AuditPage />) },
+      { path: 'recon', element: guarded(ROUTE_ACCESS['/recon'], <ReconPage />) },
+      { path: 'services', element: guarded(ROUTE_ACCESS['/services'], <ServiceCatalogPage />) },
+      { path: 'offers', element: guarded(ROUTE_ACCESS['/offers'], <OfferFactoryPage />) },
+      { path: 'offers/:id', element: guarded(ROUTE_ACCESS['/offers'], <OfferDetailPage />) },
+      { path: 'orgs', element: guarded(ROUTE_ACCESS['/orgs'], <OrgsPage />) },
+      { path: 'ai-settings', element: guarded(ROUTE_ACCESS['/ai-settings'], <AISettingsPage />) },
+      { path: 'audit', element: guarded(ROUTE_ACCESS['/audit'], <AuditPage />) },
     ],
   },
   { path: '*', element: <ErrorPage notFound /> },

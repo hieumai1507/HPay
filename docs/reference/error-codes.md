@@ -27,7 +27,8 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 | ERR_OTP_MAX_ATTEMPTS | 400 | OTP attempts exhausted | auth.ErrOTPMaxAttempts |
 | ERR_OTP_INVALID | 400 | OTP code wrong | auth.ErrOTPMismatch |
 | ERR_AMOUNT_INVALID | 400 | Amount not positive | wallet.ErrAmountInvalid |
-| ERR_LIMIT_EXCEEDED | 400 | Above KYC tier transaction limit | wallet.ErrLimitExceeded |
+| ERR_LIMIT_EXCEEDED | 400 | Above the org per-transaction cap (org topup and disbursement only; personal limits come from the offer: `ERR_LIMIT_PER_TXN`, `ERR_LIMIT_DAILY`, `ERR_LIMIT_MONTHLY`) | wallet.ErrLimitExceeded |
+| ERR_OFFER_INACTIVE | 403 | The user's offer is inactive; it does not fall back to another offer | offerguard.ErrOfferInactive |
 | ERR_WALLET_NOT_FOUND | 404 | Wallet not found | wallet.ErrWalletNotFound |
 | ERR_TXN_NOT_FOUND | 404 | Transaction not found | wallet.ErrTxnNotFound, reversal.ErrTxnNotFound |
 | ERR_RECEIVER_NOT_FOUND | 404 | Receiver or payer not found | transfer.ErrReceiverNotFound, org.ErrReceiverNotFound, moneyrequest.ErrPayerNotFound |
@@ -35,6 +36,7 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 | ERR_VAULT_LABEL_TAKEN | 409 | Vault name already used by the user | vault.ErrLabelTaken |
 | ERR_VAULT_DIRECTION_INVALID | 400 | Direction not deposit/withdraw | vault.ErrDirectionInvalid |
 | ERR_VALIDATION | 400 | Invalid input | vault.ErrLabelRequired, org.ErrBadRole, moneyrequest.ErrBadSplit, kyc.ErrBadImage, respondValidation |
+| ERR_PAYLOAD_TOO_LARGE | 413 | Request body too large | `/v1/kyc/submit` body above 12 MiB (`respondTooLarge`) |
 | ERR_SERVICE_NOT_IN_OFFER | 403 | Service not in the user's offer | offerguard.ErrServiceNotInOffer |
 | ERR_SERVICE_DISABLED | 403 | Service disabled in the offer | offerguard.ErrServiceDisabled |
 | ERR_AMOUNT_BELOW_MIN | 400 | Below offer minimum | offerguard.ErrBelowMin |
@@ -65,6 +67,7 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 | ERR_REQUEST_EXPIRED | 410 | Request expired | moneyrequest.ErrExpired |
 | ERR_FORBIDDEN | 403 | Not allowed on this money request | moneyrequest.ErrForbidden |
 | ERR_REMIND_TOO_SOON | 429 | Reminder cooldown | moneyrequest.ErrRemindTooSoon |
+| ERR_IDEMPOTENCY_KEY_REUSED | 409 | The same user already used this `Idempotency-Key` for a different request (ADR-0011) | wallet.ErrIdempotencyKeyReused |
 | ERR_KYC_ALREADY_PENDING | 409 | KYC in progress | kyc.ErrAlreadyPending |
 | ERR_KYC_ALREADY_VERIFIED | 409 | KYC already verified | kyc.ErrAlreadyVerified |
 | ERR_KYC_NOT_FOUND | 404 | KYC request not found | kyc.ErrKYCNotFound |
@@ -90,7 +93,7 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 |---|---|---|
 | ERR_INVALID_TOKEN | 401 | `RequireAuth` (missing bearer), `admin_handler.go` (admin token) |
 | ERR_RATE_LIMITED | 429 | `RateLimit`, `RateLimitUser` in middleware.go |
-| ERR_IDEMPOTENCY_KEY_REQUIRED | 400 | `RequireIdempotencyKey` (missing or longer than 64 chars) |
+| ERR_IDEMPOTENCY_KEY_REQUIRED | 400 | `RequireIdempotencyKey` (missing or longer than 64 chars); also `errTable` via wallet.ErrIdempotencyKeyRequired when a service is called without a key |
 | ERR_INVALID_CALLBACK_SECRET | 401 (per spec) | mockbank_handler.go |
 | ERR_KEY_NOT_FOUND | 404 | admin_ai.go (setting references unknown AI key) |
 | ERR_KEY_INACTIVE | 400 | admin_ai.go (setting references inactive key) |
@@ -114,3 +117,18 @@ Package-level sentinel errors defined under `internal/` that `respondErr` cannot
 | ErrDefinitionNotFound | workflow | Missing/inactive workflow definition (for example an unknown service workflow_name); 500 |
 
 Also unmapped: raw database errors (unique violation 23505 on `transactions.reversal_of` races or `idempotency_key` collisions, FK errors), uuid parse failures that handlers ignore, and the engine confirm/verify "transaction not found" string error (audit BE-C2) which is not an `errTable` match.
+
+## Added by ADR-0014 (transaction authentication)
+
+| Code | HTTP | Meaning | Raised in |
+|------|------|---------|-----------|
+| ERR_PIN_WEAK | 400 | PIN is not 6 digits, or all the same digit, or a sequence | uth.ErrWeakPIN |
+| ERR_PIN_NOT_SET | 403 | the user has no PIN; set one first | uth.ErrPINNotSet |
+| ERR_PIN_INCORRECT | 403 | wrong PIN (counts toward the lockout) | uth.ErrPINIncorrect |
+| ERR_PIN_LOCKED | 429 | five wrong PINs; PIN use locked for 15 minutes | uth.ErrPINLocked |
+| ERR_AUTH_METHOD_UNAVAILABLE | 422 | the offer needs a method with no provider (2fa) | 	ransfer.ErrAuthMethodUnavailable |
+| ERR_AUTH_EXPIRED | 410 | not confirmed within 10 minutes | 	ransfer.ErrAuthExpired |
+| ERR_CREDENTIAL_REQUIRED | 400 | the method needs a credential the caller did not send | 	ransfer.ErrCredentialRequired |
+| ERR_ALREADY_CONFIRMED | 409 | the transaction is not waiting for authentication | 	ransfer.ErrAlreadyConfirmed |
+| ERR_AUTH_NOT_CONFIGURED | 503 | the service was built without an authenticator | 	ransfer.ErrAuthNotConfigured |
+| ERR_TXN_NOT_FOUND | 404 | also returned by confirm for ANOTHER user's transaction | 	ransfer.ErrTxnNotFound |

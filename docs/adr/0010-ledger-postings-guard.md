@@ -17,7 +17,7 @@ constitution: [C-02, C-06]
 
 # ADR-0010: Guard ledger postings with a unique (transaction, kind) record
 
-Status: **proposed**. Needs the user's approval before any code is written.
+Status: **proposed**. Approved by the user on 2026-11-21 (design gate passed). Implemented in the working tree (migration 000014, `internal/ledger`, 8 call sites, tests) and verified with the full backend suite; it moves to `accepted` when the user approves the commit.
 
 ## Context
 `ledger.Post` can be applied twice to the same transaction, because the worker records a step's completion in a different database transaction than the handler's money movement, and event delivery is at-least-once (audit BE-C1, `domain/ledger.md`, `domain/workflow-engine.md`). `ledger_entries` cannot carry a simple unique key on `transaction_id`, because compensation and round-up legitimately post again on a transaction that was already posted.

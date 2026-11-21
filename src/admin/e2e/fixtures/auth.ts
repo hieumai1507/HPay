@@ -15,8 +15,12 @@ import { SESSIONS_FILE } from '../global-setup';
  *   e2e-checker@HPay.dev  role=superadmin  (checker in My Tasks specs)
  */
 
-export const MAKER = { email: 'e2e-maker@HPay.dev', password: 'E2ETest@123' };
-export const CHECKER = { email: 'e2e-checker@HPay.dev', password: 'E2ETest@123' };
+// The seed (src/backend cmd/seed --e2e-admins) creates both admins with this default.
+// Override with E2E_ADMIN_PASSWORD when the seed was run with another password.
+const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? 'E2ETest@123';
+
+export const MAKER = { email: 'e2e-maker@HPay.dev', password: E2E_ADMIN_PASSWORD };
+export const CHECKER = { email: 'e2e-checker@HPay.dev', password: E2E_ADMIN_PASSWORD };
 
 export interface AdminProfile {
   id: string;

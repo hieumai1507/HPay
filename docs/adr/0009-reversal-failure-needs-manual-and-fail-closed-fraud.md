@@ -1,7 +1,7 @@
 ---
 title: ADR 0009 Reversal failure needs manual, fail-closed fraud
 type: decision
-status: proposed-not-implemented
+status: accepted (reversal part implemented by ADR-0013; fraud already fail-closed; compensation_failed still open)
 last_verified: 2026-11-21
 ---
 

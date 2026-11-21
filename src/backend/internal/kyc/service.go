@@ -3,7 +3,6 @@ package kyc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,19 +36,10 @@ func NewService(pool *pgxpool.Pool, engine *workflow.Engine, files storage.Store
 	return &Service{pool: pool, q: store.New(pool), engine: engine, files: files}
 }
 
-// ValidateImage enforces type + size before anything touches storage.
+// ValidateImage enforces that data is a real, bounded JPEG or PNG (see InspectImage).
 func ValidateImage(data []byte) error {
-	if len(data) == 0 || len(data) > maxImageBytes {
-		return fmt.Errorf("%w: size must be 1B..5MB", ErrBadImage)
-	}
-	// jpeg: FF D8; png: 89 50 4E 47
-	if len(data) > 4 && data[0] == 0xFF && data[1] == 0xD8 {
-		return nil
-	}
-	if len(data) > 8 && data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G' {
-		return nil
-	}
-	return fmt.Errorf("%w: only jpeg/png accepted", ErrBadImage)
+	_, err := InspectImage(data)
+	return err
 }
 
 type SubmitResult struct {
@@ -81,8 +71,10 @@ func (s *Service) Submit(ctx context.Context, userID uuid.UUID, idCard, selfie [
 	}
 
 	requestID := uuid.New()
-	idCardKey := requestID.String() + "/id_card.jpg"
-	selfieKey := requestID.String() + "/selfie.jpg"
+	// The key extension follows the content (InspectImage already proved it), so a PNG is
+	// never stored under a .jpg name.
+	idCardKey := KeyFor(requestID.String(), "id_card", idCard)
+	selfieKey := KeyFor(requestID.String(), "selfie", selfie)
 	if err := s.files.Put(ctx, idCardKey, idCard); err != nil {
 		return SubmitResult{}, err
 	}

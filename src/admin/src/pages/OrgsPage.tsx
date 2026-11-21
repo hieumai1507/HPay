@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useOrgs, useSaveOrgPolicy, type OrgPolicyTier } from '@/queries';
-import { Badge } from '@/ui';
+import { Badge, ErrorNotice } from '@/ui';
+import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
+import { MAX_MINOR_UNITS, formatMillions } from '@/lib/money';
+import { useAdminStore } from '@/stores/admin';
 
 export default function OrgsPage() {
-  const { data, isLoading } = useOrgs();
+  const { data, isLoading, error } = useOrgs();
   const orgs = data?.rows ?? [];
   const savePolicyMutation = useSaveOrgPolicy();
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canEdit = useAdminStore((s) => s.can(ACTION_PERMISSION.orgPolicy));
 
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [search, setSearch] = useState('');
@@ -32,25 +37,23 @@ export default function OrgsPage() {
   };
 
   const handleAddLevel = () => {
-    setTiers((prev) => [
-      ...prev,
-      {
-        level: prev.length + 1,
-        min_amount: (prev[prev.length - 1]?.min_amount ?? 10000000) * 2,
-        required_approvals: 1,
-      },
-    ]);
+    setTiers((prev) => {
+      // Integer minor units with an upper bound: refuse to grow past it instead of overflowing.
+      const next = (prev[prev.length - 1]?.min_amount ?? 10000000) * 2;
+      if (!Number.isSafeInteger(next) || BigInt(next) > MAX_MINOR_UNITS) return prev;
+      return [...prev, { level: prev.length + 1, min_amount: next, required_approvals: 1 }];
+    });
   };
 
   const handleSave = async () => {
-    if (!selectedOrg) return;
+    if (!selectedOrg || savePolicyMutation.isPending) return;
     try {
-      await savePolicyMutation.mutateAsync({
+      const res = await savePolicyMutation.mutateAsync({
         orgId: selectedOrg.org_id,
         name: 'Chi lớn',
         tiers,
       });
-      alert(`Đã lưu chính sách phê duyệt mới (version v4) cho ${selectedOrg.name}!`);
+      alert(`Đã lưu chính sách phê duyệt mới (version v${res.version}) cho ${selectedOrg.name}!`);
     } catch (e: unknown) {
       alert(`Lỗi: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -66,11 +69,16 @@ export default function OrgsPage() {
         <button
           type="button"
           onClick={() => alert('Thêm chính sách phê duyệt mới')}
+          disabled={!canEdit}
+          title={canEdit ? undefined : NO_PERMISSION_REASON}
           className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
         >
           + Thêm policy
         </button>
       </div>
+
+      <ErrorNotice error={error} what="organizations" />
+      {!canEdit && <div className="text-xs text-slate-500">{NO_PERMISSION_REASON} (orgs.edit)</div>}
 
       {isLoading ? (
         <div className="p-10 text-center text-slate-500">Đang tải danh sách tổ chức…</div>
@@ -143,12 +151,13 @@ export default function OrgsPage() {
                     <div key={idx} className="flex items-center gap-3.5 bg-slate-50 rounded-xl p-3">
                       <Badge tone="info">Level {tier.level}</Badge>
                       <span className="text-xs font-medium text-slate-900 flex-1">
-                        Từ {(tier.min_amount / 1000000).toFixed(0)}M — cần <b>{tier.required_approvals}</b> chữ ký Checker L{tier.level}
+                        Từ {formatMillions(tier.min_amount)} — cần <b>{tier.required_approvals}</b> chữ ký Checker L{tier.level}
                       </span>
                       <div className="flex items-center gap-1.5 border border-slate-200 rounded-md px-1.5 py-0.5 bg-white">
                         <button
                           type="button"
                           onClick={() => handleUpdateApproval(idx, -1)}
+                          disabled={!canEdit}
                           className="border-none bg-none text-sm font-bold cursor-pointer px-1 text-slate-700 hover:text-brand"
                         >
                           −
@@ -157,6 +166,7 @@ export default function OrgsPage() {
                         <button
                           type="button"
                           onClick={() => handleUpdateApproval(idx, 1)}
+                          disabled={!canEdit}
                           className="border-none bg-none text-sm font-bold cursor-pointer px-1 text-slate-700 hover:text-brand"
                         >
                           +
@@ -168,6 +178,7 @@ export default function OrgsPage() {
                   <button
                     type="button"
                     onClick={handleAddLevel}
+                    disabled={!canEdit}
                     className="h-10 rounded-lg border-1.5 border-dashed border-slate-300 bg-white text-slate-700 text-xs font-semibold cursor-pointer hover:border-brand hover:text-brand flex items-center justify-center transition-colors"
                   >
                     + Thêm level
@@ -197,8 +208,9 @@ export default function OrgsPage() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={savePolicyMutation.isPending}
-                  className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
+                  disabled={savePolicyMutation.isPending || !canEdit}
+                  title={canEdit ? undefined : NO_PERMISSION_REASON}
+                  className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {savePolicyMutation.isPending ? 'Đang lưu…' : 'Lưu — tạo version v4'}
                 </button>

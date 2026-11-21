@@ -52,9 +52,10 @@ The engine runs multi-step business processes (P2P transfer, org disbursement, K
 | BR-WF-10 | Policy `fail` (also `manual` and empty, which have no special code) sets instance `failed` and, if the instance has a transaction, moves it to `failed` only from created/processing/pending_approval/processing_async. | `engine.go:failInstance` (214-226), `workflow.sql:FailTransactionGuarded` (73-77) | `TestWorkflowTerminalFailure` (instance only) |
 | BR-WF-11 | Policy `compensate` reverses, newest first, the already-completed steps BEFORE the failed step whose `config.compensatable` is true. If that queue is empty it degrades to plain failure. | `engine.go:buildCompensationQueue` (233-261), `isCompensatable` (263-271), `failInstance` (204-213) | `TestEdge_E07_CompensationReversesMovedFunds` (`test/integration/transfer_test.go:69`) |
 | BR-WF-12 | Starting compensation marks the transaction `failed` immediately (guarded), stores the remaining queue in context key `_compensate`, and dispatches compensation executions with attempt 101 and `compensate=true`. | `engine.go:startCompensation` (275-299), `dispatchCompensate` (334-347) | `TestEdge_E07_...` |
-| BR-WF-13 | A failed compensation step (any error, retryable or not) ends the instance as `failed` with `current_step` = the compensation step and logs "COMPENSATION FAILED - manual intervention required". It is NOT retried. | `engine.go:onCompensateResult` (302-310) | none |
+| BR-WF-13 | A failed compensation step (any error) ends the instance as `compensation_failed` (ADR-0009, migration 000022) with `current_step` = the compensation step, and logs "COMPENSATION FAILED". The transaction stays `failed`; nothing is posted twice. | `engine.go:onCompensateResult` | `TestCompensationFailureIsItsOwnState` |
 | BR-WF-14 | When the compensation queue is empty after a successful reverse, the instance becomes `compensated`. | `engine.go:onCompensateResult` (311-316) | `TestEdge_E07_...` |
 | BR-WF-15 | A compensation result is applied only when instance status is `compensating` and `current_step` equals the event step; otherwise dropped. | `engine.go:OnResult` (97-101) | none |
+| BR-WF-16 | A `compensating` instance untouched for 2 minutes (the result event was lost) is re-dispatched by the recovery sweep (`ClaimStuckCompensations` bumps `updated_at` as the lease, then `ReEmitCompensation` re-sends attempt 101; a step that already ran replays its stored result). | `recovery.go:SweepStuck`, `engine.go:ReEmitCompensation` | `TestStuckCompensationIsRecovered` |
 | BR-WF-16 | Advancing onto a `human_approval` step sets `waiting_approval` and calls the PauseHook inside the same transaction; if no hook is wired or the hook errors, the instance fails cleanly (and the transaction is failed per BR-WF-10). | `engine.go:advance` (169-186) | approval integration tests (not in workflow pkg) |
 | BR-WF-17 | A human step resolves from a result event produced by the approval module (never a worker): OK advances, not-OK applies the human step's own `on_failure`. | `engine.go:OnResult` (131-135), `approval/service.go:resumeWorkflow` (521-571) | none in workflow pkg |
 | BR-WF-18 | The recovery sweeper claims only instances with status `running` and `updated_at` older than 2 minutes (batch 20), via an UPDATE to `recovering`; `SKIP LOCKED` plus the UPDATE make concurrent sweepers claim disjoint rows. | `recovery.go:SweepStuck`, `workflow.sql:ClaimStuckInstances` (54-67) | `TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim` |
@@ -64,7 +65,7 @@ The engine runs multi-step business processes (P2P transfer, org disbursement, K
 
 ## 4. Lifecycle / state machine
 
-Instance status is the Postgres enum `wf_status` (`000003...up.sql:8`): running, waiting_approval, compensating, completed, failed, compensated, recovering.
+Instance status is the Postgres enum `wf_status` (`000003...up.sql:8`, `compensation_failed` added by `000022`): running, waiting_approval, compensating, completed, failed, compensated, recovering, compensation_failed.
 
 ```mermaid
 stateDiagram-v2
@@ -79,6 +80,7 @@ stateDiagram-v2
     running --> compensating: failure with on_failure=compensate and non-empty queue
     compensating --> compensating: reverse ok, queue not empty
     compensating --> compensated: reverse ok, queue empty
+    compensating --> compensation_failed: a reverse step failed (terminal, needs an operator)
     compensating --> failed: reverse step failed
     running --> recovering: sweeper (idle > 2 min)
     recovering --> running: ReEmitCurrentStep
@@ -171,7 +173,7 @@ sequenceDiagram
 ```
 
 ## 6. Invariants
-- Exactly-once handler effect per `(instance, step, attempt)` is guaranteed only for the recording of the execution (unique index `idx_step_exec`), NOT for the handler's own side effects: the execution row is written after `Execute` returns, in a separate transaction (`consumer.go:154-189`). See Known gaps (BE-C1 class).
+- Exactly-once handler effect per `(instance, step, attempt)` is guaranteed only for the recording of the execution (unique index `idx_step_exec`), NOT for the handler's own side effects: the execution row is written after `Execute` returns, in a separate transaction (`consumer.go:154-189`). For MOVE_FUNDS and ROUND_UP the side effect is made replay-safe by the ledger posting guard (BR-LED-15); other handlers carry their own idempotency (or none, see Known gaps).
 - No paused instance without an approval request: PauseHook runs in the advance transaction (`engine.go:176-186`).
 - Compensation attempts (101) never collide with forward attempts when retry < 101 (`engine.go:249` filters forward completions with `Attempt < 101`).
 - Terminal instance states: completed, failed, compensated. A result event for an unknown instance is dropped (`engine.go:92-94`).
@@ -190,7 +192,7 @@ All are registered in `cmd/server/main.go:94-124` (worker/all roles). A step str
 | Handler (`Name()`) | Source | Inputs read | Output context | Side effects | Terminal errors | Retryable errors |
 |---|---|---|---|---|---|---|
 | `validator` | `handlers/handlers.go:37-70` | transaction row; owner status of both wallets (users.status / organizations.status); sender balance | `validated: true` | none (read only) | sender/receiver lookup error or not `active`; `ledger.ErrInsufficientBalance` when `balance < amount+fee` (soft check) | transaction load, wallet load |
-| `wallet` (MOVE_FUNDS) | `handlers/handlers.go:82-141` | transaction row (`amount`, `fee`, wallets) | `funds_moved: true` (forward) / `false` (compensating) | in ONE tx: re-check both owners active (forward only), `ledger.Post` debit sender `amount+fee`, credit receiver `amount`, credit SYSTEM_FEE `fee` if fee > 0; compensating swaps directions | owner not active at posting time; `ErrInsufficientBalance`; `ErrWalletNotFound` | tx begin/commit, txn load, SYSTEM_FEE wallet lookup, other ledger errors |
+| `wallet` (MOVE_FUNDS; forward posts kind `forward`, compensating posts kind `compensate`; a replay returns success) | `handlers/handlers.go` | transaction row (`amount`, `fee`, wallets) | `funds_moved: true` (forward) / `false` (compensating) | in ONE tx: re-check both owners active (forward only), `ledger.Post` debit sender `amount+fee`, credit receiver `amount`, credit SYSTEM_FEE `fee` if fee > 0; compensating swaps directions | owner not active at posting time; `ErrInsufficientBalance`; `ErrWalletNotFound` | tx begin/commit, txn load, SYSTEM_FEE wallet lookup, other ledger errors |
 | `confirmer` | `handlers/handlers.go:149-159` | `TransactionID` | `confirmed: true` | `CompleteTransaction` (processing -> completed); compensating is a no-op | none | any DB error (including 0 rows because status is not `processing`, see Known gaps) |
 | `action_pipeline` | `handlers/action_pipeline.go` | `context.service_code`, `context.ref_code`, services row | `pipeline`, `pipeline_actions` | outbound HTTP calls (see `service-catalog.md`) | malformed `actions` JSON | service lookup error; failure of a `required` action |
 | `round_up` | `handlers/round_up.go:48-131` | transaction, sender wallet/owner, round-up target vault | `round_up_applied`, `round_up_amount` or `round_up_skipped_reason` | ledger post of `unit - (amount % unit)` from sender main wallet to the target vault; unit = env `ROUND_UP_UNIT_VND` or 10,000 | none (every non-applicable case is a successful skip: not_a_spend, sender_not_user, sender_not_main, exact, no_target, insufficient_balance, or ledger insufficient/wallet-not-found) | DB errors, tx begin/commit, other ledger errors |
@@ -216,8 +218,8 @@ Compensation attempt number in handlers: `StepInput.Attempt` is 101 for reverse 
 - E20 stuck instance: sweeper lease, one re-emit. `TestEdge_E20_StuckRecoveryLeaseNoDoubleClaim`.
 
 ## 10. Known gaps (as-is vs intended)
-- **BE-C1 (audit)**: `wallet.Execute` commits `ledger.Post` in its own transaction (`handlers.go:112-118`) while the execution row is written later in `recordAndEmit`. A crash or a concurrent redelivery between them re-runs the handler and can post twice. The engine comment in `engine.go:80-81` mentions an `(status, current_step, attempt)` guard, but attempt is not compared (`engine.go:107`).
-- **BE-H4 (audit)**: compensation treats `ErrInsufficientBalance` as terminal and the instance ends `failed` while money stays with the receiver (`handlers.go:113-116`, `engine.go:302-310`). No `compensation_failed` status exists; only a log line.
+- **BE-C1 (audit), fixed in the working tree 2026-11-21, not yet committed**: `wallet.Execute` still commits `ledger.Post` in its own transaction while the execution row is written later in `recordAndEmit`, so a crash or redelivery between them still re-runs the handler. Since ADR-0010 the re-run is harmless: `ledger.Post` rejects a second posting of the same (transaction, kind) with `ErrAlreadyPosted`, and the handler returns success with `replayed: true` (and treats `ErrPostingConflict` as a terminal error). Covered by `TestEdge_E06_DuplicateStepNoDoublePost`. The engine comment in `engine.go:80-81` mentions an `(status, current_step, attempt)` guard, but attempt is not compared (`engine.go:107`).
+- **BE-H4 (audit)**: fixed in the working tree (ADR-0009, ADR-0013). A failed compensation ends the instance as `compensation_failed` and a stuck compensation is recovered by the sweep; the money-side decision (reversal impossible) is parked as `needs_manual`, see `domain/approval-maker-checker.md`. Still open: no admin UI or alert lists `compensation_failed` instances.
 - New (not in audit) - compensation has no retry: `onCompensateResult` fails on any `!ev.OK`, ignoring `Retryable` (`engine.go:302`).
 - New - forward duplicate result vs compensation: when status is `compensating`, any event with the same step name as `current_step` is taken as the compensation result, even if it is a late forward event (`engine.go:97-102`; the `Compensate` flag is only OR-ed in, never required).
 - New - `ACTIONS_AFTER_GL` runs after `MOVE_FUNDS` with `on_failure: fail` (000010:15). If a required action there exhausts retries, `failInstance` marks the transaction `failed` (it is still `processing` until CONFIRM) although funds were already moved; no compensation is attempted. `ROUND_UP` failures do not change the transaction because it is already `completed`.
@@ -245,4 +247,4 @@ Compensation attempt number in handlers: `StepInput.Attempt` is 101 for reverse 
 
 ## 12. Open questions
 - Should `manual` on_failure park the instance for operators instead of failing? (no owner/date; code treats it as `fail`)
-- Should compensating instances and `recovering`-with-error instances be covered by the sweeper? (no owner/date)
+- Should `compensation_failed` instances raise an alert or appear in an admin list? (no owner/date; today only a log line and the status)

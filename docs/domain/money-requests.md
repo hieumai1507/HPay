@@ -12,6 +12,7 @@ code:
   - src/backend/internal/api/qr_handler.go
   - src/backend/internal/store/queries/money_request.sql
   - src/backend/db/migrations/000004_offer_factory_policies.up.sql
+  - src/backend/db/migrations/000015_idempotency_per_user.up.sql
 related:
   - domain/approval-maker-checker.md
 audit:
@@ -42,9 +43,10 @@ Request money from another user ("request", or "split bill" fanning out one requ
 | BR-MRQ-05 | Custom split: `amounts` length must equal payer count, each amount > 0, and sum must equal `total_amount`. | `service.go:105-111`, `split.go:ValidateCustomSplit` 39-54 | `TestValidateCustomSplit`, `TestSplitBillThreeWay` |
 | BR-MRQ-06 | Split requests are created in one DB transaction, all with the same `expires_at` and `split_group_id`; any payer failure (unknown phone, self) aborts before insert. The requester must not be among the payers; duplicates in `payer_phones` are not rejected. | `service.go:114-153` | `TestSplitBillThreeWay` |
 | BR-MRQ-07 | Pay: only the request's payer; status must be `pending`; `expires_at` must be in the future; the request row is locked `FOR UPDATE`. | `service.go:Pay` 179-194, `money_request.sql:GetMoneyRequestForUpdate` | `TestEdge_E19_ExpiryRacePay`, `TestMoneyRequestCancelAndActorGuards` |
-| BR-MRQ-08 | Pay applies the payer's KYC per-transaction limit (verified/auto_approved 100,000,000; manual_review/pending 5,000,000; none/rejected 2,000,000), the P2P fee for that KYC, and a soft balance check `balance >= amount + fee`. | `service.go:208-223`, `wallet/service.go:TxnLimit` 33-42 | none |
+| BR-MRQ-08 | Pay applies the payer's offer limits for service `MONEY_REQUEST` (`offerguard.CheckAmount`: enabled, minimum, per-transaction cap), the P2P fee for the payer's KYC, and a soft balance check `balance >= amount + fee`. | `moneyrequest/service.go` (Pay), `offerguard/offerguard.go:CheckAmount` | `TestOfferLimits_LegacyPathsUseTheOffer` (top-up); pay: none |
 | BR-MRQ-09 | Pay creates a P2P transaction (payer wallet to requester wallet), starts the `p2p_transfer` workflow, and sets the request `paid` with `paid_txn_id`, all in ONE DB transaction. `paid` is guarded by `status='pending' AND expires_at > now()`; 0 rows -> `ErrExpired`. | `service.go:225-262`, `money_request.sql:FinalizeMoneyRequestPaid` (22-25) | `TestMoneyRequestPayEndToEnd` |
-| BR-MRQ-10 | Pay with a repeated idempotency key returns the original transaction (`duplicate`). The key is global (BE-H1). | `service.go:232-242`, `idempotency_key UNIQUE` (000002:57) | none |
+| BR-MRQ-10 | Pay is idempotent per payer and bound to the request id: the same key and request returns the original transaction (`duplicate`); the same key for a different money request is `ErrIdempotencyKeyReused` (409); an empty key is `ErrIdempotencyKeyRequired`. The replay lookup runs under the request row lock, so a concurrent retry waits and then sees the committed transaction. | `service.go:Pay`, `wallet.FindReplay`, `UNIQUE (initiated_by, idempotency_key)` (000015) | `TestIdempotency_MoneyRequestPay` (TC-IDM-009) |
+| BR-MRQ-15 | Create and split require `Idempotency-Key` (`RequireIdempotencyKey` on both routes; the service rejects an empty key). Same requester, same key, same payload returns the original request or split (same ids, same `split_group_id`, original order, one set of rows); a different payload (create: payer, amount, note; split: total, note, payers and shares) is 409 `ERR_IDEMPOTENCY_KEY_REUSED`; another requester with the same key is independent. Single requests are backed by a partial unique index; splits are serialized with `pg_advisory_xact_lock(requester:key)`. | `router.go:128-129`; `service.go:Create/CreateSplit/replay`; `uq_money_req_user_idempotency` (000015); `money_request.sql:ListMoneyRequestsByIdempotencyKey` | `TestIdempotency_MoneyRequestCreate`, `TestIdempotency_MoneyRequestSplit` (TC-IDM-007, -008) |
 | BR-MRQ-11 | Decline: only the payer, only from `pending` (guarded UPDATE). Cancel: only the requester, only from `pending`. Failure reasons are distinguished: not found, wrong actor `ErrForbidden`, wrong state `ErrNotPayable`. | `money_request.sql:DeclineMoneyRequest/CancelMoneyRequest`, `service.go:265-306` | `TestMoneyRequestCancelAndActorGuards` |
 | BR-MRQ-12 | Expiry: a 30-second sweeper expires up to 50 overdue pending requests (`expires_at < now()`) with a guarded UPDATE. | `sweeper.go:9,44-60`, `money_request.sql:ListDueMoneyRequestIDs/ExpireMoneyRequest` | `TestEdge_E19_ExpiryRacePay` |
 | BR-MRQ-13 | Remind: only the requester, only while `pending`, at most once per 24 hours (`last_reminded_at` NULL or older than 24 h); otherwise `ErrRemindTooSoon` (429). Remind does not check `expires_at`, and no notification is sent by this package; it only updates the timestamp. | `money_request.sql:RemindMoneyRequestGuarded` (72-79), `service.go:Remind` 350-379 | `TestMoneyRequestRemind` |
@@ -96,7 +98,7 @@ sequenceDiagram
     participant S as moneyrequest.Service
     participant E as Workflow engine
     participant W as Worker (async)
-    P->>S: Pay(request_id, Idempotency-Key)
+    P->>S: Pay(request_id, Idempotency-Key per payer)
     S->>S: BEGIN, lock request, payer only, pending, not expired
     S->>S: KYC limit, fee, soft balance check
     S->>S: insert P2P txn
@@ -122,13 +124,12 @@ User JWT (`router.go:107-108,128-135`): `POST /v1/money-requests` (`payer_phone,
 
 ## 9. Edge cases
 - E19 pay vs expiry race: row lock + `expires_at > now()` guard; the loser gets `ErrExpired`.
-- E01 idempotent pay replay returns the original transaction.
+- E01 idempotent pay replay returns the original transaction (per payer, bound to the request id); a creation replay returns the original request or split (BR-MRQ-15).
 - Split where `total < n` is rejected; remainder spread +1 over the first payers.
 
 ## 10. Known gaps (as-is vs intended)
 - **`paid` is set too early (BE-H5)**: it is set in the transaction that inserts the txn and starts the engine (`service.go:244-256`), before MOVE_FUNDS runs. A failed workflow leaves a `paid` request and no money moved. No code re-opens it.
 - **No HTTP route for Pay** (see Interfaces); the app-facing payment path for a request, if any, goes through the generic transfer engine, which does not reference `money_requests` (grep of `internal/transfer` finds no such use). Treat Pay as service-level only.
-- `/money-requests` and `/money-requests/split` do not use `RequireIdempotencyKey` (`router.go:128-129`); creation is not idempotent (BE-H1 note, unverified there, confirmed here).
 - Duplicate payer phones in one split are accepted (two requests to the same payer).
 - Split has no upper bound on payer count and no per-share limit checks at creation; limits are applied only at Pay.
 - Remind only updates a timestamp; there is no notification delivery in this package.

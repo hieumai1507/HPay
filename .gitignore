@@ -29,7 +29,7 @@ test-results/
 __pycache__/
 *.pyc
 
-# GitNexus index (sinh lại bằng `node .gitnexus/run.cjs analyze`)
+# GitNexus index (regenerate with: node .gitnexus/run.cjs analyze)
 .gitnexus/
 
 # Nghiên cứu skill bên ngoài (clone ngoài repo, phòng khi copy vào)

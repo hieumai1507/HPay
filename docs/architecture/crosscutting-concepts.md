@@ -16,9 +16,10 @@ All amounts are `int64` VND (no decimals; VND has no minor unit in practice, so 
 
 ## 2. Idempotency
 
-- `transactions.idempotency_key VARCHAR(80) UNIQUE` (migration 000002:57). A duplicate insert (pg error 23505 on a constraint name containing "idempotency") returns the previously created transaction (`transfer/service.go:368-386`, `org/service.go:425-434`, `moneyrequest/service.go:233-241`).
-- The HTTP header is enforced by `RequireIdempotencyKey()` (`api/middleware.go:83-94`, 1-64 chars) only on `POST /v1/transactions/request` (`router.go:118`) and `POST /v1/org/:id/transactions` (`router.go:156`). Not enforced on `/money-requests*`, `POST /vaults`, `PATCH /vaults/:id/round-up-target` (audit appendix, partial).
-- Gaps: key is globally unique, not per user, and payload is not compared (BE-H1); if absent, `ExecuteEngineRequest` generates a random UUID so it is not idempotent (`transfer/service.go:344-347`).
+- Scope and binding (ADR-0011, migration 000015): `transactions` has `UNIQUE (initiated_by, idempotency_key)` and a nullable `request_hash` (SHA-256 of a canonical length-prefixed encoding of operation, receiver/target ids, amount, service code, note, extra params as applicable). Helpers in `wallet/idempotency.go`: `RequestHash`, `FindReplay` (user-scoped lookup, hash compare), `IsIdempotencyConflict`. Flow: look up `(user, key)`; none -> insert; same hash (or NULL hash from a pre-000015 row) -> return the original result; different hash -> 409 `ERR_IDEMPOTENCY_KEY_REUSED`. A concurrent insert that loses the race hits the unique index, re-reads and returns the winner. Used by `transfer` (P2P, engine), `wallet.Topup` and `moneyrequest.Pay`.
+- Money requests: `money_requests.idempotency_key/request_hash`, per-requester partial unique index for single requests; a split (many rows per key) is serialized with `pg_advisory_xact_lock` and replays all its rows in order.
+- The HTTP header is enforced by `RequireIdempotencyKey()` (`api/middleware.go`, 1-64 chars) on `POST /v1/transactions/request`, `POST /v1/money-requests`, `POST /v1/money-requests/split` and `POST /v1/org/:id/transactions`. Not on reads, auth, confirm/verify (state only), decline/cancel/remind, vault create and round-up target (metadata only; vault money moves through the engine). The services reject an empty key as well, so there is no server-generated fallback.
+- `internal/org` (`Topup`, `CreateDisbursement`) uses the same `wallet.FindReplay` contract. The legacy query `GetTransactionByIdempotencyKey` is no longer called. Keys never expire.
 - Workflow step idempotency: `step_executions` unique `(instance, step, attempt)`; replays re-emit the recorded result (`workflow/consumer.go:109-116`). `MOVE_FUNDS` still has the double-post window because the ledger tx and the step record are separate transactions (BE-C1, `handlers.go:82-122`, `consumer.go:164`).
 - Bank callback idempotency: by `ref_code` under `FOR UPDATE` (`wallet/callback.go:69`).
 
@@ -69,3 +70,7 @@ Table `audit_logs(actor_id, actor_type, action, resource, reason, ip, created_at
 ## 10. Timezone handling
 
 There is no explicit timezone anywhere in the backend: no `time.LoadLocation`, no `Asia/Ho_Chi_Minh`. Day and month boundaries for OfferGuard limits use `time.Now().Location()` (`offerguard.go:92-110`), the recon cron uses server-local 00:15 and "yesterday" (`recon/cron.go:24-29`), fraud rule ODD_HOURS uses an hour-of-day field commented "local" (`fraud/rules.go:30`). In the distroless image the process zone is UTC, so Vietnamese users see limit windows and recon runs offset by 7 hours (audit BE-H2). Fix pending: pin a fixed zone constant. Database timestamps are `TIMESTAMPTZ`.
+
+### Replay safety of ledger postings (ADR-0010)
+
+A posting is identified by (transaction, kind). ledger.Post claims a row in ledger_postings after the ordered wallet locks and before writing entries; a second claim returns ErrAlreadyPosted (same total) or ErrPostingConflict (different total) and changes nothing. Workflow handlers treat ErrAlreadyPosted as success, which makes a redelivered or re-run money step harmless even though the step record and the money movement still commit in different transactions. Code: internal/ledger/ledger.go; table: eference/data-model.md.

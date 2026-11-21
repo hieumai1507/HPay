@@ -165,3 +165,53 @@ func TestActionPipeline_CompensationIsNoop(t *testing.T) {
 		t.Fatalf("gateway calls during compensation = %d, want 0", got)
 	}
 }
+
+// AC-9 (docs/specs/w3-ssrf-guard): a destination the outbound guard refuses can never
+// become acceptable, so a REQUIRED action that hits it fails terminally. It must not be
+// retried like a partner outage, and an OPTIONAL one is skipped with a clear marker.
+type blockedGateway struct{}
+
+func (blockedGateway) Call(context.Context, gateway.Request) (gateway.Response, error) {
+	return gateway.Response{}, fmt.Errorf("%w: test", gateway.ErrBlockedURL)
+}
+
+func TestActionPipeline_BlockedDestinationIsTerminalNotRetryable(t *testing.T) {
+	pool := testutil.PoolFromEnv(t)
+	code := newService(t, pool, "before_gl", fmt.Sprintf(`[
+		{"code":"bank_notify","name":"Bank","type":"Directional Integration","entry_point":%q,"method":"POST","required":true}
+	]`, hookURL))
+	reg := workflow.NewRegistry()
+	handlers.RegisterActionPipeline(reg, pool, blockedGateway{})
+	h, _ := reg.Get("action_pipeline")
+
+	_, err := h.Execute(context.Background(), stepInput(code, "ACTION_BEFORE_GL"))
+	if err == nil {
+		t.Fatal("a required action with a blocked destination must fail")
+	}
+	var retry workflow.RetryableError
+	if errors.As(err, &retry) {
+		t.Fatalf("a blocked destination must NOT be retryable (retrying cannot help), got %v", err)
+	}
+	if !errors.Is(err, gateway.ErrBlockedURL) {
+		t.Fatalf("the error must carry ErrBlockedURL, got %v", err)
+	}
+}
+
+func TestActionPipeline_BlockedOptionalActionIsSkippedWithMarker(t *testing.T) {
+	pool := testutil.PoolFromEnv(t)
+	code := newService(t, pool, "before_gl", fmt.Sprintf(`[
+		{"code":"bank_notify","name":"Bank","type":"Directional Integration","entry_point":%q,"method":"POST","required":false}
+	]`, hookURL))
+	reg := workflow.NewRegistry()
+	handlers.RegisterActionPipeline(reg, pool, blockedGateway{})
+	h, _ := reg.Get("action_pipeline")
+
+	out, err := h.Execute(context.Background(), stepInput(code, "ACTION_BEFORE_GL"))
+	if err != nil {
+		t.Fatalf("an optional blocked action must not fail the step: %v", err)
+	}
+	got, _ := out.Context["pipeline_actions"].([]string)
+	if len(got) != 1 || got[0] != "bank_notify:blocked" {
+		t.Fatalf("pipeline_actions = %v, want [bank_notify:blocked]", got)
+	}
+}

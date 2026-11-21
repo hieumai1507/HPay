@@ -9,10 +9,12 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -38,19 +40,58 @@ type Gateway interface {
 
 // --- HTTP -------------------------------------------------------------------
 
-type HTTP struct{ client *http.Client }
+// HTTP is the production gateway. Every call goes through the outbound URL guard
+// (guard.go): https only, public addresses only (checked on the address actually
+// dialed), no redirects, POST or PUT only, optional host allowlist from
+// OUTBOUND_ALLOWED_HOSTS.
+type HTTP struct {
+	client *http.Client
+	guard  *Guard
+}
 
 func NewHTTP(timeout time.Duration) *HTTP {
+	return newHTTP(timeout, NewGuard(GuardOptions{AllowedHosts: os.Getenv("OUTBOUND_ALLOWED_HOSTS")}), nil)
+}
+
+// newHTTPForTest is a test-only seam: it permits the loopback address (so a local TLS
+// server can be reached) and trusts the supplied TLS config. Unexported, so production
+// code cannot construct a gateway that is weaker than NewHTTP.
+func newHTTPForTest(timeout time.Duration, tlsCfg *tls.Config) *HTTP {
+	return newHTTP(timeout, NewGuard(GuardOptions{allowLoopback: true}), tlsCfg)
+}
+
+func newHTTP(timeout time.Duration, g *Guard, tlsCfg *tls.Config) *HTTP {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
-	return &HTTP{client: &http.Client{Timeout: timeout}}
+	tr := &http.Transport{
+		DialContext:         g.DialContext,
+		TLSClientConfig:     tlsCfg,
+		TLSHandshakeTimeout: 5 * time.Second,
+		DisableKeepAlives:   true,
+		Proxy:               nil, // never route through an environment proxy: it would bypass the address check
+	}
+	return &HTTP{
+		guard: g,
+		client: &http.Client{
+			Timeout:   timeout,
+			Transport: tr,
+			// A redirect could point anywhere (including an internal address); never follow it.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		},
+	}
 }
 
 func (h *HTTP) Call(ctx context.Context, req Request) (Response, error) {
 	method := strings.ToUpper(strings.TrimSpace(req.Method))
 	if method == "" {
 		method = http.MethodPost
+	}
+	if method != http.MethodPost && method != http.MethodPut {
+		return Response{}, blocked("method %q is not allowed (POST or PUT only)", method)
+	}
+	if err := h.guard.CheckURL(req.URL); err != nil {
+		return Response{}, err
 	}
 	body, err := json.Marshal(req.Payload)
 	if err != nil {
@@ -73,8 +114,10 @@ func (h *HTTP) Call(ctx context.Context, req Request) (Response, error) {
 
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	out := Response{StatusCode: resp.StatusCode, Body: string(raw)}
-	if resp.StatusCode >= 400 {
-		return out, fmt.Errorf("gateway %s returned %d", req.URL, resp.StatusCode)
+	if resp.StatusCode >= 300 {
+		// 3xx is a refused redirect (never followed); >= 400 is a partner error.
+		// Report the host only: the URL may carry tokens in its query string.
+		return out, fmt.Errorf("gateway call to %s returned %d", hostOf(req.URL), resp.StatusCode)
 	}
 	return out, nil
 }
@@ -115,4 +158,15 @@ func (m *Mock) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls = nil
+}
+
+// hostOf returns only the host of a URL for logs and errors (never the query or path).
+func hostOf(raw string) string {
+	if i := strings.Index(raw, "://"); i >= 0 {
+		raw = raw[i+3:]
+	}
+	if i := strings.IndexAny(raw, "/?#"); i >= 0 {
+		raw = raw[:i]
+	}
+	return raw
 }

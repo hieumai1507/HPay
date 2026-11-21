@@ -1,13 +1,13 @@
 ---
 title: ADR 0008 Server-side PIN
 type: decision
-status: proposed-not-implemented
+status: accepted (implemented by ADR-0014; PIN reset flow still open)
 last_verified: 2026-11-21
 ---
 
 # ADR 0008: Server-side PIN
 
-Status: Accepted, not yet implemented
+Status: Accepted. Implemented in the working tree (not yet committed) by ADR-0014: PIN set/change endpoints, argon2id hash, attempt counter and lockout, confirm verifies it. Not implemented: PIN reset, 2FA provider, admin unlock.
 
 ## Context
 The offer auth matrix says transactions can require `pin`, `otp` or `2fa`, but the server does not enforce it: `/transactions/confirm` and `/transactions/verify` ignore PIN and OTP and have an IDOR (audit BE-C2); `ExecuteEngineRequest` starts the workflow immediately; there is no PIN route at all. The mobile app sends a hard-coded `123456` and compares the app lock PIN on the client. Authentication of money movement is void at both ends.

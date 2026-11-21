@@ -116,6 +116,8 @@ jobs:
       # -p 1: packages that pump the shared outbox must not run concurrently
       # (testutil.RunSerialized doc) — parallel binaries steal each other's events.
       - run: go test -p 1 ./... -race -count=1
+        env:
+          APP_ENV: ci
       - run: bash ./scripts/check-edge-tests.sh # F10: full default gate E01–E20
 
   build:

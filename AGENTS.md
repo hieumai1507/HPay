@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **hpay** (3098 symbols, 7737 relationships, 113 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **HPay** (5217 symbols, 11548 relationships, 189 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -25,10 +25,10 @@ This project is indexed by GitNexus as **hpay** (3098 symbols, 7737 relationship
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/hpay/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/hpay/clusters` | All functional areas |
-| `gitnexus://repo/hpay/processes` | All execution flows |
-| `gitnexus://repo/hpay/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/HPay/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/HPay/clusters` | All functional areas |
+| `gitnexus://repo/HPay/processes` | All execution flows |
+| `gitnexus://repo/HPay/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
@@ -40,26 +40,6 @@ This project is indexed by GitNexus as **hpay** (3098 symbols, 7737 relationship
 | Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-| Work in the Workflow area (102 symbols) | `.claude/skills/generated/workflow/SKILL.md` |
-| Work in the Api area (88 symbols) | `.claude/skills/generated/api/SKILL.md` |
-| Work in the Gen area (73 symbols) | `.claude/skills/generated/gen/SKILL.md` |
-| Work in the Integration area (48 symbols) | `.claude/skills/generated/integration/SKILL.md` |
-| Work in the Auth area (33 symbols) | `.claude/skills/generated/auth/SKILL.md` |
-| Work in the Approval area (26 symbols) | `.claude/skills/generated/approval/SKILL.md` |
-| Work in the Org area (17 symbols) | `.claude/skills/generated/org/SKILL.md` |
-| Work in the Moneyrequest area (16 symbols) | `.claude/skills/generated/moneyrequest/SKILL.md` |
-| Work in the Fraud area (12 symbols) | `.claude/skills/generated/fraud/SKILL.md` |
-| Work in the Kyc area (12 symbols) | `.claude/skills/generated/kyc/SKILL.md` |
-| Work in the Recon area (9 symbols) | `.claude/skills/generated/recon/SKILL.md` |
-| Work in the Ledger area (7 symbols) | `.claude/skills/generated/ledger/SKILL.md` |
-| Work in the Stores area (7 symbols) | `.claude/skills/generated/stores/SKILL.md` |
-| Work in the Ui area (7 symbols) | `.claude/skills/generated/ui/SKILL.md` |
-| Work in the Outbox area (6 symbols) | `.claude/skills/generated/outbox/SKILL.md` |
-| Work in the Storage area (6 symbols) | `.claude/skills/generated/storage/SKILL.md` |
-| Work in the Config area (4 symbols) | `.claude/skills/generated/config/SKILL.md` |
-| Work in the Fee area (3 symbols) | `.claude/skills/generated/fee/SKILL.md` |
-| Work in the Testutil area (3 symbols) | `.claude/skills/generated/testutil/SKILL.md` |
-| Work in the Cluster_81 area (3 symbols) | `.claude/skills/generated/cluster-81/SKILL.md` |
 
 <!-- gitnexus:end -->
 

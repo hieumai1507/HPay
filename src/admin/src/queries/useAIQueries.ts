@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
+import { MOCKS_ENABLED } from '@/lib/env';
+import { idempotencyHeaders } from '@/lib/idempotency';
 
 export interface AIKey {
   id: string;
@@ -17,51 +19,19 @@ export interface AISetting {
   key_id?: string;
 }
 
-const MOCK_AI_KEYS: AIKey[] = [
-  {
-    id: 'key-1-claude-prod',
-    name: 'Claude 3.5 Sonnet Prod Key',
-    provider: 'anthropic',
-    api_key: 'sk-ant-api03-••••••••••••••••',
-    is_active: true,
-    created_at: '2026-07-01T08:00:00Z',
-  },
-  {
-    id: 'key-2-gpt4o-backup',
-    name: 'GPT-4o Backup Key',
-    provider: 'openai',
-    api_key: 'sk-proj-••••••••••••••••',
-    is_active: true,
-    created_at: '2026-07-05T10:30:00Z',
-  },
-];
-
-const MOCK_AI_SETTINGS: AISetting[] = [
-  {
-    function_name: 'kyc_scoring',
-    provider: 'anthropic',
-    model_name: 'claude-3-5-sonnet-20241022',
-    key_id: 'key-1-claude-prod',
-  },
-  {
-    function_name: 'fraud_advising',
-    provider: 'openai',
-    model_name: 'gpt-4o-mini',
-    key_id: 'key-2-gpt4o-backup',
-  },
-];
-
+// Reads: an empty list is a valid answer and is returned as-is. Mock data is
+// only reachable in a Vite dev server with VITE_USE_MOCKS=true; every other
+// failure propagates so the page can show the real error.
 export function useAIKeys() {
   return useQuery({
     queryKey: ['admin', 'ai-keys'],
-    queryFn: async () => {
+    queryFn: async (): Promise<AIKey[]> => {
       try {
-        const res = await apiRequest<AIKey[]>('/v1/admin/ai/keys');
-        if (Array.isArray(res) && res.length > 0) return res;
-      } catch {
-        // Fallback for mock preview
+        return (await apiRequest<AIKey[] | null>('/v1/admin/ai/keys')) ?? [];
+      } catch (err) {
+        if (import.meta.env.DEV && MOCKS_ENABLED) return (await import('@/mocks/ai')).MOCK_AI_KEYS;
+        throw err;
       }
-      return MOCK_AI_KEYS;
     },
   });
 }
@@ -69,36 +39,24 @@ export function useAIKeys() {
 export function useAISettings() {
   return useQuery({
     queryKey: ['admin', 'ai-settings'],
-    queryFn: async () => {
+    queryFn: async (): Promise<AISetting[]> => {
       try {
-        const res = await apiRequest<AISetting[]>('/v1/admin/ai/settings');
-        if (Array.isArray(res) && res.length > 0) return res;
-      } catch {
-        // Fallback
+        return (await apiRequest<AISetting[] | null>('/v1/admin/ai/settings')) ?? [];
+      } catch (err) {
+        if (import.meta.env.DEV && MOCKS_ENABLED) return (await import('@/mocks/ai')).MOCK_AI_SETTINGS;
+        throw err;
       }
-      return MOCK_AI_SETTINGS;
     },
   });
 }
 
+// Writes never fabricate a result: a failed call rejects, so the page's own
+// catch shows the error instead of "saved".
 export function useCreateAIKey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { name: string; provider: string; api_key: string }) => {
-      try {
-        return await apiRequest<AIKey>('/v1/admin/ai/keys', {
-          method: 'POST',
-          body: payload,
-        });
-      } catch {
-        return {
-          id: `key-${Date.now()}`,
-          name: payload.name,
-          provider: payload.provider as AIKey['provider'],
-          is_active: true,
-        };
-      }
-    },
+    mutationFn: (payload: { name: string; provider: string; api_key: string }) =>
+      apiRequest<AIKey>('/v1/admin/ai/keys', { method: 'POST', body: payload, headers: idempotencyHeaders() }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'ai-keys'] });
     },
@@ -108,16 +66,12 @@ export function useCreateAIKey() {
 export function useUpdateAIKey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, name, api_key, is_active }: { id: string; name: string; api_key?: string; is_active: boolean }) => {
-      try {
-        return await apiRequest<AIKey>(`/v1/admin/ai/keys/${id}`, {
-          method: 'PUT',
-          body: { name, api_key, is_active },
-        });
-      } catch {
-        return { id, name, is_active };
-      }
-    },
+    mutationFn: ({ id, name, api_key, is_active }: { id: string; name: string; api_key?: string; is_active: boolean }) =>
+      apiRequest<AIKey>(`/v1/admin/ai/keys/${id}`, {
+        method: 'PUT',
+        body: { name, api_key, is_active },
+        headers: idempotencyHeaders(),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'ai-keys'] });
     },
@@ -127,16 +81,8 @@ export function useUpdateAIKey() {
 export function useUpdateAISetting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { function_name: string; provider: string; model_name: string; key_id?: string }) => {
-      try {
-        return await apiRequest<AISetting>('/v1/admin/ai/settings', {
-          method: 'PUT',
-          body: payload,
-        });
-      } catch {
-        return payload as AISetting;
-      }
-    },
+    mutationFn: (payload: { function_name: string; provider: string; model_name: string; key_id?: string }) =>
+      apiRequest<AISetting>('/v1/admin/ai/settings', { method: 'PUT', body: payload, headers: idempotencyHeaders() }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'ai-settings'] });
     },

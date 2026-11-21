@@ -1,13 +1,13 @@
 ---
 title: ADR 0007 KYC limits attached to offers
 type: decision
-status: accepted-not-implemented
+status: accepted (implemented in the working tree, weekly windows still open)
 last_verified: 2026-11-21
 ---
 
 # ADR 0007: Limits are attached to the user's offer, selected by KYC tier
 
-Status: Accepted (user decision, 2026-11-21). Not yet implemented.
+Status: Accepted (user decision, 2026-11-21). Implemented in the working tree by `specs/w3-offer-limits` (migration 000023, `kyc/offer.go`, `offerguard`); weekly rolling windows are not implemented.
 
 ## Context
 Limits live in two unrelated mechanisms today (verified in code 2026-11-21):

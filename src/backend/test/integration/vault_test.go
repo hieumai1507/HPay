@@ -17,7 +17,7 @@ import (
 // app uses — there is deliberately no vault-specific money endpoint.
 func vaultMove(t *testing.T, e *env, userID, vaultID uuid.UUID, amount int64, direction string) (transfer.EngineRequestResult, error) {
 	t.Helper()
-	return e.svc.ExecuteEngineRequest(context.Background(), transfer.EngineRequestInput{
+	res, err := e.svc.ExecuteEngineRequest(context.Background(), transfer.EngineRequestInput{
 		ServiceCode:  "VAULT_SAVINGS",
 		SenderUserID: userID,
 		Amount:       amount,
@@ -27,6 +27,10 @@ func vaultMove(t *testing.T, e *env, userID, vaultID uuid.UUID, amount int64, di
 			"direction": direction,
 		},
 	})
+	if err == nil {
+		e.confirmWithPIN(t, userID, res) // a real client confirms with the PIN
+	}
+	return res, err
 }
 
 func newVault(t *testing.T, e *env, userID uuid.UUID, label string) uuid.UUID {

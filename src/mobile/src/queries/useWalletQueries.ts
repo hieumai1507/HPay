@@ -5,7 +5,6 @@ import type { components } from '../api/schema';
 
 export type Wallet = components['schemas']['Wallet'];
 export type TopupResult = components['schemas']['TopupResult'];
-export type TransferResult = components['schemas']['TransferResult'];
 
 export const walletKeys = {
   wallets: ['wallets'] as const,
@@ -60,35 +59,16 @@ function invalidateMoneyViews() {
   queryClient.invalidateQueries({ queryKey: ['transactions'] });
 }
 
+/**
+ * BACKEND GAP: POST /v1/wallets/topup is not mounted (docs/reference/api.md). Only called
+ * when FEATURE_AVAILABILITY.topup is true (src/lib/availability.ts).
+ */
 export function useTopup() {
   return useMutation({
     mutationFn: (input: { amount: bigint; idempotencyKey: string }) =>
       apiRequest<TopupResult>('/v1/wallets/topup', {
         method: 'POST',
         body: { amount: input.amount },
-        idempotencyKey: input.idempotencyKey,
-      }),
-    onSuccess: invalidateMoneyViews,
-  });
-}
-
-export function useTransfer() {
-  return useMutation({
-    mutationFn: (input: {
-      receiverPhone?: string;
-      receiverToken?: string;
-      amount: bigint;
-      note?: string;
-      idempotencyKey: string;
-    }) =>
-      apiRequest<TransferResult>('/v1/transactions/transfer', {
-        method: 'POST',
-        body: {
-          receiver_phone: input.receiverPhone || undefined,
-          receiver_token: input.receiverToken || undefined,
-          amount: input.amount,
-          note: input.note || undefined,
-        },
         idempotencyKey: input.idempotencyKey,
       }),
     onSuccess: invalidateMoneyViews,

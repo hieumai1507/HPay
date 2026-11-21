@@ -78,6 +78,10 @@ func run(role string) error {
 			Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
 			Handler:           router,
 			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       15 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       60 * time.Second,
+			MaxHeaderBytes:    1 << 16,
 		}
 		go func() {
 			log.Info("http listening", "addr", srv.Addr)
@@ -114,7 +118,7 @@ func run(role string) error {
 		// G4: Action Pipeline — runs a service's configured 3rd-party actions.
 		// Mock gateway outside production keeps dev/demo runs deterministic.
 		var outbound gateway.Gateway = gateway.NewHTTP(10 * time.Second)
-		if cfg.Env != "production" {
+		if !cfg.IsProduction() {
 			outbound = gateway.NewMock()
 		}
 		handlers.RegisterActionPipeline(registry, pool, outbound)

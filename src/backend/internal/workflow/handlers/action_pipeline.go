@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -114,6 +115,16 @@ func (a *ActionPipeline) Execute(ctx context.Context, in workflow.StepInput) (wo
 				},
 			})
 			if cerr != nil {
+				if errors.Is(cerr, gateway.ErrBlockedURL) {
+					// The outbound guard refused the destination (C-10). That cannot become
+					// acceptable by retrying, so it is terminal for a required action and
+					// a visible skip for an optional one. Only the host is logged.
+					if act.Required {
+						return workflow.StepOutput{}, fmt.Errorf("action %s: %w", act.Code, cerr)
+					}
+					executed = append(executed, act.Code+":blocked")
+					continue
+				}
 				if act.Required {
 					// Transient by assumption — let the engine retry/backoff, and
 					// on_failure decide once attempts are exhausted.

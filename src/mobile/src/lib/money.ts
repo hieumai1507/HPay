@@ -54,3 +54,30 @@ export function formatAmountDisplay(value: bigint): string {
 export function formatAmountVND(value: bigint): string {
   return `${formatAmountDisplay(value)} ₫`;
 }
+
+/**
+ * Upper bound for any single user-entered amount (C-01): 1,000,000,000 VND, the largest
+ * per-transaction cap the backend applies (org disbursement). Everything below is far
+ * under Number.MAX_SAFE_INTEGER, so API responses that arrive as JSON numbers stay exact.
+ */
+export const MAX_AMOUNT = 1_000_000_000n;
+
+export type StrictAmount =
+  | { ok: true; value: bigint }
+  | { ok: false; reason: 'empty' | 'not_positive' | 'too_large' };
+
+/** Parses user input into a positive bigint no larger than MAX_AMOUNT. Never uses Number. */
+export function parseAmountStrict(raw: string): StrictAmount {
+  const value = parseAmountToBigInt(raw);
+  if (value === null) return { ok: false, reason: 'empty' };
+  if (value <= 0n) return { ok: false, reason: 'not_positive' };
+  if (value > MAX_AMOUNT) return { ok: false, reason: 'too_large' };
+  return { ok: true, value };
+}
+
+/** Whole-number percentage of `part` in `whole`, clamped to 0..100, computed in bigint. */
+export function percentOf(part: bigint, whole: bigint): number {
+  if (whole <= 0n || part <= 0n) return 0;
+  const pct = (part * 100n) / whole;
+  return pct > 100n ? 100 : Number(pct);
+}

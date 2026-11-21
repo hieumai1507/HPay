@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
+import { idempotencyHeaders } from '@/lib/idempotency';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
 export interface WorkflowStep {
@@ -56,33 +57,27 @@ export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: 
   return useQuery({
     queryKey: ['admin', 'workflows', filters],
     queryFn: async (): Promise<Paged<WorkflowInstance>> => {
-      try {
-        const res = await apiRequest<{ workflows: BackendWorkflowRow[]; total?: number }>(
-          `/v1/admin/workflows${buildQueryString(serverParams)}`
-        );
-        if (res?.workflows) {
-          const items: WorkflowInstance[] = res.workflows.map((w) => {
-            const ageMs = Date.now() - new Date(w.created_at).getTime();
-            const ageMin = Math.floor(ageMs / 60000);
-            return {
-              id: w.id,
-              definitionId: w.definition_name ? `${w.definition_name} v${w.definition_version}` : (w.definition_id || 'workflow'),
-              txnRef: w.txn_ref || '—',
-              amount: w.txn_amount,
-              currentStep: w.current_step,
-              age: ageMin > 0 ? `${ageMin}m` : 'vừa xong',
-              status: (w.status as WorkflowInstance['status']) || 'running',
-              isStuck: w.status === 'running' && ageMin > 5,
-              createdAt: w.created_at,
-              context: w.context,
-            };
-          });
-          return { rows: items, total: res.total ?? items.length };
-        }
-      } catch {
-        // Return empty page if backend not returned
-      }
-      return { rows: [], total: 0 };
+      // Errors propagate so the page shows the real failure instead of an empty list.
+      const res = await apiRequest<{ workflows: BackendWorkflowRow[] | null; total?: number }>(
+        `/v1/admin/workflows${buildQueryString(serverParams)}`
+      );
+      const items: WorkflowInstance[] = (res?.workflows ?? []).map((w) => {
+        const ageMs = Date.now() - new Date(w.created_at).getTime();
+        const ageMin = Math.floor(ageMs / 60000);
+        return {
+          id: w.id,
+          definitionId: w.definition_name ? `${w.definition_name} v${w.definition_version}` : (w.definition_id || 'workflow'),
+          txnRef: w.txn_ref || '—',
+          amount: w.txn_amount,
+          currentStep: w.current_step,
+          age: ageMin > 0 ? `${ageMin}m` : 'vừa xong',
+          status: (w.status as WorkflowInstance['status']) || 'running',
+          isStuck: w.status === 'running' && ageMin > 5,
+          createdAt: w.created_at,
+          context: w.context,
+        };
+      });
+      return { rows: items, total: res?.total ?? items.length };
     },
     refetchInterval: 10_000,
   });
@@ -127,6 +122,7 @@ export function useDecideWorkflow() {
           action: action === 'retry' ? 'approve' : 'reject',
           reason,
         },
+        headers: idempotencyHeaders(),
       });
     },
     onSuccess: () => {

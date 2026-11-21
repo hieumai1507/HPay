@@ -48,7 +48,9 @@ The ledger owns the only code path that changes a wallet balance: `ledger.Post`.
 | BR-LED-11 | `wallets.balance` changes only through `ApplyWalletDelta`, once per wallet with the net delta, bumping `version` and `updated_at`. Zero-delta wallets are skipped. | `ledger.go:PostWithQueries` (133-140); `queries/wallets.sql:ApplyWalletDelta` | `TestEdge_E01_IdempotentTopup` (balance == ledger sum) |
 | BR-LED-12 | `ledger_entries` rows can never be UPDATEd or DELETEd; corrections are new reversing postings. | triggers `trg_ledger_entries_no_update`, `trg_ledger_entries_no_delete` (000007:17-24) | none |
 | BR-LED-13 | Intended invariant: `wallets.balance = SUM(credit) - SUM(debit)` of its entries, for every wallet including system pools. | `ledger.go` posts both in the same caller tx; system pools realigned and opening balance set to 0 (000002:98-100, 000006:81-88); checked by `queries/ledger.sql:SumLedgerByWallet` and `queries/recon.sql` (internal reconciliation) | `testutil.LedgerSum` assertions in `TestEdge_E02_ConcurrentOverdraw`, `TestEdge_E01_IdempotentTopup`, `TestVault_DepositMovesMoneyAndBalances` |
-| BR-LED-14 | `Post` runs inside the caller's transaction and never commits or rolls back itself. | `ledger.go:Post` (70-72), `PostWithQueries` (77) | none |
+| BR-LED-14 | `Post` runs inside the caller's transaction and never commits or rolls back itself. | `ledger.go:Post`, `PostWithQueries` | none |
+| BR-LED-15 | A posting is identified by `(transaction, kind)` with kind in `forward`, `compensate`, `round_up`. It can be applied at most once: a second call with the same total returns `ErrAlreadyPosted` and changes nothing; with a different total it returns `ErrPostingConflict` and changes nothing. The guard row is claimed after the ordered wallet locks and before any entry, inside the caller's transaction, so it rolls back with a failed posting. | `ledger.go:PostWithQueries`; table `ledger_postings` PRIMARY KEY (transaction_id, kind) (migration 000014); `queries/ledger.sql:InsertLedgerPosting` | `TestPost_SecondCallSameKindIsRejected`, `TestPost_SameKindDifferentAmountIsAConflict`, `TestPost_ConcurrentSameKindOnce`, `TestPost_CompensateIndependentAndOnce`, `TestPost_RoundUpAfterForwardOnce`, `TestPost_FailedPostingLeavesNoGuard`, `TestBEC1_SecondPostOfSameTransactionMovesMoneyTwice`, `TestEdge_E06_DuplicateStepNoDoublePost` |
+| BR-LED-16 | Every transaction that had ledger entries before migration 000014 has a `forward` guard row (back-filled; earlier compensation or round-up entries are folded into it). | migration 000014 back-fill | `TestMigration_BackfillCoversEveryPostedTransaction` |
 
 ## 4. Lifecycle / state machine
 The ledger itself has no states. A single posting is atomic inside the caller's transaction:
@@ -91,11 +93,11 @@ Callers of `Post`/`PostWithQueries` (all in `src/backend`): `wallet/service.go:1
 Standard fee posting built by MOVE_FUNDS (`handlers.go:124-141`): debit sender `amount+fee`, credit receiver `amount`, and if `fee > 0` credit `SYSTEM_FEE` `fee`. Compensation is the exact mirror with directions swapped.
 
 ## 6. Invariants
-- Debit total = credit total for every `Post` call (BR-LED-03). This holds per call, not per transaction id: nothing ties several calls with the same `txnID` together.
+- Debit total = credit total for every `Post` call (BR-LED-03). This holds per call; the `(transaction, kind)` guard (BR-LED-15) now ties repeated calls for the same transaction together, but a DB constraint that debits equal credits per transaction still does not exist.
 - No customer, org or vault wallet is ever negative: Go check (BR-LED-08) plus DB CHECK as last line.
 - Lock order is global by UUID byte order (`bytes.Compare`), `ledger.go:153`, matching `ORDER BY id` in SQL.
 - Entries are immutable (BR-LED-12). The trigger is per row and raises on UPDATE/DELETE; it does not stop `TRUNCATE` or DROP, and a DB superuser can drop the trigger.
-- What `Post` does NOT guarantee: it does not check that `txnID` exists or is in a valid state, does not check whether that `txnID` was already posted, and does not check wallet `status` or owner status. Posting the same legs twice debits twice. Idempotency is the caller's job (step claim, `CompleteTransactionFromCreated`, idempotency key). See BE-C1.
+- What `Post` guarantees since ADR-0010: the same `(transaction, kind)` is applied at most once (BR-LED-15), including under concurrency. What it still does NOT do: check that `txnID` exists or is in a valid state beyond the foreign key on the guard row, or check wallet `status` or owner status.
 
 ## 7. Data
 Link: `../reference/data-model.md`.
@@ -119,7 +121,7 @@ No HTTP endpoints. Go API: `ledger.ValidateLegs`, `ledger.Post(ctx, tx, txnID, l
 - Duplicate wallet ids in legs are legal if at least two distinct wallets remain; their effects are netted before the overdraft check (`ledger.go:101-114`).
 
 ## 10. Known gaps (as-is vs intended)
-- BE-C1: no guard against posting the same `txnID` twice; `ledger_entries` has no UNIQUE on `transaction_id` (000002:83 is a plain index) and `PostWithQueries` does not look for existing entries. MOVE_FUNDS posts in its own tx separate from the step record (`handlers.go:83-121`). Not fixed.
+- BE-C1 (double posting) is FIXED in the working tree (2026-11-21, not yet committed): see BR-LED-15 and bug record BUG-0001. Still open in the same area: MOVE_FUNDS still commits its money movement in a different transaction from the step record, so a crash can still leave the step unrecorded; it is now harmless (the replay is rejected by the guard and treated as success) but it is a second layer worth closing later (ADR-0010 option C).
 - BE-H4: `ErrInsufficientBalance` while reversing/compensating after the receiver spent the money is terminal (`handlers.go:113-115`); no debt/hold account exists. Not fixed.
 - BE-H3: double-reversal uniqueness is not enforced by a verified constraint (the query comment in `queries/transactions.sql:66` mentions `one_reversal_per_txn`; the audit found no such migration). Owned by reversal docs.
 - `ledger_accounts` and `ledger_entries.account_id` are unused.
@@ -131,13 +133,13 @@ No HTTP endpoints. Go API: `ledger.ValidateLegs`, `ledger.Post(ctx, tx, txnID, l
 | Path | Responsibility |
 |------|----------------|
 | `internal/ledger/ledger.go:35` | `ValidateLegs` pure checks |
-| `internal/ledger/ledger.go:70,77` | `Post`, `PostWithQueries` |
+| `internal/ledger/ledger.go` (`Post`, `PostWithQueries`, `Kind`, `ErrAlreadyPosted`, `ErrPostingConflict`) | posting with the (transaction, kind) guard |
 | `internal/ledger/ledger.go:144` | `uniqueSortedIDs` lock order |
 | `internal/store/queries/wallets.sql:5,32` | `GetWalletsForUpdate`, `ApplyWalletDelta` |
-| `internal/store/queries/ledger.sql:1,6` | `InsertLedgerEntry`, `SumLedgerByWallet` |
-| `db/migrations/000002...up.sql`, `000006...up.sql:69-101`, `000007...up.sql` | schema, system pools, append-only trigger |
-| `test/integration/ledger_test.go`, `internal/ledger/ledger_test.go` | tests |
+| `internal/store/queries/ledger.sql` | `InsertLedgerEntry`, `SumLedgerByWallet`, `InsertLedgerPosting`, `GetLedgerPosting` |
+| `db/migrations/000002...up.sql`, `000006...up.sql`, `000007...up.sql`, `000014_ledger_postings_guard.up.sql` | schema, system pools, append-only trigger, postings guard |
+| `test/integration/ledger_test.go`, `test/integration/ledger_replay_test.go`, `internal/ledger/ledger_test.go`, `internal/ledger/posting_guard_test.go` | tests |
 
 ## 12. Open questions
 - Should `ledger_accounts` be removed or wired in (owner: ledger/finance, undecided)?
-- Add a UNIQUE `(transaction_id, posting_kind)` as the audit proposes (owner: backend, tracked as BE-C1, no date).
+- Add a constraint trigger that checks debits equal credits per transaction (owner: backend, not scheduled).

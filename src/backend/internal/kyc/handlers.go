@@ -161,8 +161,14 @@ func (h *classifierHandler) Execute(ctx context.Context, in workflow.StepInput) 
 	if _, err := qtx.ClassifyKYCGuarded(ctx, store.ClassifyKYCGuardedParams{ID: reqID, Status: newStatus}); err != nil {
 		return workflow.StepOutput{}, workflow.RetryableError{Err: err}
 	}
-	if _, err := qtx.SetUserKycFromPending(ctx, store.SetUserKycFromPendingParams{ID: req.UserID, KycStatus: newStatus}); err != nil {
+	n, err := qtx.SetUserKycFromPending(ctx, store.SetUserKycFromPendingParams{ID: req.UserID, KycStatus: newStatus})
+	if err != nil {
 		return workflow.StepOutput{}, workflow.RetryableError{Err: err}
+	}
+	if n > 0 { // the guarded status change applied: the offer follows it in the same transaction
+		if err := applyOfferForStatus(ctx, qtx, req.UserID, newStatus); err != nil {
+			return workflow.StepOutput{}, workflow.RetryableError{Err: err}
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return workflow.StepOutput{}, workflow.RetryableError{Err: err}

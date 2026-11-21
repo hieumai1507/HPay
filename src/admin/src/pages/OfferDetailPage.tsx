@@ -1,100 +1,77 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useOfferDetail, useSaveOffer, type OfferServiceConfig, type AuthMatrixRule } from '@/queries';
-import { Badge } from '@/ui';
+import { useOfferDetail, type OfferServiceConfig, type AuthMatrixRule } from '@/queries';
+import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
+import { formatVnd, moneyErrorMessage, parseMinorUnits, type MoneyParseResult } from '@/lib/money';
+import { useAdminStore } from '@/stores/admin';
+import { Badge, ErrorNotice, NotAvailableNote } from '@/ui';
+
+const MAX_INTERVAL_SEC = 86_400n;
+
+/** Shown only when the offer has no configured services: all-zero, inert placeholder. */
+const EMPTY_SERVICE: OfferServiceConfig = {
+  serviceId: '',
+  serviceCode: '—',
+  serviceName: '—',
+  isEnabled: false,
+  maxAmountPerTxn: 0,
+  dailyLimit: 0,
+  monthlyLimit: 0,
+  intervalSec: 0,
+  authMatrix: [],
+};
+
+function hint(r: MoneyParseResult): string {
+  return r.ok ? formatVnd(r.value) : moneyErrorMessage(r.reason);
+}
 
 export default function OfferDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: offer, isLoading } = useOfferDetail(id);
-  const saveOfferMutation = useSaveOffer();
+  const { data: offer, isLoading, error } = useOfferDetail(id);
+  // UX only: the backend does not enforce admin roles yet (audit BE-H6).
+  const canConfigure = useAdminStore((s) => s.can(ACTION_PERMISSION.offerConfig));
 
-  const [selectedServiceCode, setSelectedServiceCode] = useState('P2P_TRANSFER');
+  const [selectedServiceCode, setSelectedServiceCode] = useState<string | null>(null);
 
-  // Local state for editable service limits & auth matrix
-  const [maxPerTxn, setMaxPerTxn] = useState(100000000);
-  const [dailyLimit, setDailyLimit] = useState(500000000);
-  const [monthlyLimit, setMonthlyLimit] = useState(2000000000);
-  const [intervalSec, setIntervalSec] = useState(3);
+  // Edits are kept as the raw text the operator typed and are validated on every
+  // render (digits only, no negatives, upper bound). Nothing goes through Number().
+  // undefined = untouched, so the field shows the real value from the API.
+  const [draft, setDraft] = useState<{
+    max?: string;
+    daily?: string;
+    monthly?: string;
+    interval?: string;
+    auth?: AuthMatrixRule[];
+  }>({});
 
-  const [authMatrix, setAuthMatrix] = useState<AuthMatrixRule[]>([
-    { minAmount: 0, maxAmount: 2000000, authMethod: 'pin' },
-    { minAmount: 2000000, maxAmount: 50000000, authMethod: 'otp' },
-    { minAmount: 50000000, authMethod: '2fa' },
-  ]);
+  if (error) {
+    return <ErrorNotice error={error} what="the offer" />;
+  }
 
   if (isLoading || !offer) {
     return <div className="p-10 text-center text-slate-500">Đang tải cấu hình Offer…</div>;
   }
 
-  const handleSave = async () => {
-    try {
-      await saveOfferMutation.mutateAsync({
-        ...offer,
-        services: (offer.services || []).map((s) =>
-          s.serviceCode === selectedServiceCode
-            ? {
-                ...s,
-                maxAmountPerTxn: maxPerTxn,
-                dailyLimit,
-                monthlyLimit,
-                intervalSec,
-                authMatrix,
-              }
-            : s,
-        ),
-      });
-      alert(`Đã lưu cấu hình Offer ${offer.name} thành công!`);
-    } catch (e: unknown) {
-      alert(`Lỗi: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  };
-
   const handleUpdateAuthMethod = (index: number, newMethod: AuthMatrixRule['authMethod']) => {
-    setAuthMatrix((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, authMethod: newMethod } : item)),
-    );
+    setDraft((d) => ({ ...d, auth: authMatrix.map((item, idx) => (idx === index ? { ...item, authMethod: newMethod } : item)) }));
   };
 
-  const servicesList: OfferServiceConfig[] = offer.services.length > 0
-    ? offer.services
-    : [
-        {
-          serviceId: 'srv-1',
-          serviceCode: 'P2P_TRANSFER',
-          serviceName: 'Chuyển tiền P2P Ví-đến-Ví',
-          isEnabled: true,
-          maxAmountPerTxn: 100000000,
-          dailyLimit: 500000000,
-          monthlyLimit: 2000000000,
-          intervalSec: 3,
-          authMatrix,
-        },
-        {
-          serviceId: 'srv-2',
-          serviceCode: 'MONEY_REQUEST',
-          serviceName: 'Xin tiền & Split Bill',
-          isEnabled: true,
-          maxAmountPerTxn: 20000000,
-          dailyLimit: 100000000,
-          monthlyLimit: 500000000,
-          intervalSec: 2,
-          authMatrix: [{ minAmount: 0, authMethod: 'pin' }],
-        },
-        {
-          serviceId: 'srv-3',
-          serviceCode: 'TOPUP_BANK',
-          serviceName: 'Nạp tiền Ngân hàng',
-          isEnabled: true,
-          maxAmountPerTxn: 50000000,
-          dailyLimit: 200000000,
-          monthlyLimit: 1000000000,
-          intervalSec: 5,
-          authMatrix: [{ minAmount: 0, authMethod: 'otp' }],
-        },
-      ];
+  const servicesList: OfferServiceConfig[] = offer.services;
+  const activeService =
+    servicesList.find((s) => s.serviceCode === selectedServiceCode) ?? servicesList[0] ?? EMPTY_SERVICE;
+  const hasServices = servicesList.length > 0;
 
-  const activeService = servicesList.find((s) => s.serviceCode === selectedServiceCode) || servicesList[0]!;
+  const maxPerTxn = draft.max ?? String(activeService.maxAmountPerTxn);
+  const dailyLimit = draft.daily ?? String(activeService.dailyLimit);
+  const monthlyLimit = draft.monthly ?? String(activeService.monthlyLimit);
+  const intervalSec = draft.interval ?? String(activeService.intervalSec);
+  const authMatrix: AuthMatrixRule[] = draft.auth ?? activeService.authMatrix ?? [];
+
+  const maxPerTxnR = parseMinorUnits(maxPerTxn);
+  const dailyR = parseMinorUnits(dailyLimit);
+  const monthlyR = parseMinorUnits(monthlyLimit);
+  const intervalR = parseMinorUnits(intervalSec, MAX_INTERVAL_SEC);
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,13 +93,16 @@ export default function OfferDetailPage() {
 
         <button
           type="button"
-          onClick={handleSave}
-          disabled={saveOfferMutation.isPending}
+          disabled
+          title={canConfigure ? 'Not available yet: the backend has no write endpoint for offers (GET only).' : NO_PERMISSION_REASON}
           className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
         >
-          {saveOfferMutation.isPending ? 'Đang lưu…' : 'Lưu cấu hình Offer'}
+          Lưu cấu hình Offer
         </button>
       </div>
+
+      <NotAvailableNote>{'the backend has no endpoint to save offers yet (only GET /v1/admin/offers and /v1/admin/offers/{id}). Values below are validated previews and cannot be saved.'}</NotAvailableNote>
+      {!hasServices && <div className="text-xs text-slate-500">This offer has no configured services.</div>}
 
       {/* Main Layout */}
       <div className="flex gap-5 flex-col md:flex-row">
@@ -138,11 +118,7 @@ export default function OfferDetailPage() {
                   key={srv.serviceCode}
                   onClick={() => {
                     setSelectedServiceCode(srv.serviceCode);
-                    setMaxPerTxn(srv.maxAmountPerTxn);
-                    setDailyLimit(srv.dailyLimit);
-                    setMonthlyLimit(srv.monthlyLimit);
-                    setIntervalSec(srv.intervalSec);
-                    if (srv.authMatrix) setAuthMatrix(srv.authMatrix);
+                    setDraft({});
                   }}
                   className={`bg-white rounded-xl p-3 cursor-pointer shadow-xs border transition-all ${
                     isSelected ? 'border-brand border-2' : 'border-slate-200'
@@ -156,7 +132,8 @@ export default function OfferDetailPage() {
 
             <button
               type="button"
-              onClick={() => alert('Thêm Dịch vụ mới vào danh sách cấp phép của Offer này')}
+              disabled
+              title="Not available yet: the backend has no write endpoint for offers."
               className="h-10 rounded-lg border-1.5 border-dashed border-slate-300 bg-white text-slate-700 text-xs font-semibold cursor-pointer hover:border-brand hover:text-brand flex items-center justify-center transition-colors"
             >
               + Thêm Dịch vụ vào Offer
@@ -176,45 +153,57 @@ export default function OfferDetailPage() {
               <div>
                 <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">HẠN MỨC MỖI GIAO DỊCH (MAX PER TXN)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={!hasServices}
+                  aria-invalid={!maxPerTxnR.ok}
                   value={maxPerTxn}
-                  onChange={(e) => setMaxPerTxn(Number(e.target.value))}
+                  onChange={(e) => setDraft((d) => ({ ...d, max: e.target.value }))}
                   className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm font-mono font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
-                <span className="text-[11px] text-slate-500 mt-0.5 block">{(maxPerTxn / 1000000).toFixed(0)} Triệu ₫</span>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">{hint(maxPerTxnR)}</span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">HẠN MỨC NGÀY (DAILY LIMIT)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={!hasServices}
+                  aria-invalid={!dailyR.ok}
                   value={dailyLimit}
-                  onChange={(e) => setDailyLimit(Number(e.target.value))}
+                  onChange={(e) => setDraft((d) => ({ ...d, daily: e.target.value }))}
                   className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm font-mono font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
-                <span className="text-[11px] text-slate-500 mt-0.5 block">{(dailyLimit / 1000000).toFixed(0)} Triệu ₫</span>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">{hint(dailyR)}</span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">HẠN MỨC THÁNG (MONTHLY LIMIT)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={!hasServices}
+                  aria-invalid={!monthlyR.ok}
                   value={monthlyLimit}
-                  onChange={(e) => setMonthlyLimit(Number(e.target.value))}
+                  onChange={(e) => setDraft((d) => ({ ...d, monthly: e.target.value }))}
                   className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm font-mono font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
-                <span className="text-[11px] text-slate-500 mt-0.5 block">{(monthlyLimit / 1000000000).toFixed(1)} Tỷ ₫</span>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">{hint(monthlyR)}</span>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">GIÂY GIỮA 2 GIAO DỊCH (INTERVAL SEC)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={!hasServices}
+                  aria-invalid={!intervalR.ok}
                   value={intervalSec}
-                  onChange={(e) => setIntervalSec(Number(e.target.value))}
+                  onChange={(e) => setDraft((d) => ({ ...d, interval: e.target.value }))}
                   className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm font-mono font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
-                <span className="text-[11px] text-slate-500 mt-0.5 block">{intervalSec} giây</span>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">{intervalR.ok ? `${intervalR.value}s` : moneyErrorMessage(intervalR.reason)}</span>
               </div>
             </div>
           </div>

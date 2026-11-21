@@ -27,7 +27,7 @@ func (h *RequestHandler) Create(c *gin.Context) {
 		respondValidation(c, err.Error())
 		return
 	}
-	res, err := h.svc.Create(c.Request.Context(), mustUserID(c), req.PayerPhone, req.Amount, req.Note)
+	res, err := h.svc.Create(c.Request.Context(), mustUserID(c), req.PayerPhone, req.Amount, req.Note, c.GetString("idempotency_key"))
 	if err != nil {
 		respondErr(c, err)
 		return
@@ -48,7 +48,7 @@ func (h *RequestHandler) CreateSplit(c *gin.Context) {
 		respondValidation(c, err.Error())
 		return
 	}
-	res, err := h.svc.CreateSplit(c.Request.Context(), mustUserID(c), req.PayerPhones, req.TotalAmount, req.Note, req.Amounts)
+	res, err := h.svc.CreateSplit(c.Request.Context(), mustUserID(c), req.PayerPhones, req.TotalAmount, req.Note, req.Amounts, c.GetString("idempotency_key"))
 	if err != nil {
 		respondErr(c, err)
 		return

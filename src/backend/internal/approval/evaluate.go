@@ -47,7 +47,7 @@ type Decision struct {
 	CurrentLevel int // meaningful when Status == DecisionPending
 }
 
-// Evaluate is the Go version of DEH's evaluateApprovalLogic (docs 00 §5.2):
+// Evaluate is the Go implementation of the approval policy evaluation (see docs/domain/approval-maker-checker.md):
 // any reject is final; otherwise tiers must fill up in ascending level order.
 // Pure function — the caller holds the FOR UPDATE lock and passes consistent
 // data.

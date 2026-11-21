@@ -32,15 +32,20 @@ async function doRefresh(): Promise<string> {
   if (!res.ok) {
     const errBody = await parseErrorBody(res);
     const code = errBody?.code ?? 'ERR_INVALID_TOKEN';
-    await clearStoredRefreshToken();
-    // ERR_TOKEN_REUSED means the refresh family was revoked (theft detection, M05) —
-    // everything else (expired/invalid) is a plain "please log in again".
-    useSessionStore
-      .getState()
-      .clearSession(code === 'ERR_TOKEN_REUSED' ? 'refresh_revoked' : 'refresh_expired');
+    // Only a definitive "this refresh token is not valid" (401/403) ends the session.
+    // 5xx, 429 and everything else are temporary: keep the stored token and the session
+    // and surface a retryable error (audit mobile finding; network failures never get
+    // here, rawRequest throws NetworkError before a response exists).
+    if (res.status === 401 || res.status === 403) {
+      await clearStoredRefreshToken();
+      // ERR_TOKEN_REUSED means the refresh family was revoked (theft detection, M05) -
+      // everything else (expired/invalid) is a plain "please log in again".
+      useSessionStore
+        .getState()
+        .clearSession(code === 'ERR_TOKEN_REUSED' ? 'refresh_revoked' : 'refresh_expired');
+    }
     throw new ApiError(code, res.status, errBody?.request_id, errBody?.message);
   }
-
   const data = (await res.json()) as { tokens: TokenPair };
   const tokens = data.tokens;
   if (!tokens.access_token || !tokens.refresh_token) {
@@ -90,7 +95,13 @@ export function useSessionBootstrap(): boolean {
         try {
           await refreshAccessToken();
         } catch {
-          // session store already moved to 'unauthenticated' inside doRefresh().
+          // 401/403: doRefresh() already cleared the session and the stored token.
+          // Temporary failure (offline, 5xx, 429): keep the stored refresh token so the
+          // next launch retries, but leave the bootstrapping state so the app can render
+          // the login screen instead of a permanent splash.
+          if (useSessionStore.getState().status === 'bootstrapping') {
+            useSessionStore.getState().clearSession(null);
+          }
         }
       }
       setChecked(true);

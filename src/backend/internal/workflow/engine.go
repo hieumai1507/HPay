@@ -300,12 +300,12 @@ func (e *Engine) startCompensation(ctx context.Context, q *store.Queries, inst s
 
 func (e *Engine) onCompensateResult(ctx context.Context, q *store.Queries, inst store.GetInstanceForUpdateRow, ev ResultEvent) error {
 	if !ev.OK {
-		// Reverse posting failed: surface loudly for ops (A3 monitor), stop.
+		// Reverse posting failed: park in its own terminal state (ADR-0009) so ops can find it, stop.
 		e.log.Error("COMPENSATION FAILED — manual intervention required",
 			"instance", inst.ID, "step", ev.Step, "error", ev.Error)
 		return q.AdvanceInstance(ctx, store.AdvanceInstanceParams{
 			ID: inst.ID, CurrentStep: pgtype.Text{String: ev.Step, Valid: true},
-			Status: store.WfStatusFailed, Context: inst.Context,
+			Status: store.WfStatusCompensationFailed, Context: inst.Context,
 		})
 	}
 	queue := getContextSlice(inst.Context, "_compensate")
@@ -488,4 +488,39 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n]
+}
+
+// ReEmitCompensation re-dispatches the current compensation step of an instance whose
+// result never came back. The attempt number is the same (101): if the step already ran,
+// the worker replays the stored result instead of posting a second time.
+func (e *Engine) ReEmitCompensation(ctx context.Context, instID uuid.UUID) error {
+	tx, err := e.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	q := e.q.WithTx(tx)
+	inst, err := q.GetInstanceForUpdate(ctx, instID)
+	if err != nil {
+		return err
+	}
+	if store.WfStatus(inst.Status) != store.WfStatusCompensating || !inst.CurrentStep.Valid {
+		return tx.Commit(ctx)
+	}
+	def, err := q.GetDefinitionByID(ctx, inst.DefinitionID)
+	if err != nil {
+		return err
+	}
+	steps, err := ParseSteps(def.Steps)
+	if err != nil {
+		return err
+	}
+	idx := StepIndex(steps, inst.CurrentStep.String)
+	if idx < 0 {
+		return fmt.Errorf("recover compensation: step %q missing", inst.CurrentStep.String)
+	}
+	if err := e.dispatchCompensate(ctx, q, instID, steps[idx]); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

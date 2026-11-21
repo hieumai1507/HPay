@@ -8,20 +8,21 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hieumai1507/hpay-backend/internal/offerguard"
 	"github.com/hieumai1507/hpay-backend/internal/org"
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 	"github.com/hieumai1507/hpay-backend/internal/user"
-	"github.com/hieumai1507/hpay-backend/internal/wallet"
 )
 
 // UserHandler serves the m3-api-support read-only endpoints: receiver lookup
 // (masked) and own profile with the server-truth transaction limit.
 type UserHandler struct {
-	q *store.Queries
+	q     *store.Queries
+	guard *offerguard.Guard
 }
 
 func NewUserHandler(pool *pgxpool.Pool) *UserHandler {
-	return &UserHandler{q: store.New(pool)}
+	return &UserHandler{q: store.New(pool), guard: offerguard.New(pool)}
 }
 
 // Lookup confirms a receiver exists before a transfer, revealing only a masked
@@ -51,22 +52,33 @@ func (h *UserHandler) Lookup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"found": true, "masked_name": user.MaskName(u.FullName)})
 }
 
-// Me returns the caller's own profile plus txn_limit derived from
-// wallet.TxnLimit — the single source of truth for per-transaction limits
-// (clients must not hardcode the tier table).
+// Me returns the caller's own profile plus txn_limit and the offer limits, read from the
+// user's offer (the single source of truth; clients must not hardcode a tier table).
 func (h *UserHandler) Me(c *gin.Context) {
 	u, err := h.q.GetUserProfileByID(c.Request.Context(), mustUserID(c))
 	if err != nil {
 		respondErr(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
+	body := gin.H{
 		"user": gin.H{
 			"id":         u.ID,
 			"phone":      u.Phone,
 			"full_name":  u.FullName,
 			"kyc_status": u.KycStatus,
 		},
-		"txn_limit": wallet.TxnLimit(u.KycStatus),
-	})
+		"txn_limit": int64(0),
+	}
+	lim, lerr := h.guard.Limits(c.Request.Context(), u.ID, "P2P_TRANSFER")
+	switch {
+	case lerr == nil:
+		body["txn_limit"] = lim.PerTxn
+		body["offer"] = lim
+	case errors.Is(lerr, offerguard.ErrServiceNotInOffer), errors.Is(lerr, offerguard.ErrOfferInactive):
+		// no usable offer: the caller cannot transfer, so the limit is 0 and no offer block is shown
+	default:
+		respondErr(c, lerr)
+		return
+	}
+	c.JSON(http.StatusOK, body)
 }

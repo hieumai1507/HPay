@@ -4,6 +4,7 @@ export { Tabs } from './Tabs';
 export { Toasts } from './Toasts';
 export type { BadgeTone } from './Badge';
 export { Button } from './Button';
+export { ErrorNotice, NotAvailableNote } from './ErrorNotice';
 export { Input } from './Input';
 export { Layout } from './Layout';
 export { Logo, LogoMark } from './Logo';

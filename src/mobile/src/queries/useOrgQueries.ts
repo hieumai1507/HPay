@@ -5,7 +5,7 @@ import { queryClient } from '../api/query-client';
 export interface OrgDisbursementPayload {
   orgId: string;
   recipientPhone: string;
-  amount: number;
+  amount: bigint;
   note?: string;
   idempotencyKey?: string;
 }
@@ -134,11 +134,11 @@ export function useDisburseOrgMoney() {
       apiRequest<OrgDisbursementResult>(`/v1/org/${input.orgId}/transactions`, {
         method: 'POST',
         headers: input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : undefined,
-        body: JSON.stringify({
+        body: {
           phone: input.recipientPhone,
           amount: input.amount,
           note: input.note,
-        }),
+        },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: approvalsKeys.inbox });

@@ -6,8 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSecureScreen } from '@/src/features/security/useSecureScreen';
 import { describeError } from '@/src/lib/errors';
-import { useIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountVND, parseAmountToBigInt } from '@/src/lib/money';
+import { usePin } from '@/src/features/security/usePin';
+import { withIntentKey } from '@/src/lib/intentKey';
+import { formatAmountVND, parseAmountStrict, percentOf } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useMainWallet, useSetRoundUpTarget, useVaultMove, useVaults } from '@/src/queries';
 import { color } from '@/src/ui/tokens';
 
@@ -21,53 +23,57 @@ export default function VaultDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: vaults, isLoading } = useVaults();
   const { wallet: mainWallet } = useMainWallet();
-  const { deposit, withdraw, isMoving } = useVaultMove();
+  const { deposit, withdraw } = useVaultMove();
   const setRoundUpTarget = useSetRoundUpTarget();
 
   const [mode, setMode] = useState<Mode>('deposit');
   const [raw, setRaw] = useState('');
-  // One key per attempt: resets after a move so the next one is a new request
-  // rather than a replay of the last (M01).
-  const [attempt, setAttempt] = useState(0);
-  const idempotencyKey = useIdempotencyKey(String(attempt));
+  const guard = useSubmitGuard();
+  const { requestPin, pinPrompt } = usePin();
 
   const vault = useMemo(() => (vaults ?? []).find((v) => String(v.id) === String(id)), [vaults, id]);
 
-  // Money stays a bigint end to end; Number() only at the API boundary (M06).
-  const amount = parseAmountToBigInt(raw) ?? 0n;
+  // Money stays a bigint end to end, including the API boundary (C-01).
+  const parsed = parseAmountStrict(raw);
+  const amount = parsed.ok ? parsed.value : 0n;
   const available = BigInt(
     (mode === 'deposit' ? mainWallet?.balance : vault?.balance) ?? 0,
   );
   const pct = vault?.target_amount
-    ? Math.min(100, Math.round(((vault.balance ?? 0) / vault.target_amount) * 100))
+    ? percentOf(BigInt(vault.balance ?? 0), BigInt(vault.target_amount))
     : null;
 
-  const submit = async () => {
-    if (!vault?.id) return;
-    if (amount <= 0n) {
-      Alert.alert('Số tiền không hợp lệ', 'Nhập số tiền lớn hơn 0.');
-      return;
-    }
-    if (amount > available) {
-      Alert.alert(
-        'Không đủ số dư',
-        mode === 'deposit' ? 'Ví chính không đủ tiền.' : 'Hũ này không đủ tiền để rút.',
-      );
-      return;
-    }
-    try {
-      const run = mode === 'deposit' ? deposit : withdraw;
-      await run(String(vault.id), Number(amount), idempotencyKey);
-      setRaw('');
-      setAttempt((n) => n + 1);
-      Alert.alert(
-        'Thành công',
-        mode === 'deposit' ? 'Đã bỏ tiền vào hũ.' : 'Đã rút tiền về ví chính.',
-      );
-    } catch (e) {
-      Alert.alert('Không thực hiện được', describeError(e));
-    }
-  };
+  const submit = () =>
+    guard.run(async () => {
+      if (!vault?.id) return;
+      if (!parsed.ok) {
+        Alert.alert('Số tiền không hợp lệ', 'Nhập số tiền lớn hơn 0.');
+        return;
+      }
+      if (amount > available) {
+        Alert.alert(
+          'Không đủ số dư',
+          mode === 'deposit' ? 'Ví chính không đủ tiền.' : 'Hũ này không đủ tiền để rút.',
+        );
+        return;
+      }
+      const pin = await requestPin();
+      if (pin === null) return;
+      try {
+        const run = mode === 'deposit' ? deposit : withdraw;
+        const vaultId = String(vault.id);
+        await withIntentKey(`vault:${vaultId}:${mode}:${amount}`, (idempotencyKey) =>
+          run(vaultId, amount, { idempotencyKey, pin }),
+        );
+        setRaw('');
+        Alert.alert(
+          'Thành công',
+          mode === 'deposit' ? 'Đã bỏ tiền vào hũ.' : 'Đã rút tiền về ví chính.',
+        );
+      } catch (e) {
+        Alert.alert('Không thực hiện được', describeError(e));
+      }
+    });
 
   if (isLoading) {
     return (
@@ -177,12 +183,12 @@ export default function VaultDetailScreen() {
 
         <Pressable
           onPress={submit}
-          disabled={isMoving}
+          disabled={guard.isPending}
           className="items-center py-4 rounded-2xl mt-4"
-          style={{ backgroundColor: color.brand[600], opacity: isMoving ? 0.6 : 1 }}
+          style={{ backgroundColor: color.brand[600], opacity: guard.isPending ? 0.6 : 1 }}
         >
           <Text className="font-bold text-white text-base">
-            {isMoving ? 'Đang xử lý…' : mode === 'deposit' ? 'Bỏ vào hũ' : 'Rút về ví'}
+            {guard.isPending ? 'Đang xử lý…' : mode === 'deposit' ? 'Bỏ vào hũ' : 'Rút về ví'}
           </Text>
         </Pressable>
 
@@ -190,6 +196,7 @@ export default function VaultDetailScreen() {
           Mỗi lần bỏ vào hoặc rút ra đều là một giao dịch có ghi sổ cái.
         </Text>
       </ScrollView>
+      {pinPrompt}
     </SafeAreaView>
   );
 }

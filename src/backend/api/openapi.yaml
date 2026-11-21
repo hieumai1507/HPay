@@ -233,9 +233,16 @@ paths:
                     {
                       type: integer,
                       format: int64,
-                      description: max amount per transaction,
-                      minor units (VND),
+                      description: "per-transaction limit of the user's offer for P2P_TRANSFER (minor units, VND); 0 when the user has no usable offer",
                     }
+                  offer:
+                    type: object
+                    description: the user's offer and its limits for P2P_TRANSFER (absent when the user has no usable offer)
+                    properties:
+                      code: { type: string, example: OFFER_CUST_L1 }
+                      per_txn_limit: { type: integer, format: int64 }
+                      daily_limit: { type: integer, format: int64 }
+                      monthly_limit: { type: integer, format: int64 }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /v1/users/me/qr:
@@ -421,7 +428,7 @@ paths:
                 extra_params: { type: object }
       responses:
         "200":
-          description: created — check auth_required for the next step
+          description: created — check auth_required and status. When auth_required is pin or otp the status is awaiting_auth and NOTHING has moved until /transactions/confirm succeeds; a request that needs 2fa is refused with ERR_AUTH_METHOD_UNAVAILABLE (ADR-0014)
           content:
             {
               application/json:
@@ -436,12 +443,33 @@ paths:
             description: OfferGuard refused — ERR_SERVICE_NOT_IN_OFFER / ERR_SERVICE_DISABLED,
           }
         "404": { description: ERR_RECEIVER_NOT_FOUND }
+        "409": { description: ERR_IDEMPOTENCY_KEY_REUSED (key already used by you with a different payload) }
         "429": { description: ERR_TOO_FREQUENT — offer interval_seconds throttle }
+
+  /v1/transactions/challenge:
+    post:
+      tags: [transactions]
+      summary: Issue the OTP for a transaction in the otp band (ADR-0014). The code is returned only when APP_ENV=dev; other environments deliver it out of band
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [transaction_id]
+              properties:
+                transaction_id: { type: string, format: uuid }
+      responses:
+        "200": { description: "{status: otp_sent} (plus otp_dev in dev)" }
+        "404": { description: ERR_TXN_NOT_FOUND (also for another user's transaction) }
+        "409": { description: ERR_ALREADY_CONFIRMED }
+        "429": { description: ERR_RATE_LIMITED }
 
   /v1/transactions/confirm:
     post:
       tags: [transactions]
-      summary: Unified engine step 2/3 — acknowledge PIN/OTP auth for a transaction already started by /transactions/request; posting itself runs async via the workflow engine
+      summary: Unified engine step 2/3 — authenticate a transaction held in awaiting_auth with the server-verified PIN (and OTP for the otp band) and start its workflow once (ADR-0014). Calling it again returns the current state
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -462,7 +490,52 @@ paths:
               application/json:
                 { schema: { $ref: "#/components/schemas/TransferResult" } },
             }
-        "404": { description: ERR_TXN_NOT_FOUND }
+        "400": { description: ERR_CREDENTIAL_REQUIRED }
+        "403": { description: ERR_PIN_INCORRECT / ERR_PIN_NOT_SET }
+        "404": { description: ERR_TXN_NOT_FOUND — unknown id AND another user's transaction }
+        "410": { description: ERR_AUTH_EXPIRED — not confirmed within 10 minutes }
+        "422": { description: ERR_AUTH_METHOD_UNAVAILABLE — the 2fa band has no provider yet }
+        "429": { description: ERR_PIN_LOCKED — 5 wrong PINs lock PIN use for 15 minutes; ERR_RATE_LIMITED }
+
+  /v1/me/pin:
+    put:
+      tags: [auth]
+      summary: Set the first transaction PIN. Requires the account password (step-up). The PIN is stored only as an argon2id hash and is never returned or logged
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, new_pin]
+              properties:
+                password: { type: string }
+                new_pin: { type: string, description: "6 digits, not all the same digit and not a sequence" }
+      responses:
+        "200": { description: "{status: pin_set}" }
+        "400": { description: ERR_PIN_WEAK / ERR_VALIDATION }
+        "401": { description: ERR_INVALID_CREDENTIALS }
+        "429": { description: ERR_RATE_LIMITED }
+    patch:
+      tags: [auth]
+      summary: Change the transaction PIN. Requires the current PIN, which uses the same attempt counter and lockout as a payment confirmation
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_pin, new_pin]
+              properties:
+                current_pin: { type: string }
+                new_pin: { type: string }
+      responses:
+        "200": { description: "{status: pin_changed}" }
+        "400": { description: ERR_PIN_WEAK / ERR_VALIDATION }
+        "403": { description: ERR_PIN_INCORRECT / ERR_PIN_NOT_SET }
+        "429": { description: ERR_PIN_LOCKED / ERR_RATE_LIMITED }
 
   /v1/transactions/verify:
     post:
@@ -601,6 +674,7 @@ paths:
       tags: [money-requests]
       summary: Ask someone to pay you (single request, 72h TTL)
       security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
         content:
@@ -618,15 +692,17 @@ paths:
                   }
                 note: { type: string, maxLength: 255 }
       responses:
-        "201": { description: "{id, amount, status, expires_at}" }
-        "400": { description: ERR_AMOUNT_INVALID / ERR_SELF_REQUEST }
+        "201": { description: "{id, amount, status, expires_at}; a replay of the same key and payload returns the original request" }
+        "400": { description: ERR_IDEMPOTENCY_KEY_REQUIRED / ERR_AMOUNT_INVALID / ERR_SELF_REQUEST }
         "404": { description: ERR_RECEIVER_NOT_FOUND }
+        "409": { description: ERR_IDEMPOTENCY_KEY_REUSED (key already used by you with a different payload) }
 
   /v1/money-requests/split:
     post:
       tags: [money-requests]
       summary: Split Bill — one request per payer under a shared split_group_id (even split when amounts is omitted, largest-remainder — no float)
       security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
         content:
@@ -651,12 +727,13 @@ paths:
                     description: "optional custom shares, must sum to total_amount and match payer_phones length",
                   }
       responses:
-        "201": { description: "{split_group_id, requests: [...]}" }
+        "201": { description: "{split_group_id, requests: [...]}; a replay of the same key and payload returns the original split" }
         "400":
           {
-            description: ERR_AMOUNT_INVALID / ERR_SELF_REQUEST / ERR_VALIDATION (bad split),
+            description: ERR_IDEMPOTENCY_KEY_REQUIRED / ERR_AMOUNT_INVALID / ERR_SELF_REQUEST / ERR_VALIDATION (bad split),
           }
         "404": { description: ERR_RECEIVER_NOT_FOUND }
+        "409": { description: ERR_IDEMPOTENCY_KEY_REUSED (key already used by you with a different payload) }
 
   /v1/money-requests/inbox:
     get:
@@ -1487,6 +1564,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
+      description: Scoped to the calling user and bound to the request payload. Same key and same payload returns the original result; same key and a different payload is 409 ERR_IDEMPOTENCY_KEY_REUSED. Another user's identical key never collides.
       schema: { type: string, maxLength: 64 }
     DeviceId:
       name: X-Device-Id

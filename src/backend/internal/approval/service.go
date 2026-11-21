@@ -147,7 +147,7 @@ func (s *Service) Inbox(ctx context.Context, checkerID uuid.UUID) ([]store.ListP
 	return s.q.ListPendingApprovalsForChecker(ctx, checkerID)
 }
 
-// Challenge verifies eligibility BEFORE issuing an OTP (DEH's dry-run idea,
+// Challenge verifies eligibility BEFORE issuing an OTP (dry-run idea,
 // docs 00 §5.1). Returns the code for the handler to expose in dev only.
 func (s *Service) Challenge(ctx context.Context, checkerID, requestID uuid.UUID) (string, error) {
 	req, err := s.q.GetApprovalRequest(ctx, requestID)

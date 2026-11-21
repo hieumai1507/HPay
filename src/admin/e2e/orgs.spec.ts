@@ -20,10 +20,10 @@ test.describe('Organizations & Policy', () => {
   test('opening /orgs as an admin shows the org list without logging out', async ({ asMaker }) => {
     await asMaker.goto('/orgs');
     await expect(asMaker).toHaveURL(/\/orgs$/);
-    // DEH Corp is seeded by cmd/seed (real org, real member/policy counts) —
+    // Acme Corp is seeded by cmd/seed (real org, real member/policy counts) —
     // proves the page rendered real data from GET /v1/admin/orgs, not just
-    // that it didn't redirect. exact:true because "DEH Corp — Chính sách phê
-    // duyệt" (the detail-panel heading, "DEH Corp - Approval Policy") also contains this text.
-    await expect(asMaker.getByText('DEH Corp', { exact: true })).toBeVisible();
+    // that it didn't redirect. exact:true because "Acme Corp — Chính sách phê
+    // duyệt" (the detail-panel heading, "Acme Corp - Approval Policy") also contains this text.
+    await expect(asMaker.getByText('Acme Corp', { exact: true })).toBeVisible();
   });
 });

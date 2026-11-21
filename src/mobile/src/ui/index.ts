@@ -10,3 +10,4 @@ export * from './ListStates';
 export * from './BalanceCard';
 export * from './Logo';
 export * from './SplitAvatarStack';
+export * from './NotAvailable';

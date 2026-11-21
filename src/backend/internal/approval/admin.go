@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -64,6 +65,9 @@ func (s *Service) AdminDecide(ctx context.Context, adminID, requestID uuid.UUID,
 	if req.Status != store.ApprovalStatusPending {
 		return DecideResult{}, ErrAlreadyFinalized
 	}
+	if req.ExpiresAt.Valid && time.Now().After(req.ExpiresAt.Time) {
+		return DecideResult{}, ErrExpired // same rule as the org path; the sweeper finalizes it
+	}
 	if req.CreatedBy == adminID {
 		return DecideResult{}, ErrSelfApproval
 	}
@@ -105,8 +109,12 @@ func (s *Service) AdminDecide(ctx context.Context, adminID, requestID uuid.UUID,
 			return DecideResult{}, err
 		}
 	case DecisionApproved:
-		if err := s.finalize(ctx, q, req.ID, store.ApprovalStatusApproved, true, reason); err != nil {
+		parked, err := s.finalizeOrPark(ctx, tx, q, adminID, req.ID, reason)
+		if err != nil {
 			return DecideResult{}, err
+		}
+		if parked {
+			res.Status = string(store.ApprovalStatusNeedsManual)
 		}
 	case DecisionRejected:
 		if err := s.finalize(ctx, q, req.ID, store.ApprovalStatusRejected, false, reason); err != nil {
@@ -129,4 +137,38 @@ func (s *Service) AdminDecide(ctx context.Context, adminID, requestID uuid.UUID,
 		return DecideResult{}, err
 	}
 	return res, nil
+}
+
+// finalizeOrPark approves the request and runs its executor inside a SAVEPOINT.
+// If the executor reports a ManualError (ADR-0013) the savepoint is rolled back,
+// which discards everything the executor did, while the approver's action row,
+// written before this call in the outer transaction, is kept. The request is
+// then parked as needs_manual and an audit row is written. Any other executor
+// error still fails the whole decision. It returns parked=true in the manual case.
+func (s *Service) finalizeOrPark(ctx context.Context, tx pgx.Tx, q *store.Queries, adminID, requestID uuid.UUID, reason string) (parked bool, err error) {
+	sp, err := tx.Begin(ctx) // SAVEPOINT
+	if err != nil {
+		return false, err
+	}
+	ferr := s.finalize(ctx, q.WithTx(sp), requestID, store.ApprovalStatusApproved, true, reason)
+	if ferr == nil {
+		return false, sp.Commit(ctx) // RELEASE SAVEPOINT
+	}
+	_ = sp.Rollback(ctx) // ROLLBACK TO SAVEPOINT: the transaction stays usable
+	me, ok := asManual(ferr)
+	if !ok {
+		return false, ferr
+	}
+	if _, err := q.MarkApprovalNeedsManual(ctx, requestID); err != nil {
+		return false, err
+	}
+	if err := q.InsertAudit(ctx, store.InsertAuditParams{
+		ActorID: adminID, ActorType: "admin", Action: me.Action,
+		Resource: me.Resource + " (approval_request " + requestID.String() + ")",
+		Reason:   pgtype.Text{String: me.Reason, Valid: me.Reason != ""},
+	}); err != nil {
+		return false, err
+	}
+	s.log.Warn("approval parked as needs_manual", "request", requestID, "action", me.Action, "resource", me.Resource)
+	return true, nil
 }

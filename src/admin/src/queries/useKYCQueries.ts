@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest, api } from '@/api/client';
+import { api } from '@/api/client';
+import { idempotencyHeaders } from '@/lib/idempotency';
 import type { BadgeTone } from '@/ui';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
@@ -20,38 +21,6 @@ export interface KYCQueueItem {
   created_at: string;
 }
 
-export function useKYCQueueQuery(paramsInput: KYCTab | (AdminQueryParams & { tab?: KYCTab })) {
-  const params: AdminQueryParams = typeof paramsInput === 'string' ? { tab: paramsInput } : paramsInput;
-  return useQuery({
-    queryKey: ['admin', 'kyc', 'queue', params],
-    queryFn: async (): Promise<KYCQueueItem[]> => {
-      try {
-        const res = await apiRequest<{ items?: KYCQueueItem[]; requests?: KYCQueueItem[] }>(
-          `/v1/admin/kyc${buildQueryString(params)}`
-        );
-        return res?.items || res?.requests || [];
-      } catch {
-        return [];
-      }
-    },
-  });
-}
-
-export function useKYCDecisionMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, decision, reason }: { id: string; decision: 'approve' | 'reject'; reason?: string }) => {
-      return await apiRequest(`/v1/admin/kyc/${id}/decision`, {
-        method: 'POST',
-        body: { decision, reason },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'kyc'] });
-    },
-  });
-}
-
 export function useKYCQueue(paramsInput: KYCTab | (AdminQueryParams & { tab?: KYCTab })) {
   const params: AdminQueryParams = typeof paramsInput === 'string' ? { tab: paramsInput } : paramsInput;
   return useQuery({
@@ -70,6 +39,7 @@ interface ReviewInput {
   reason?: string;
 }
 
+/** POST /v1/admin/kyc/{id}/review body {action, reason} (the legacy /decision path does not exist). */
 export function useKYCReview() {
   const qc = useQueryClient();
   return useMutation({
@@ -77,6 +47,7 @@ export function useKYCReview() {
       api<{ status: string }>(`/v1/admin/kyc/${id}/review`, {
         method: 'POST',
         body: { action, reason },
+        headers: idempotencyHeaders(),
       }),
     onSettled: () => qc.invalidateQueries({ queryKey: ['kyc'] }),
   });

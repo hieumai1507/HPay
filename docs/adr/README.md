@@ -17,11 +17,16 @@ One decision per file. Format: Status, Context, Decision, Consequences. Accepted
 | [0004](0004-outbox-and-redis-streams.md) | Transactional outbox and Redis Streams | Accepted (implemented) |
 | [0005](0005-in-process-schedulers-not-asynq.md) | In-process schedulers, not asynq | Accepted (implemented) |
 | [0006](0006-docker-based-backend-tests.md) | Docker-based backend tests | Accepted (implemented) |
-| [0007](0007-kyc-limits-attached-to-offers.md) | KYC limits attached to offers | Accepted, not yet implemented |
-| [0008](0008-server-side-pin.md) | Server-side PIN | Accepted, not yet implemented |
-| [0009](0009-reversal-failure-needs-manual-and-fail-closed-fraud.md) | Reversal failure needs manual, fail-closed fraud | Accepted, not yet implemented |
-| [0010](0010-ledger-postings-guard.md) | Guard ledger postings with a unique (transaction, kind) record | **Proposed** (awaiting approval) |
+| [0007](0007-kyc-limits-attached-to-offers.md) | KYC limits attached to offers | Accepted, implemented (weekly windows open) |
+| [0008](0008-server-side-pin.md) | Server-side PIN | Accepted, implemented by ADR-0014 (reset flow open) |
+| [0009](0009-reversal-failure-needs-manual-and-fail-closed-fraud.md) | Reversal failure needs manual, fail-closed fraud | Accepted, reversal part implemented (ADR-0013); `compensation_failed` open |
+| [0010](0010-ledger-postings-guard.md) | Guard ledger postings with a unique (transaction, kind) record | **Accepted** (approved 2026-11-21) |
+| [0011](0011-idempotency-per-user-bound-to-request.md) | Idempotency keys are per user and bound to the request | **Accepted** (approved 2026-11-21) |
+| [0012](0012-explicit-app-env.md) | APP_ENV is required and validated | **Accepted** (approved 2026-11-21) |
 
 Template for a new ADR: `../_templates/adr.md` (front matter with status, supersedes, affects, constitution). Number it next in sequence and add it to this table.
 
 Lifecycle: an ADR is written as **Proposed** during `hpay-feature` stage 3 (design gate) and reviewed by the user before any code; it becomes **Accepted** in stage 9 once shipped and verified (the existing "Accepted, not yet implemented" rows were decided by the user but have no code yet); it can later be **Superseded by NNNN**, **Deprecated** or **Rejected**. The engineering principles every ADR is checked against are in [`../constitution.md`](../constitution.md).
+| [0013](0013-reversal-uniqueness-and-needs-manual.md) | One reversal per transaction in the database; impossible reversals parked as needs_manual | **Accepted** (approved 2026-11-21) |
+| [0014](0014-transaction-pin-gate.md) | Hold a transaction in awaiting_auth until the server verifies the PIN | **Accepted** (approved 2026-11-21) |
+| [0015](0015-admin-rbac.md) | Enforce admin permissions on the server from the database role | **Accepted** (approved 2026-11-21) |

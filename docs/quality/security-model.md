@@ -79,7 +79,7 @@ Requirements for hardening: private/authenticated Cloudinary uploads, a separate
 | BE-H4 | Reversal or compensation when the receiver already spent the money leaves approval pending or the transaction stuck (ADR 0009) | High |
 | BE-H5 | Money request marked paid before the transfer completes | High |
 | BE-H6 | Access tokens not revocable and user status not checked for 15 minutes; admin has no RBAC; admin shares the signing secret | High |
-| BE-H7 | `APP_ENV` defaults to `dev` and is not validated: `otp_dev` returned in challenge responses, weak secrets accepted, mock bank callback mounted everywhere with a default secret, real gateway never enabled | High |
+| BE-H7 | **Fixed in the working tree (2026-11-21, not yet committed), ADR-0012**: `APP_ENV` is required and validated; mock bank route not mounted in production; weak or placeholder secrets refused outside dev and ci; seeder guarded; `/healthz` without error text; server timeouts; security headers; `TRUSTED_PROXIES`. Still open from the original finding: `/internal/*` should also be blocked at the proxy | High (closed) |
 | BE-H8 | Weak brute-force protection: per-IP only, no per-account lockout, spoofable X-Forwarded-For, rate limiter fails open, user enumeration by timing and register error | High |
 | BE-H9 | KYC upload and image storage weaknesses (public Cloudinary type, signing with `JWT_SECRET`, no nosniff, weak validation) | High |
 | SSRF | Gateway calls URLs from `services.actions` with only an `http` prefix check; no allowlist, private IP blocking or redirect limit (real HTTP only when `Env == "production"`, but see BE-H7) | High (confirmed) |
@@ -92,18 +92,18 @@ Requirements for hardening: private/authenticated Cloudinary uploads, a separate
 Before any real deployment:
 
 - [ ] Rotate every secret that ever appeared in an `.env`; use a secrets manager; separate signing keys for users, admins and file URLs
-- [ ] `APP_ENV` mandatory and whitelisted; refuse default secrets and short `JWT_SECRET` outside dev; stop loading `.env` outside dev
+- [x] `APP_ENV` mandatory and whitelisted; refuse default secrets and short `JWT_SECRET` outside dev and ci; load `.env` only for dev (ADR-0012, uncommitted)
 - [ ] Do not mount `/internal/mock-bank` outside dev, or restrict it at the proxy and rate limit it
 - [ ] Server-side PIN with hash, attempt counter and lockout (ADR 0008); remove hard-coded PINs in the mobile app
 - [ ] Per-user idempotency keys with request hash and 409 on mismatch, required on every money-writing route
 - [ ] Ledger posting uniqueness and the 000014 constraint group (unique reversal, `sender <> receiver`, fee policy uniqueness)
 - [ ] Admin RBAC on every admin route and in the frontend router; refresh for admin; httpOnly cookie plus CSP
-- [ ] Token revocation (`jti` or version) and status check; per-account lockout; `SetTrustedProxies`; fail-closed rate limits on auth routes
+- [ ] Token revocation (`jti` or version) and status check; per-account lockout; `SetTrustedProxies` (done: `TRUSTED_PROXIES`, uncommitted); fail-closed rate limits on auth routes
 - [ ] Block self-approval; separate maker and checker in the DB where possible
 - [ ] Gateway allowlist, private-IP and metadata-address blocking, redirect limit
 - [ ] KYC images private, separate signing key, audit link issue, nosniff, real image decode, retention policy
 - [ ] Encrypt AI keys at rest and audit changes; legal review for sending ID images to an LLM
-- [ ] HTTP server timeouts, CORS, HSTS, body size limits, `healthz` without error details
+- [x] HTTP server timeouts, HSTS (production), `healthz` without error details (uncommitted); [ ] CORS, body size limits
 - [ ] Redis password and no host exposure in compose; app database role without TRUNCATE
 - [ ] `govulncheck` and Trivy stay in CI (already present); add `gosec`
 - [ ] Remove mock data fallbacks from the admin production build

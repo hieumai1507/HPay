@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTransactionEngine, useFeePreview, useTransfer } from '@/src/queries';
+import { useTransactionEngine, useFeePreview } from '@/src/queries';
+import { usePin } from '@/src/features/security/usePin';
 import { useRecentContacts } from '@/src/features/wallet/recent-contacts';
 import { describeError } from '@/src/lib/errors';
-import { useIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountVND, parseAmountToBigInt } from '@/src/lib/money';
+import { withIntentKey } from '@/src/lib/intentKey';
+import { formatAmountVND, parseAmountStrict } from '@/src/lib/money';
+import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { Button } from '@/src/ui';
 
 export default function TransferConfirmScreen() {
@@ -18,54 +20,56 @@ export default function TransferConfirmScreen() {
     note: string;
     receiverToken?: string;
   }>();
-  const amount = parseAmountToBigInt(params.amount ?? '') ?? 0n;
+  const parsed = parseAmountStrict(params.amount ?? '');
+  const amount = parsed.ok ? parsed.value : 0n;
 
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const transfer = useTransfer();
+  const guard = useSubmitGuard();
+  const { requestPin, pinPrompt } = usePin();
   const engine = useTransactionEngine();
-  const feeQ = useFeePreview(amount.toString());
+  const feeQ = useFeePreview(parsed.ok ? amount.toString() : null);
   const recents = useRecentContacts();
   const isFirstTime = params.phone ? !recents.contacts.some((c) => c.phone === params.phone) : false;
 
-  const idempotencyKey = useIdempotencyKey(
-    params.receiverToken
-      ? `transfer:${params.receiverToken}:${amount}`
-      : `transfer:${params.phone ?? ''}:${amount}`
-  );
+  // One key per transfer intent, persisted: stable across retries, remounts and restarts.
+  const intent = `transfer:${params.receiverToken || params.phone || ''}:${amount}:${params.note ?? ''}`;
 
   const fee = feeQ.data ? BigInt(feeQ.data.fee) : null;
   const total = feeQ.data ? BigInt(feeQ.data.total) : null;
 
-  const submit = async () => {
-    if (transfer.isPending) return;
-    setSubmitError(null);
-    try {
-      const reqRes = await engine.requestTransaction({
-        serviceCode: 'P2P_TRANSFER',
-        amount: Number(amount),
-        receiverPhone: params.phone || undefined,
-        note: params.note || undefined,
-        idempotencyKey,
-      });
+  const submit = () =>
+    guard.run(async () => {
+      setSubmitError(null);
+      const pin = await requestPin();
+      if (pin === null) return; // user cancelled; nothing was sent
+      try {
+        const { reqRes, confirmRes } = await withIntentKey(intent, async (idempotencyKey) => {
+          const reqRes = await engine.requestTransaction({
+            serviceCode: 'P2P_TRANSFER',
+            amount,
+            receiverPhone: params.phone || undefined,
+            note: params.note || undefined,
+            idempotencyKey,
+          });
+          const confirmRes = await engine.confirmTransaction({
+            transactionId: reqRes.transaction_id,
+            pin,
+          });
+          return { reqRes, confirmRes };
+        });
 
-      const confirmRes = await engine.confirmTransaction({
-        transactionId: reqRes.transaction_id,
-        pin: '123456',
-      });
+        if (params.phone) {
+          recents.add({ phone: params.phone, maskedName: params.maskedName });
+        }
 
-      if (params.phone) {
-        recents.add({ phone: params.phone, maskedName: params.maskedName });
+        router.replace({
+          pathname: '/(main)/transfer/processing',
+          params: { refCode: confirmRes.ref_code || reqRes.ref_code, amount: amount.toString() },
+        });
+      } catch (err: unknown) {
+        setSubmitError(describeError(err));
       }
-
-      router.replace({
-        pathname: '/(main)/transfer/processing',
-        params: { refCode: confirmRes.ref_code || reqRes.ref_code, amount: amount.toString() },
-      });
-    } catch (err: any) {
-      setSubmitError(describeError(err));
-    }
-  };
-
+    });
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-slate-900" edges={['top']}>
       <View className="flex-row items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800">
@@ -73,7 +77,7 @@ export default function TransferConfirmScreen() {
           onPress={() => router.back()}
           hitSlop={12}
           accessibilityRole="button"
-          disabled={transfer.isPending}
+          disabled={guard.isPending}
         >
           <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
         </Pressable>
@@ -112,11 +116,12 @@ export default function TransferConfirmScreen() {
       <View className="p-4">
         <Button
           label="Chuyển tiền"
-          loading={transfer.isPending}
-          disabled={fee === null || transfer.isPending}
+          loading={guard.isPending}
+          disabled={!parsed.ok || fee === null || guard.isPending}
           onPress={submit}
         />
       </View>
+      {pinPrompt}
     </SafeAreaView>
   );
 }
