@@ -7,6 +7,8 @@ last_verified: 2026-11-21
 
 # Test cases: PIN reset
 
+Source of the workbook: `test-cases.json` in this folder. Render it with `python -X utf8 .claude/skills/hpay-qa-testcases/scripts/render_feature_workbook.py w4-pin-reset`, which writes `docs/qa/test-cases/w4-pin-reset-testcase.xlsx`. The five catalog workbooks are not changed by this feature.
+
 Executor AUTO-API unless noted. Tests live in `src/backend/internal/auth/pin_reset_test.go` (white-box, real DB) and `src/backend/test/integration/authn/pin_reset_http_test.go` (through the real router).
 
 | TC | AC | Type | Pri | Steps | Expected | Test |

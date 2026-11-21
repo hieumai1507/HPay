@@ -5,6 +5,14 @@ description: Generate, update and execute the HPay manual/automated QA test-case
 
 # hpay-qa-testcases
 
+Two kinds of workbook live in `docs/qa/test-cases/`:
+1. **The five catalog workbooks** (`01`..`05`): the standing regression catalog, generated from Python data (below).
+2. **One workbook per feature**, `<slug>-testcase.xlsx` (for example `w4-pin-reset-testcase.xlsx`). The cases of a new feature are NOT added to the catalog or to `generate_test_cases.py`. The skill designs the cases for the feature (hpay-feature stage 4), writes them to `docs/specs/<slug>/test-cases.json` next to the spec, and `render_feature_workbook.py` only turns that file into the workbook. The script holds no cases and never touches the catalog workbooks, so recorded results there cannot be erased. Results of a run are written back into the JSON (`status`, `actual`, `evidence`, `executed_by`, `last_run`) and the workbook is rendered again.
+```
+python -X utf8 .claude/skills/hpay-qa-testcases/scripts/render_feature_workbook.py <slug>
+```
+The JSON shape is in the docstring of the script. Fold a stable feature case set into the catalog only when the owner asks for it.
+
 The 5 workbooks in `docs/qa/test-cases/` (personal user, business maker-checker, admin ops, platform cross-cutting, edge cases) are generated from data in `scripts/generate_test_cases.py` (the case catalog is Python data, not hand-edited cells). Recorded results (Status, Actual Result, Evidence, Executed By, Last Run Date, Defect ID/Notes = columns M-R) are NOT produced by the generator, so they are carried over by `merge_results.py`.
 
 ## Rules

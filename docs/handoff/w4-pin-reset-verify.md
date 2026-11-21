@@ -1,11 +1,11 @@
 # Verification: PIN reset (ADR-0016)
 
-Date 2026-11-21. Spec `docs/specs/w4-pin-reset/spec.md`, cases `test-cases.md`, workbook `04-platform-crosscutting.xlsx` rows TC-PRS-001 to 020.
+Date 2026-11-21. Spec `docs/specs/w4-pin-reset/spec.md`, cases `test-cases.md` and `test-cases.json`, workbook `docs/qa/test-cases/w4-pin-reset-testcase.xlsx` (TC-PRS-001 to 020, a feature workbook of its own; the five catalog workbooks are unchanged).
 
 ## Results
 | Check | Result |
 |---|---|
-| Cases TC-PRS-001 to 020 | 20 Pass, 0 Fail, 0 Blocked, 0 Not Run (recorded in the workbook) |
+| Cases TC-PRS-001 to 020 | 20 Pass, 0 Fail, 0 Blocked, 0 Not Run (recorded in `test-cases.json` and rendered into the workbook) |
 | Full backend suite with `-race -p 1` and a 4-connection pool (CI-like) | all packages ok, including `test/integration/{admin,authn,kyc,money,org}` |
 | `go build ./...`, `go vet ./...`, `gofmt -l` | clean (run in Docker, Go 1.26) |
 | `python scripts/check-openapi-sync.py`, OpenAPI YAML parse | clean |
