@@ -28,6 +28,10 @@ type handler struct {
 	pool *pgxpool.Pool
 	q    *store.Queries
 	log  *slog.Logger
+	// advisorOverride replaces the advisor chosen from the AI settings. Tests only.
+	advisorOverride ai.Advisor
+	// advisoryDone, when set, is closed-over by tests to learn that the advisory goroutine finished.
+	advisoryDone func()
 }
 
 func (*handler) Name() string { return "fraud" }
@@ -92,47 +96,49 @@ func (h *handler) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 	return workflow.StepOutput{Context: map[string]any{"fraud_score": score, "fraud_verdict": "flagged", "fraud_flag_id": flagID.String()}}, nil
 }
 
-// enqueueAdvisory runs the LLM off the step's critical path.
+// enqueueAdvisory runs the LLM off the step's critical path. Whatever happens here (no
+// setting, inactive key, provider error, empty text, a failed write) the decision already
+// taken from the rules stands: the advisory is only ever an extra note on the flag.
 func (h *handler) enqueueAdvisory(flagID uuid.UUID, txn store.GetTransactionByWorkflowRow, signals []Signal, score int) {
 	go func() {
+		if h.advisoryDone != nil {
+			defer h.advisoryDone()
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 
-		setting, err := h.q.GetActiveAISetting(ctx, "fraud_advising")
-		if err != nil {
-			h.log.Warn("fetch fraud advising AI setting failed", "flag", flagID, "err", err)
-			return
-		}
-
-		var activeAdvisor ai.Advisor
-		switch setting.Provider {
-		case "mock":
-			activeAdvisor = ai.MockAdvisor{}
-		case "anthropic":
-			if !setting.KeyActive.Bool || !setting.KeyActive.Valid {
-				h.log.Debug("fraud advising key is inactive", "flag", flagID)
+		advisor := h.advisorOverride
+		if advisor == nil {
+			setting, err := h.q.GetActiveAISetting(ctx, "fraud_advising")
+			if err != nil {
+				h.log.Warn("fetch fraud advising AI setting failed", "flag", flagID, "err", err)
 				return
 			}
-			activeAdvisor = ai.NewClaudeAdvisor(setting.ApiKey.String)
-		case "openai":
-			if !setting.KeyActive.Bool || !setting.KeyActive.Valid {
-				h.log.Debug("fraud advising key is inactive", "flag", flagID)
-				return
+			switch setting.Provider {
+			case "anthropic", "openai":
+				if !setting.KeyActive.Valid || !setting.KeyActive.Bool {
+					h.log.Debug("fraud advising key is inactive", "flag", flagID)
+					return
+				}
+				if setting.Provider == "anthropic" {
+					advisor = ai.NewClaudeAdvisor(setting.ApiKey.String)
+				} else {
+					advisor = ai.NewOpenAIAdvisor(setting.ApiKey.String, setting.ModelName)
+				}
+			default: // "mock" and anything unknown
+				advisor = ai.MockAdvisor{}
 			}
-			activeAdvisor = ai.NewOpenAIAdvisor(setting.ApiKey.String, setting.ModelName)
-		default:
-			activeAdvisor = ai.MockAdvisor{}
 		}
 
 		evidence, _ := json.Marshal(signals)
 		user := "Giao dịch ref " + txn.RefCode + ", điểm rủi ro " + itoa(score) +
 			". Các dấu hiệu: " + string(evidence) +
 			". Giải thích ngắn gọn bằng tiếng Việt vì sao giao dịch này đáng ngờ, cho nhân viên review đọc."
-		text, err := activeAdvisor.Complete(ctx,
+		text, err := advisor.Complete(ctx,
 			"Bạn là trợ lý phân tích gian lận. Chỉ giải thích, không đưa quyết định chặn/mở.", user)
 		if err != nil || text == "" {
 			h.log.Debug("fraud advisory unavailable", "flag", flagID, "err", err)
-			return // no advice is fine — rules already decided
+			return // no advice is fine: the rules already decided
 		}
 		merged, _ := json.Marshal(map[string]any{"signals": signals, "advisory": text})
 		if err := h.q.AppendFraudFlagReasons(context.Background(), store.AppendFraudFlagReasonsParams{
@@ -142,7 +148,6 @@ func (h *handler) enqueueAdvisory(flagID uuid.UUID, txn store.GetTransactionByWo
 		}
 	}()
 }
-
 func topRuleCode(signals []Signal) string {
 	top := "MULTI"
 	best := -1

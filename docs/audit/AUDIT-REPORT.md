@@ -109,7 +109,7 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 - `/internal/mock-bank/callback` is mounted in every env, with no rate limit and no IP allowlist. Anyone who knows the default secret can top up fake money.
 - Fix: `APP_ENV` is mandatory and whitelisted. Forbid default secrets outside dev. Mount mock-bank only when not production. Load `.env` only in dev.
 
-**BE-H8. Weak brute-force protection and rate limiting** (`api/middleware.go:39-54`, `router.go:99-102`, `auth/service.go:73-92`)
+**BE-H8. Weak brute-force protection and rate limiting** (per-account lockout and timing fixed, BUG-0016; the rest below still open) (`api/middleware.go:39-54`, `router.go:99-102`, `auth/service.go:73-92`)
 - Rate limit is per IP + route, 5 per minute. No per-account lockout, no counting of wrong attempts.
 - No `SetTrustedProxies` seen, so X-Forwarded-For can be spoofed. The rate limiter fails open when Redis fails.
 - `/auth/logout`, mock-bank, `/v1/files`, `/v1/admin/*` have no rate limit.

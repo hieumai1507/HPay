@@ -12,6 +12,11 @@ module.exports = [
     ignores: ['dist/*', 'src/api/schema.d.ts'],
   },
   {
+    // jest.setup.js runs under jest, which provides the jest global.
+    files: ['jest.setup.js'],
+    languageOptions: { globals: { jest: 'readonly' } },
+  },
+  {
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     ignores: ['**/__tests__/**'],
     rules: {

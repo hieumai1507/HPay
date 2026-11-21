@@ -35,12 +35,31 @@ func (s *AdminService) Login(ctx context.Context, email, password string) (Admin
 	row, err := s.q.GetAdminByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			burnPasswordWork(password)
 			return AdminInfo{}, "", ErrInvalidCredentials
 		}
 		return AdminInfo{}, "", err
 	}
+	if lockActive(row.LoginLockedUntil.Time, row.LoginLockedUntil.Valid) {
+		burnPasswordWork(password)
+		return AdminInfo{}, "", ErrLoginLocked
+	}
 	if err := VerifyPassword(row.PasswordHash, password); err != nil {
+		res, ferr := s.q.RecordAdminLoginFailure(ctx, row.ID)
+		if ferr != nil {
+			return AdminInfo{}, "", ferr
+		}
+		if lockActive(res.LoginLockedUntil.Time, res.LoginLockedUntil.Valid) {
+			s.auditLogin(ctx, row.ID, "admin", "auth.login_locked", res.LoginFailedAttempts)
+			return AdminInfo{}, "", ErrLoginLocked
+		}
+		s.auditLogin(ctx, row.ID, "admin", "auth.login_failed", res.LoginFailedAttempts)
 		return AdminInfo{}, "", ErrInvalidCredentials
+	}
+	if row.LoginFailedAttempts != 0 || row.LoginLockedUntil.Valid {
+		if err := s.q.ResetAdminLoginFailures(ctx, row.ID); err != nil {
+			return AdminInfo{}, "", err
+		}
 	}
 	if row.Status != store.AccountStatusActive {
 		return AdminInfo{}, "", ErrAccountLocked

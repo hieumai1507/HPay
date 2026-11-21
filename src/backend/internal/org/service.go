@@ -321,6 +321,8 @@ func (s *Service) Topup(ctx context.Context, actorID, orgID uuid.UUID, amount in
 	})
 	if err != nil {
 		if wallet.IsIdempotencyConflict(err) { // a concurrent request with the same key won the race
+			// the failed INSERT aborted this transaction: give its connection back before the replay lookup asks the pool for another one (a small pool deadlocks otherwise)
+			_ = tx.Rollback(ctx)
 			old, gerr := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash)
 			if gerr != nil {
 				return wallet.TopupResult{}, gerr
@@ -442,6 +444,8 @@ func (s *Service) CreateDisbursement(ctx context.Context, actorID, orgID uuid.UU
 	})
 	if err != nil {
 		if wallet.IsIdempotencyConflict(err) { // a concurrent request with the same key won the race
+			// the failed INSERT aborted this transaction: give its connection back before the replay lookup asks the pool for another one (a small pool deadlocks otherwise)
+			_ = tx.Rollback(ctx)
 			old, gerr := wallet.FindReplay(ctx, s.q, actorID, idemKey, hash)
 			if gerr != nil {
 				return DisbursementResult{}, gerr

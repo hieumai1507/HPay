@@ -116,6 +116,8 @@ func (s *Service) Topup(ctx context.Context, userID uuid.UUID, amount int64, ide
 	})
 	if err != nil {
 		if IsIdempotencyConflict(err) {
+			// the failed INSERT aborted this transaction: give its connection back before the replay lookup asks the pool for another one (a small pool deadlocks otherwise)
+			_ = tx.Rollback(ctx)
 			old, gerr := FindReplay(ctx, s.q, userID, idemKey, hash)
 			if gerr != nil {
 				return TopupResult{}, gerr

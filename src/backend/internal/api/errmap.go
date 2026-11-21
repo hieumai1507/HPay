@@ -46,6 +46,7 @@ var errTable = []struct {
 	{transfer.ErrAlreadyConfirmed, AppError{"ERR_ALREADY_CONFIRMED", "transaction is not waiting for authentication", http.StatusConflict}},
 	{transfer.ErrAuthNotConfigured, AppError{"ERR_AUTH_NOT_CONFIGURED", "transaction authentication is not configured", http.StatusServiceUnavailable}},
 	{auth.ErrInvalidCredentials, AppError{"ERR_INVALID_CREDENTIALS", "invalid phone or password", http.StatusUnauthorized}},
+	{auth.ErrLoginLocked, AppError{"ERR_LOGIN_LOCKED", "too many failed logins; try again later", http.StatusTooManyRequests}},
 	{auth.ErrAccountLocked, AppError{"ERR_ACCOUNT_LOCKED", "account is locked", http.StatusForbidden}},
 	{auth.ErrTokenReused, AppError{"ERR_TOKEN_REUSED", "refresh token reused; all sessions revoked", http.StatusUnauthorized}},
 	{auth.ErrTokenExpired, AppError{"ERR_TOKEN_EXPIRED", "token expired", http.StatusUnauthorized}},

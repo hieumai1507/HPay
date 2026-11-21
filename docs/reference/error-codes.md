@@ -19,6 +19,7 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 | ERR_PHONE_TAKEN | 409 | Phone already registered | auth.ErrPhoneTaken |
 | ERR_INVALID_CREDENTIALS | 401 | Wrong phone or password | auth.ErrInvalidCredentials |
 | ERR_ACCOUNT_LOCKED | 403 | User or admin account locked | auth.ErrAccountLocked |
+| ERR_LOGIN_LOCKED | 429 | Five failed logins: the account is locked for 15 minutes, even for the correct password | auth.ErrLoginLocked |
 | ERR_TOKEN_REUSED | 401 | Refresh token reused, all sessions revoked | auth.ErrTokenReused |
 | ERR_TOKEN_EXPIRED | 401 | JWT expired | auth.ErrTokenExpired |
 | ERR_INVALID_TOKEN | 401 | JWT missing or invalid | auth.ErrTokenInvalid |

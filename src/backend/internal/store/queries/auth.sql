@@ -4,7 +4,7 @@ VALUES ($1, $2, $3)
 RETURNING id, phone, full_name, kyc_status, status;
 
 -- name: GetUserByPhone :one
-SELECT id, phone, password_hash, full_name, kyc_status, status
+SELECT id, phone, password_hash, full_name, kyc_status, status, login_failed_attempts, login_locked_until
 FROM users WHERE phone = $1;
 
 -- name: InsertRefreshToken :one
@@ -57,7 +57,7 @@ SELECT kyc_status, status FROM users WHERE id = $1;
 SELECT id, phone, full_name, kyc_status, status FROM users WHERE id = $1;
 
 -- name: GetAdminByEmail :one
-SELECT id, email, password_hash, full_name, role, status
+SELECT id, email, password_hash, full_name, role, status, login_failed_attempts, login_locked_until
 FROM admin_users WHERE email = $1;
 
 -- name: GetUserPINState :one
@@ -94,3 +94,39 @@ WHERE id = $1 AND (pin_failed_attempts <> 0 OR pin_locked_until IS NOT NULL);
 -- Loaded on every admin request (ADR-0015): the role and status come from the
 -- database, never from the token, so a lock or demotion takes effect immediately.
 SELECT id, email, full_name, role, status FROM admin_users WHERE id = $1;
+
+-- name: RecordUserLoginFailure :one
+-- Atomic increment. An expired lock restarts the count at 1; the 5th consecutive failure
+-- locks login for 15 minutes.
+UPDATE users SET
+  login_failed_attempts = CASE WHEN login_locked_until IS NOT NULL AND login_locked_until <= now()
+                               THEN 1 ELSE login_failed_attempts + 1 END,
+  login_locked_until = CASE
+    WHEN (CASE WHEN login_locked_until IS NOT NULL AND login_locked_until <= now()
+               THEN 1 ELSE login_failed_attempts + 1 END) >= 5
+      THEN now() + interval '15 minutes'
+    WHEN login_locked_until IS NOT NULL AND login_locked_until <= now() THEN NULL
+    ELSE login_locked_until END
+WHERE id = $1
+RETURNING login_failed_attempts, login_locked_until;
+
+-- name: ResetUserLoginFailures :exec
+UPDATE users SET login_failed_attempts = 0, login_locked_until = NULL
+WHERE id = $1 AND (login_failed_attempts <> 0 OR login_locked_until IS NOT NULL);
+
+-- name: RecordAdminLoginFailure :one
+UPDATE admin_users SET
+  login_failed_attempts = CASE WHEN login_locked_until IS NOT NULL AND login_locked_until <= now()
+                               THEN 1 ELSE login_failed_attempts + 1 END,
+  login_locked_until = CASE
+    WHEN (CASE WHEN login_locked_until IS NOT NULL AND login_locked_until <= now()
+               THEN 1 ELSE login_failed_attempts + 1 END) >= 5
+      THEN now() + interval '15 minutes'
+    WHEN login_locked_until IS NOT NULL AND login_locked_until <= now() THEN NULL
+    ELSE login_locked_until END
+WHERE id = $1
+RETURNING login_failed_attempts, login_locked_until;
+
+-- name: ResetAdminLoginFailures :exec
+UPDATE admin_users SET login_failed_attempts = 0, login_locked_until = NULL
+WHERE id = $1 AND (login_failed_attempts <> 0 OR login_locked_until IS NOT NULL);

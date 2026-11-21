@@ -74,12 +74,31 @@ func (s *Service) Login(ctx context.Context, phone, password, deviceID string) (
 	row, err := s.q.GetUserByPhone(ctx, phone)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			burnPasswordWork(password) // same cost as a known account: no timing oracle
 			return UserInfo{}, TokenPair{}, ErrInvalidCredentials
 		}
 		return UserInfo{}, TokenPair{}, err
 	}
+	if lockActive(row.LoginLockedUntil.Time, row.LoginLockedUntil.Valid) {
+		burnPasswordWork(password)
+		return UserInfo{}, TokenPair{}, ErrLoginLocked // refused even for the correct password
+	}
 	if err := VerifyPassword(row.PasswordHash, password); err != nil {
+		res, ferr := s.q.RecordUserLoginFailure(ctx, row.ID)
+		if ferr != nil {
+			return UserInfo{}, TokenPair{}, ferr
+		}
+		if lockActive(res.LoginLockedUntil.Time, res.LoginLockedUntil.Valid) {
+			s.auditLogin(ctx, row.ID, "user", "auth.login_locked", res.LoginFailedAttempts)
+			return UserInfo{}, TokenPair{}, ErrLoginLocked
+		}
+		s.auditLogin(ctx, row.ID, "user", "auth.login_failed", res.LoginFailedAttempts)
 		return UserInfo{}, TokenPair{}, ErrInvalidCredentials
+	}
+	if row.LoginFailedAttempts != 0 || row.LoginLockedUntil.Valid {
+		if err := s.q.ResetUserLoginFailures(ctx, row.ID); err != nil {
+			return UserInfo{}, TokenPair{}, err
+		}
 	}
 	if row.Status != store.AccountStatusActive {
 		return UserInfo{}, TokenPair{}, ErrAccountLocked

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/google/uuid"
@@ -57,7 +58,20 @@ func PoolFromEnv(t *testing.T) *pgxpool.Pool {
 	if url == "" {
 		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
 	}
-	pool, err := pgxpool.New(context.Background(), url)
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		t.Fatalf("parse test db url: %v", err)
+	}
+	// TEST_DB_MAX_CONNS lets a developer reproduce a small CI runner (pgx defaults to
+	// max(4, number of CPUs), so a 2-CPU runner gets 4 connections).
+	if v := os.Getenv("TEST_DB_MAX_CONNS"); v != "" {
+		n, convErr := strconv.Atoi(v)
+		if convErr != nil || n < 1 {
+			t.Fatalf("TEST_DB_MAX_CONNS must be a positive integer, got %q", v)
+		}
+		cfg.MaxConns = int32(n)
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("connect test db: %v", err)
 	}

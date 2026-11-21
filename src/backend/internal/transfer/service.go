@@ -152,6 +152,8 @@ func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.
 	})
 	if err != nil {
 		if wallet.IsIdempotencyConflict(err) { // concurrent request with the same key won the race
+			// the failed INSERT aborted this transaction: give its connection back before the replay lookup asks the pool for another one (a small pool deadlocks otherwise)
+			_ = tx.Rollback(ctx)
 			old, gerr := wallet.FindReplay(ctx, s.q, senderID, idemKey, hash)
 			if gerr != nil {
 				return Result{}, gerr
@@ -391,6 +393,8 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 	})
 	if err != nil {
 		if wallet.IsIdempotencyConflict(err) {
+			// the failed INSERT aborted this transaction: give its connection back before the replay lookup asks the pool for another one (a small pool deadlocks otherwise)
+			_ = tx.Rollback(ctx)
 			old, gerr := wallet.FindReplay(ctx, s.q, input.SenderUserID, idemKey, reqHash)
 			if gerr != nil {
 				return EngineRequestResult{}, gerr
@@ -568,6 +572,36 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 // returns the current state without starting a second workflow; concurrent calls
 // serialize on the row lock and the guarded awaiting_auth -> processing UPDATE.
 func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmInput) (Result, error) {
+	// Step 1, no transaction held: read the held request and verify the credential. VerifyPIN
+	// writes its attempt counter through the pool, so it must not run while this call holds a
+	// pooled connection inside a transaction: with N parallel confirms and a pool of N
+	// connections every one of them would wait for a second connection and none would ever
+	// get it (a deadlock seen on a 2-CPU CI runner). A failed attempt persists either way.
+	pre, err := s.q.GetOwnedTransactionForUpdateless(ctx, store.GetOwnedTransactionForUpdatelessParams{
+		ID: input.TransactionID, InitiatedBy: input.SenderUserID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Result{}, ErrTxnNotFound
+		}
+		return Result{}, err
+	}
+	if pre.Status == store.TxnStatusAwaitingAuth {
+		if time.Since(pre.CreatedAt.Time) > AwaitingAuthTTL {
+			return Result{}, ErrAuthExpired
+		}
+		method := string(pre.AuthMethod.AuthMethodEnum)
+		if !pre.AuthMethod.Valid || !needsAuth(method) {
+			return Result{}, ErrAuthMethodUnavailable
+		}
+		if err := s.confirmCredential(ctx, input.SenderUserID, pre.ID, method, input.PIN, input.OTP); err != nil {
+			return Result{}, err
+		}
+	}
+
+	// Step 2, one short transaction: take the row lock, re-check the state under it, and start
+	// the workflow exactly once. Concurrent confirms serialize here and the guarded
+	// awaiting_auth -> processing UPDATE lets only one of them win.
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Result{}, err
@@ -594,19 +628,13 @@ func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmI
 		}
 		return res, nil // already started (or finished): report the state, start nothing
 	}
-	if time.Since(txn.CreatedAt.Time) > AwaitingAuthTTL {
-		return Result{}, ErrAuthExpired
-	}
-
-	method := string(txn.AuthMethod.AuthMethodEnum)
-	if !txn.AuthMethod.Valid || !needsAuth(method) {
+	if pre.Status != store.TxnStatusAwaitingAuth {
+		// The first read saw a started transaction, so no credential was checked; it has
+		// since gone back to awaiting_auth, which cannot happen. Fail closed rather than start.
 		return Result{}, ErrAuthMethodUnavailable
 	}
-	// Verify OUTSIDE the row lock's effect on the counter: VerifyPIN writes the
-	// attempt counter through the pool, so a failed attempt must persist even
-	// though this transaction rolls back.
-	if err := s.confirmCredential(ctx, input.SenderUserID, txn.ID, method, input.PIN, input.OTP); err != nil {
-		return Result{}, err
+	if time.Since(txn.CreatedAt.Time) > AwaitingAuthTTL {
+		return Result{}, ErrAuthExpired
 	}
 
 	started, err := qtx.StartAwaitingAuthTransaction(ctx, txn.ID)

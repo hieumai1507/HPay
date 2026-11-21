@@ -14,4 +14,13 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    // Playwright fixtures: the use argument is Playwright's, not a React hook, and
+    // fixtures that need no other fixture take an empty destructuring by contract.
+    files: ['e2e/**/*.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+      'no-empty-pattern': 'off',
+    },
+  },
 );

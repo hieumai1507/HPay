@@ -40,6 +40,10 @@ type Service struct{ q *store.Queries }
 
 func NewService(pool *pgxpool.Pool) *Service { return &Service{q: store.New(pool)} }
 
+// NewServiceWithQueries lets a caller that already holds a transaction read fee policies on
+// that same connection instead of taking a second one from the pool.
+func NewServiceWithQueries(q *store.Queries) *Service { return &Service{q: q} }
+
 // For returns the fee for a transaction type given the user's KYC tier.
 // No policy row means the transfer is free (explicit product default).
 func (s *Service) For(ctx context.Context, txnType store.TxnType, tier store.KycStatus, amount int64) (int64, error) {

@@ -1,0 +1,2 @@
+ALTER TABLE admin_users DROP COLUMN IF EXISTS login_locked_until, DROP COLUMN IF EXISTS login_failed_attempts;
+ALTER TABLE users DROP COLUMN IF EXISTS login_locked_until, DROP COLUMN IF EXISTS login_failed_attempts;

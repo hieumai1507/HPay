@@ -25,6 +25,6 @@ try {
   docker run --rm --network hpay_default `
     -v "${PWD}:/src" -v "$root\src\admin\src\stores:/admin-stores:ro" -v "$root\scripts\test-backend.sh:/run-tests.sh" `
     -v hpay-gomod:/go/pkg/mod -v hpay-gobuild:/root/.cache/go-build `
-    -e TEST_DATABASE_URL=$mig -e REDIS_ADDR=redis:6379 -e APP_ENV=ci -e ADMIN_STORE_FILE=/admin-stores/admin.ts -e GOFLAGS=-buildvcs=false `
-    golang:1.25 bash /run-tests.sh @($GoArgs -split ' ')
+    -e TEST_DATABASE_URL=$mig -e REDIS_ADDR=redis:6379 -e APP_ENV=ci -e ADMIN_STORE_FILE=/admin-stores/admin.ts -e GOFLAGS=-buildvcs=false -e TEST_DB_MAX_CONNS=$env:TEST_DB_MAX_CONNS `
+    golang:1.26 bash /run-tests.sh @($GoArgs -split ' ')
 } finally { Pop-Location }

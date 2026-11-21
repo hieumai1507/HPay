@@ -124,6 +124,14 @@ SELECT id, ref_code, status, type, sender_wallet_id, receiver_wallet_id, amount,
        coalesce(failure_reason, '') AS failure_reason
 FROM transactions WHERE id = $1 AND initiated_by = $2 FOR UPDATE;
 
+-- name: GetOwnedTransactionForUpdateless :one
+-- Same ownership predicate as GetOwnedTransactionForUpdate but WITHOUT the row lock, for the read
+-- that precedes credential verification (the lock is taken later, in a short transaction).
+SELECT id, ref_code, status, type, sender_wallet_id, receiver_wallet_id, amount, fee, initiated_by, created_at,
+       auth_method, coalesce(workflow_name, '') AS workflow_name, coalesce(service_code, '') AS service_code,
+       coalesce(failure_reason, '') AS failure_reason
+FROM transactions WHERE id = $1 AND initiated_by = $2;
+
 -- name: StartAwaitingAuthTransaction :one
 -- Guarded awaiting_auth -> processing. Whoever loses a race gets no row.
 UPDATE transactions SET status = 'processing'

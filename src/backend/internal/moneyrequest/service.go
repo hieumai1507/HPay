@@ -282,11 +282,13 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 	if err != nil {
 		return PayResult{}, err
 	}
-	if err := s.guard.CheckAmount(ctx, payerID, "MONEY_REQUEST", req.Amount); err != nil {
+	// Read the offer limits and the fee on THIS transaction's connection: asking the pool for
+	// a second connection while this one is held can deadlock a small pool under load.
+	if err := offerguard.NewWithQueries(qtx).CheckAmount(ctx, payerID, "MONEY_REQUEST", req.Amount); err != nil {
 		return PayResult{}, err
 	}
 
-	feeAmt, err := s.fees.For(ctx, store.TxnTypeP2p, payer.KycStatus, req.Amount)
+	feeAmt, err := fee.NewServiceWithQueries(qtx).For(ctx, store.TxnTypeP2p, payer.KycStatus, req.Amount)
 	if err != nil {
 		return PayResult{}, err
 	}
