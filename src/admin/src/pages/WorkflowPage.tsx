@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-table';
 import { useWorkflowInstances, type WorkflowInstance } from '@/queries';
 import { Badge, ErrorNotice } from '@/ui';
+import { formatUsd } from '@/lib/money';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
@@ -52,7 +53,7 @@ export default function WorkflowPage() {
         header: 'Amount',
         cell: (info) => (
           <span className="font-mono font-semibold">
-            {info.getValue() ? `${info.getValue()?.toLocaleString('en-US')} ₫` : '—'}
+            {formatUsd(info.getValue())}
           </span>
         ),
       }),

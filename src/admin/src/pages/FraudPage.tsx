@@ -8,7 +8,7 @@ import { useFraudFlags, useResolveFraudFlag, type FraudFlagItem } from '@/querie
 import { ResolveDialog } from '@/features/fraud/ResolveDialog';
 import { Badge, ErrorNotice } from '@/ui';
 import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
-import { formatVnd } from '@/lib/money';
+import { formatUsd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
@@ -138,7 +138,7 @@ export default function FraudPage() {
       }),
       columnHelper.accessor('amount', {
         header: 'Amount',
-        cell: (info) => <span className="font-mono font-medium">{formatVnd(info.getValue())}</span>,
+        cell: (info) => <span className="font-mono font-medium">{formatUsd(info.getValue())}</span>,
       }),
       columnHelper.accessor('userName', {
         header: 'User',

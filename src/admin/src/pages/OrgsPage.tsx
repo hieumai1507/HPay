@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOrgPolicies, useOrgs, useSaveOrgPolicy, type OrgPolicy, type OrgPolicyTier } from '@/queries';
 import { Badge, ErrorNotice } from '@/ui';
 import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
-import { formatVnd } from '@/lib/money';
+import { formatUsd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 
-/** "From 10,000,000 ₫ to 40,000,000 ₫" or "From 10,000,000 ₫ with no upper limit". */
+/** "From $100,000.00 to $400,000.00" or "From $100,000.00 with no upper limit". */
 function rangeText(p: OrgPolicy): string {
   return p.maxAmount === null
-    ? `From ${formatVnd(p.minAmount)} with no upper limit`
-    : `From ${formatVnd(p.minAmount)} to ${formatVnd(p.maxAmount)}`;
+    ? `From ${formatUsd(p.minAmount)} with no upper limit`
+    : `From ${formatUsd(p.minAmount)} to ${formatUsd(p.maxAmount)}`;
 }
 
 export default function OrgsPage() {
