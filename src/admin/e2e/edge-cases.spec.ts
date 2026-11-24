@@ -41,8 +41,8 @@ test.describe('Cross-cutting edge cases', () => {
 
     // Re-login through the real form.
     await asChecker.getByLabel('Email').fill(CHECKER.email);
-    await asChecker.getByLabel('Mật khẩu').fill(CHECKER.password);
-    await asChecker.getByRole('button', { name: 'Đăng nhập' }).click();
+    await asChecker.getByLabel('Password').fill(CHECKER.password);
+    await asChecker.getByRole('button', { name: 'Log in' }).click();
 
     await expect(asChecker).toHaveURL(/\/kyc\?tab=manual&q=Ba$/);
   });

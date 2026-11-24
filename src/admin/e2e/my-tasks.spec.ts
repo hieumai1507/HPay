@@ -34,11 +34,11 @@ test.describe('My Tasks (maker-checker)', () => {
     await seedSession(context, session);
     const page = await context.newPage();
     await page.goto('/tasks');
-    await page.getByRole('button', { name: 'Xử lý' }).first().click();
+    await page.getByRole('button', { name: 'Process' }).first().click();
 
-    const approveBtn = page.getByRole('button', { name: 'Phê duyệt' });
+    const approveBtn = page.getByRole('button', { name: 'Approve' });
     await approveBtn.click(); // empty reason -> toast, dialog stays open
-    await expect(page.getByText(/ít nhất 10 ký tự/)).toBeVisible();
+    await expect(page.getByText(/at least 10 characters/)).toBeVisible();
     await context.close();
 
     await releaseReversal(checkerApi, id);
@@ -55,15 +55,15 @@ test.describe('My Tasks (maker-checker)', () => {
 
     const row = page.locator('table tbody tr', { hasText: refCode });
     await expect(row).toBeVisible();
-    await row.getByRole('button', { name: 'Xử lý' }).click();
+    await row.getByRole('button', { name: 'Process' }).click();
 
-    await page.locator('textarea').fill('Đã xác minh với người dùng qua điện thoại, đồng ý đảo giao dịch.');
+    await page.locator('textarea').fill('Verified with the user by phone, agreed to reverse the transfer.');
     const [decideResp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes('/decide') && r.request().method() === 'POST'),
-      page.getByRole('button', { name: 'Phê duyệt' }).click(),
+      page.getByRole('button', { name: 'Approve' }).click(),
     ]);
     expect(decideResp.status()).toBe(200);
-    await expect(page.getByText('Đã phê duyệt lệnh.')).toBeVisible();
+    await expect(page.getByText('Order approved.')).toBeVisible();
     await expect(row).toBeHidden();
     await context.close();
     // Finalized (approved) — the underlying transaction is now 'reversed' and

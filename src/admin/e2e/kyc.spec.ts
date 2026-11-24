@@ -28,29 +28,29 @@ test.describe('KYC queue', () => {
     await asChecker.getByText('Trần Văn Ba').click();
     await expect(asChecker).toHaveURL(/\/kyc\/.+\?tab=manual/);
     await expect(asChecker.getByText('64/100')).toBeVisible();
-    await expect(asChecker.getByText('AI phân tích')).toBeVisible();
-    await expect(asChecker.getByRole('button', { name: /Phê duyệt/ })).toBeVisible();
+    await expect(asChecker.getByText('AI analysis')).toBeVisible();
+    await expect(asChecker.getByRole('button', { name: /Approve/ })).toBeVisible();
   });
 
   test('reject dialog enforces a 10-char minimum reason before it can be confirmed', async ({ asChecker }) => {
     await asChecker.goto('/kyc?tab=manual');
     await asChecker.getByText('Trần Văn Ba').click();
-    await asChecker.getByRole('button', { name: /Từ chối/ }).first().click();
+    await asChecker.getByRole('button', { name: /Reject/ }).first().click();
 
-    const dialog = asChecker.getByRole('dialog', { name: 'Từ chối hồ sơ KYC' });
+    const dialog = asChecker.getByRole('dialog', { name: 'Reject KYC application' });
     await expect(dialog).toBeVisible();
-    const confirm = dialog.getByRole('button', { name: 'Xác nhận từ chối' });
+    const confirm = dialog.getByRole('button', { name: 'Confirm rejection' });
     await expect(confirm).toBeDisabled();
 
-    await dialog.locator('textarea').fill('quá ngắn');
+    await dialog.locator('textarea').fill('too short');
     await expect(confirm).toBeDisabled();
 
-    await dialog.locator('textarea').fill('Ảnh CCCD mờ, không khớp khuôn mặt selfie.');
+    await dialog.locator('textarea').fill('ID card photo is blurry, does not match the selfie.');
     await expect(confirm).toBeEnabled();
 
     // Close without submitting — the record must stay pending for the A04/A01
     // cases below, which still need it undecided.
-    await dialog.getByRole('button', { name: 'Hủy' }).click();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
   });
 
@@ -100,8 +100,8 @@ test.describe('KYC queue', () => {
     await page1.getByText('Trần Văn Ba').click();
     await page2.getByText('Trần Văn Ba').click();
 
-    const approve1 = page1.getByRole('button', { name: /Phê duyệt/ });
-    const approve2 = page2.getByRole('button', { name: /Phê duyệt/ });
+    const approve1 = page1.getByRole('button', { name: /Approve/ });
+    const approve2 = page2.getByRole('button', { name: /Approve/ });
     await expect(approve1).toBeVisible();
     await expect(approve2).toBeVisible();
 

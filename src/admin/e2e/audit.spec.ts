@@ -18,7 +18,7 @@ test.describe('Audit log', () => {
     const { id } = await createFreshReversal(makerApi, marker);
 
     await asMaker.goto('/audit');
-    const search = asMaker.getByPlaceholder(/Tìm theo Action/);
+    const search = asMaker.getByPlaceholder(/Search by action/i);
     await search.fill(marker);
     await expect(asMaker.getByText(marker)).toBeVisible();
 
@@ -37,9 +37,9 @@ test.describe('Audit log', () => {
       // a nil slice to `[]` before responding — `[]` is truthy in JS, so no
       // frontend change was needed.
       await asMaker.goto('/audit');
-      const search = asMaker.getByPlaceholder(/Tìm theo Action/);
+      const search = asMaker.getByPlaceholder(/Search by action/i);
       await search.fill(`zzz-no-such-action-${Date.now()}`);
-      await expect(asMaker.getByText('Không tìm thấy dữ liệu')).toBeVisible();
+      await expect(asMaker.getByText('Nothing here yet')).toBeVisible();
       await expect(asMaker.getByText('POLICY_UPDATE')).not.toBeVisible();
       await expect(asMaker.getByText('admin.098812')).not.toBeVisible();
     },

@@ -19,9 +19,9 @@ test.describe('Workflow Monitor', () => {
     await expect(asMaker.locator('table')).toBeVisible();
   });
 
-  test('"Kẹt > 5 phút" toggle narrows the table to stuck instances only', async ({ asMaker }) => {
+  test('"Stuck > 5 min" toggle narrows the table to stuck instances only', async ({ asMaker }) => {
     await asMaker.goto('/workflows');
-    const toggle = asMaker.getByRole('button', { name: 'Kẹt > 5 phút' });
+    const toggle = asMaker.getByRole('button', { name: 'Stuck > 5 min' });
     await toggle.click();
     await expect(asMaker.locator('table')).toBeVisible();
     // Toggling back must not error and must restore the unfiltered view.
@@ -31,12 +31,12 @@ test.describe('Workflow Monitor', () => {
 
   test('opening an instance shows the step timeline and retry/compensate controls', async ({ asMaker }) => {
     await asMaker.goto('/workflows?');
-    const openLink = asMaker.getByRole('button', { name: 'Mở →' }).first();
+    const openLink = asMaker.getByRole('button', { name: 'Open →' }).first();
     await openLink.click();
     await expect(asMaker).toHaveURL(/\/workflows\/.+/);
     await expect(asMaker.getByText('TIMELINE STEP EXECUTIONS')).toBeVisible();
     await expect(asMaker.getByRole('button', { name: /Retry/ }).first()).toBeVisible();
-    await expect(asMaker.getByRole('button', { name: /Bồi hoàn|Force fail/ }).first()).toBeVisible();
+    await expect(asMaker.getByRole('button', { name: /Compensate|Force fail/ }).first()).toBeVisible();
   });
 
   test('A02 (adapted) — paging forward/back is stable and a mid-page refetch keeps the current page', async ({ asMaker }) => {
@@ -45,7 +45,7 @@ test.describe('Workflow Monitor', () => {
 
     const firstPageIds = await asMaker.locator('table tbody tr td:first-child').allTextContents();
 
-    const nextBtn = asMaker.getByTitle('Tiếp');
+    const nextBtn = asMaker.getByTitle('Next');
     if (await nextBtn.isEnabled()) {
       await nextBtn.click();
       await expect(asMaker.getByText(/^2 \//)).toBeVisible();
@@ -55,7 +55,7 @@ test.describe('Workflow Monitor', () => {
       expect(overlap).toEqual([]);
 
       // Refresh while on page 2 — the page indicator must not silently jump to 1.
-      await asMaker.getByRole('button', { name: '⟳ Làm mới' }).click();
+      await asMaker.getByRole('button', { name: '⟳ Refresh' }).click();
       await expect(asMaker.getByText(/^2 \//)).toBeVisible();
     } else {
       test.skip(true, 'not enough seeded workflow instances to exercise a second page');
