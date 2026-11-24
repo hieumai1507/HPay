@@ -258,8 +258,8 @@ Verified present (not missing): non-negative balance for non-system wallets, one
 
 | Object | Definition |
 |--------|------------|
-| enum posting_kind | orward, compensate, ound_up |
-| table ledger_postings | 	ransaction_id UUID NOT NULL REFERENCES transactions(id), kind posting_kind NOT NULL, 	otal_amount BIGINT NOT NULL CHECK (total_amount > 0) (sum of the debit legs), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (	ransaction_id, kind). One row per posting; claimed by ledger.Post inside the posting transaction. Back-filled with a orward row for every transaction that already had ledger entries. |
+| enum posting_kind | forward, compensate, ound_up |
+| table ledger_postings | transaction_id UUID NOT NULL REFERENCES transactions(id), kind posting_kind NOT NULL, total_amount BIGINT NOT NULL CHECK (total_amount > 0) (sum of the debit legs), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (transaction_id, kind). One row per posting; claimed by ledger.Post inside the posting transaction. Back-filled with a forward row for every transaction that already had ledger entries. |
 
 In the 'Constraints that are missing' list: the row about nothing preventing a second posting of a transaction is now closed by this table.
 
@@ -268,7 +268,7 @@ In the 'Constraints that are missing' list: the row about nothing preventing a s
 | Object | Definition |
 |--------|------------|
 | enum value approval_status = 'needs_manual' | request whose approved effect could not be applied; terminal for the decision flow (000016, own file because ALTER TYPE ADD VALUE cannot share a transaction) |
-| unique index one_reversal_per_txn | on 	ransactions (reversal_of) WHERE reversal_of IS NOT NULL (000017; the migration fails with the offending ids if duplicates exist) |
+| unique index one_reversal_per_txn | on transactions (reversal_of) WHERE reversal_of IS NOT NULL (000017; the migration fails with the offending ids if duplicates exist) |
 | unique index one_pending_approval_per_subject | on approval_requests (subject_type, subject_id) WHERE status = 'pending' (000017) |
 
 Both rows in 'Constraints that are missing' about reversal uniqueness are now closed.
@@ -282,6 +282,6 @@ Both rows in 'Constraints that are missing' about reversal uniqueness are now cl
 | users.pin_reset_at TIMESTAMPTZ | Start of the 24 hour cooling period after a PIN reset or operator clear (000025, ADR-0016). |
 | user_totp(user_id PK, secret_enc BYTEA, enabled, last_step BIGINT, failed_attempts, locked_until, created_at, activated_at) | TOTP authenticator per user (000026, ADR-0017). `secret_enc` is the AES-256-GCM ciphertext of the shared secret; `last_step` makes a code single-use. |
 | user_recovery_codes(id, user_id, code_hash, used_at, created_at; UNIQUE(user_id, code_hash)) | Ten single-use recovery codes per enrolment, stored only as SHA-256 hashes (000026). |
-| enum value 	xn_status = 'awaiting_auth' | request held until the credential is verified (000019, own file) |
-| 	ransactions.auth_method auth_method_enum | the method the request required, checked at confirm (000020) |
-| 	ransactions.workflow_name VARCHAR(60), 	ransactions.service_code VARCHAR(40) | what the request resolved, so confirm starts exactly that workflow (000021); NULL for old rows and for requests that needed no confirmation |
+| enum value txn_status = 'awaiting_auth' | request held until the credential is verified (000019, own file) |
+| transactions.auth_method auth_method_enum | the method the request required, checked at confirm (000020) |
+| transactions.workflow_name VARCHAR(60), transactions.service_code VARCHAR(40) | what the request resolved, so confirm starts exactly that workflow (000021); NULL for old rows and for requests that needed no confirmation |
