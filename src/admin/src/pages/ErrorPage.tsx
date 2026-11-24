@@ -3,10 +3,10 @@ import { Link, useRouteError } from 'react-router-dom';
 export function ErrorPage({ notFound }: { notFound?: boolean }) {
   const error = useRouteError() as unknown;
   const message = notFound
-    ? 'Trang không tồn tại.'
+    ? 'Page not found.'
     : error instanceof Error
       ? error.message
-      : 'Đã có lỗi không mong muốn.';
+      : 'Something went wrong. Please try again.';
 
   return (
     <div
@@ -21,10 +21,10 @@ export function ErrorPage({ notFound }: { notFound?: boolean }) {
       }}
     >
       <div style={{ fontSize: 40 }}>{notFound ? '🔍' : '⚠️'}</div>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{notFound ? '404' : 'Lỗi'}</h1>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>{notFound ? '404' : 'Error'}</h1>
       <p style={{ color: 'var(--n500)', margin: 0 }}>{message}</p>
       <Link to="/dashboard" style={{ marginTop: 12, fontWeight: 600 }}>
-        ← Về Dashboard
+        ← Back to Dashboard
       </Link>
     </div>
   );

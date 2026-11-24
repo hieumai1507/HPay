@@ -13,15 +13,15 @@ import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 
 const TABS: { key: KYCTab; label: string }[] = [
-  { key: 'manual', label: 'Chờ duyệt' },
-  { key: 'auto', label: 'AI tự duyệt' },
-  { key: 'rejected', label: 'Từ chối' },
+  { key: 'manual', label: 'Pending' },
+  { key: 'auto', label: 'Auto-approved by AI' },
+  { key: 'rejected', label: 'Rejected' },
 ];
 
 function waitLabel(createdAt: string): string {
   const mins = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000));
-  if (mins < 60) return `${mins} phút`;
-  return `${Math.floor(mins / 60)}h${mins % 60 > 0 ? ` ${mins % 60}p` : ''}`;
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)}h${mins % 60 > 0 ? ` ${mins % 60}m` : ''}`;
 }
 
 const columnHelper = createColumnHelper<KYCQueueItem>();
@@ -73,7 +73,7 @@ export default function KYCPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('full_name', {
-        header: 'Họ tên',
+        header: 'Full name',
         cell: (info) => (
           <span
             className={`cursor-pointer ${rows[cursor]?.id === info.row.original.id ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}`}
@@ -85,7 +85,7 @@ export default function KYCPage() {
         ),
       }),
       columnHelper.accessor('phone', {
-        header: 'SĐT',
+        header: 'Phone number',
         cell: (info) => <code className="font-mono text-slate-600">{info.getValue()}</code>,
       }),
       columnHelper.accessor('ai_score', {
@@ -108,7 +108,7 @@ export default function KYCPage() {
         cell: (info) => <Badge tone={toneForVerdict(info.getValue())}>{info.getValue()}</Badge>,
       }),
       columnHelper.accessor('created_at', {
-        header: 'Chờ',
+        header: 'Waiting',
         cell: (info) => waitLabel(info.getValue()),
       }),
       columnHelper.display({
@@ -116,7 +116,7 @@ export default function KYCPage() {
         header: '',
         cell: (info) => (
           <span className="text-brand font-semibold hover:underline cursor-pointer" onClick={() => openDetail(info.row.original)}>
-            Mở →
+            Open →
           </span>
         ),
       }),
@@ -154,7 +154,7 @@ export default function KYCPage() {
         />
         <div className="w-64">
           <Input
-            placeholder="Tìm tên / SĐT…"
+            placeholder="Search name / phone number..."
             value={search}
             onChange={(e) =>
               setParams((p) => {
@@ -168,15 +168,15 @@ export default function KYCPage() {
       </div>
 
       <div className="text-xs text-slate-500">
-        Phím tắt: <code className="font-mono bg-slate-100 px-1 rounded">J</code>/<code className="font-mono bg-slate-100 px-1 rounded">K</code> di chuyển · <code className="font-mono bg-slate-100 px-1 rounded">Enter</code> mở hồ sơ
+        Shortcuts: <code className="font-mono bg-slate-100 px-1 rounded">J</code>/<code className="font-mono bg-slate-100 px-1 rounded">K</code> move · <code className="font-mono bg-slate-100 px-1 rounded">Enter</code> open request
       </div>
 
       {error ? (
         <div className="text-rose-600 p-4 bg-rose-50 rounded-lg border border-rose-200">
-          {error instanceof ApiError ? error.message : 'Không tải được danh sách.'}
+          {error instanceof ApiError ? error.message : 'Something went wrong. Please try again.'}
         </div>
       ) : (
-        <DataTable table={table} isLoading={isPending} totalCount={total} emptyMessage="Không có hồ sơ nào trong tab này" />
+        <DataTable table={table} isLoading={isPending} totalCount={total} emptyMessage="Nothing here yet" />
       )}
     </div>
   );

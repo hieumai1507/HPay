@@ -38,13 +38,13 @@ export function useAuditQueries(params?: AdminQueryParams) {
         );
         const rows = (res?.logs ?? []).map((row) => ({
           id: `aud-${row.id}`,
-          timestamp: new Date(row.created_at).toLocaleTimeString('vi-VN'),
+          timestamp: new Date(row.created_at).toLocaleTimeString('en-GB'),
           actor: row.actor_id ? `${row.actor_type}.${row.actor_id.slice(0, 6)}` : 'system',
           actorRole: row.actor_type,
           action: row.action,
           actionType: getActionTone(row.action),
           resource: row.resource,
-          details: row.reason || 'Sự kiện hệ thống',
+          details: row.reason || 'System event',
           ip: row.ip || '—',
         }));
         // Older builds of the endpoint omit `total`; fall back so pageCount
