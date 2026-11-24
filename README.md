@@ -4,6 +4,8 @@ A fintech e-wallet built end to end as one monorepo: a **Go backend** with a dou
 
 It started as a small P2P wallet and grew into the parts a real payment product needs: KYC review, configurable offers and limits, a workflow engine for multi-step payments, fraud flags, reconciliation, maker-checker approval, and a role-based back office.
 
+**Project site: <https://hieumai1507.github.io/HPay/>** (product tour, engineering decisions, quality, honest notes).
+
 ![Admin dashboard](docs/guides/admin/img/02-dashboard.png)
 
 > Demo project. All data in the screenshots is seeded demo data. The SMS and bank providers are simulated (Twilio is wired but has never been called with real keys), and the mobile app has not been run on a physical device yet.
