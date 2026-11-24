@@ -75,10 +75,10 @@ CREATE INDEX IF NOT EXISTS idx_money_req_payer ON money_requests (payer_id, stat
 -- Seed default Offers
 INSERT INTO offers (id, code, name, role, level, is_active, primary_pocket_max, max_bank_accounts, updated_by)
 VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'OFFER_CUST_L1', 'Khách hàng Cá nhân (KYC Tier 1)', 'customer', 1, true, 50000000, 2, 'mungnt'),
-  ('b0000000-0000-0000-0000-000000000002', 'OFFER_CUST_L2', 'Khách hàng Cá nhân (KYC Tier 2)', 'customer', 2, true, 200000000, 5, 'hoangnd'),
-  ('b0000000-0000-0000-0000-000000000003', 'OFFER_BIZ_STARTER', 'Doanh nghiệp Starter (Maker/Checker L1)', 'merchant', 3, true, 1000000000, 10, 'hieumt'),
-  ('b0000000-0000-0000-0000-000000000004', 'OFFER_BIZ_ENT', 'Doanh nghiệp Enterprise (Maker/Checker L2)', 'merchant', 5, true, 5000000000, 20, 'admin.root')
+  ('b0000000-0000-0000-0000-000000000001', 'OFFER_CUST_L1', 'Personal (KYC tier 1)', 'customer', 1, true, 50000000, 2, 'mungnt'),
+  ('b0000000-0000-0000-0000-000000000002', 'OFFER_CUST_L2', 'Personal (KYC tier 2)', 'customer', 2, true, 200000000, 5, 'hoangnd'),
+  ('b0000000-0000-0000-0000-000000000003', 'OFFER_BIZ_STARTER', 'Business Starter (Maker/Checker L1)', 'merchant', 3, true, 1000000000, 10, 'hieumt'),
+  ('b0000000-0000-0000-0000-000000000004', 'OFFER_BIZ_ENT', 'Business Enterprise (Maker/Checker L2)', 'merchant', 5, true, 5000000000, 20, 'admin.root')
 ON CONFLICT (code) DO NOTHING;
 
 -- Seed offer_services & auth matrix

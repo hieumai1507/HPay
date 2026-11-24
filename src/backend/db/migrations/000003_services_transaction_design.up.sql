@@ -105,15 +105,15 @@ ON CONFLICT DO NOTHING;
 -- Seed Services
 INSERT INTO services (id, code, name, full_name, category, status, action_priority, confirmation, service_target, channels, actions, input_fields)
 VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'P2P_TRANSFER', 'Chuyển tiền P2P', 'Subscriber Transfer To Wallet (P2P)', 'transfer', 'active', 'before_gl', true, 'p2p_wallet', '["Mobile", "Web"]', '[
-    {"code":"gl_posting","name":"Hạch toán Sổ cái (GL Posting)","type":"GL Posting","entry_point":"model:transdefinition","method":"performAction","required":true},
-    {"code":"bank_gateway_notify","name":"Gọi Gateway Ngân hàng Đối tác","type":"Directional Integration","entry_point":"https://api.bankpartner.vn/v1/p2p-notify","method":"POST","required":false}
+  ('a0000000-0000-0000-0000-000000000001', 'P2P_TRANSFER', 'P2P transfer', 'Subscriber Transfer To Wallet (P2P)', 'transfer', 'active', 'before_gl', true, 'p2p_wallet', '["Mobile", "Web"]', '[
+    {"code":"gl_posting","name":"Ledger posting (GL Posting)","type":"GL Posting","entry_point":"model:transdefinition","method":"performAction","required":true},
+    {"code":"bank_gateway_notify","name":"Notify partner bank gateway","type":"Directional Integration","entry_point":"https://api.bankpartner.vn/v1/p2p-notify","method":"POST","required":false}
   ]'::jsonb, '[
     {"order": 1, "name": "SERVICEID", "rule": "mapping", "type": "string", "required": true},
     {"order": 2, "name": "AMOUNT", "rule": "mapping", "type": "float", "required": true}
   ]'::jsonb),
-  ('a0000000-0000-0000-0000-000000000002', 'MONEY_REQUEST', 'Xin tiền & Split Bill', 'Request Money & Split Bill Service', 'payment', 'active', 'before_gl', true, 'request_money', '["Mobile"]', '[]'::jsonb, '[]'::jsonb),
-  ('a0000000-0000-0000-0000-000000000003', 'TOPUP_BANK', 'Nạp tiền Ngân hàng', 'Bank Account Cash In Service', 'wallet', 'active', 'before_gl', true, 'cash_in', '["Mobile"]', '[]'::jsonb, '[]'::jsonb),
-  ('a0000000-0000-0000-0000-000000000004', 'ORG_DISBURSEMENT', 'Chi lương Doanh nghiệp', 'Corporate Payroll Disbursement', 'org', 'active', 'before_gl', true, 'disbursement', '["Web Admin"]', '[]'::jsonb, '[]'::jsonb),
-  ('a0000000-0000-0000-0000-000000000005', 'VAULT_SAVINGS', 'Hũ tiết kiệm', 'Vault Savings & Round-up', 'wallet', 'active', 'after_gl', true, 'vault', '["Mobile"]', '[]'::jsonb, '[]'::jsonb)
+  ('a0000000-0000-0000-0000-000000000002', 'MONEY_REQUEST', 'Request money & split bill', 'Request Money & Split Bill Service', 'payment', 'active', 'before_gl', true, 'request_money', '["Mobile"]', '[]'::jsonb, '[]'::jsonb),
+  ('a0000000-0000-0000-0000-000000000003', 'TOPUP_BANK', 'Bank top-up', 'Bank Account Cash In Service', 'wallet', 'active', 'before_gl', true, 'cash_in', '["Mobile"]', '[]'::jsonb, '[]'::jsonb),
+  ('a0000000-0000-0000-0000-000000000004', 'ORG_DISBURSEMENT', 'Corporate payroll', 'Corporate Payroll Disbursement', 'org', 'active', 'before_gl', true, 'disbursement', '["Web Admin"]', '[]'::jsonb, '[]'::jsonb),
+  ('a0000000-0000-0000-0000-000000000005', 'VAULT_SAVINGS', 'Vault savings', 'Vault Savings & Round-up', 'wallet', 'active', 'after_gl', true, 'vault', '["Mobile"]', '[]'::jsonb, '[]'::jsonb)
 ON CONFLICT (code) DO NOTHING;
