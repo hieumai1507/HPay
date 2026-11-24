@@ -11,5 +11,5 @@ export const FEATURE_AVAILABILITY = {
   payRequest: false,
 } as const;
 
-export const NOT_AVAILABLE_TITLE = 'Tính năng chưa khả dụng';
-export const NOT_AVAILABLE_BODY = 'Tính năng này đang được hoàn thiện và chưa thể sử dụng. Vui lòng quay lại sau.';
+export const NOT_AVAILABLE_TITLE = 'Feature not available';
+export const NOT_AVAILABLE_BODY = 'This feature is still being finished and cannot be used yet. Please check back later.';

@@ -47,13 +47,13 @@ export default function VaultDetailScreen() {
     guard.run(async () => {
       if (!vault?.id) return;
       if (!parsed.ok) {
-        Alert.alert('Số tiền không hợp lệ', 'Nhập số tiền lớn hơn 0.');
+        Alert.alert('Invalid amount', 'Enter an amount greater than 0.');
         return;
       }
       if (amount > available) {
         Alert.alert(
-          'Không đủ số dư',
-          mode === 'deposit' ? 'Ví chính không đủ tiền.' : 'Hũ này không đủ tiền để rút.',
+          'Insufficient balance',
+          mode === 'deposit' ? 'Your main Wallet has insufficient funds.' : 'This Vault has insufficient funds to withdraw.',
         );
         return;
       }
@@ -67,11 +67,11 @@ export default function VaultDetailScreen() {
         );
         setRaw('');
         Alert.alert(
-          'Thành công',
-          mode === 'deposit' ? 'Đã bỏ tiền vào hũ.' : 'Đã rút tiền về ví chính.',
+          'Success',
+          mode === 'deposit' ? 'Money added to the Vault.' : 'Money withdrawn to your main Wallet.',
         );
       } catch (e) {
-        Alert.alert('Không thực hiện được', describeError(e));
+        Alert.alert('Could not complete', describeError(e));
       }
     });
 
@@ -86,9 +86,9 @@ export default function VaultDetailScreen() {
   if (!vault) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900 px-4">
-        <Text className="text-slate-500 mt-10">Không tìm thấy hũ này.</Text>
+        <Text className="text-slate-500 mt-10">Vault not found.</Text>
         <Pressable onPress={() => router.back()} className="mt-3">
-          <Text style={{ color: color.brand[600] }} className="font-semibold">← Quay lại</Text>
+          <Text style={{ color: color.brand[600] }} className="font-semibold">← Back</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -107,7 +107,7 @@ export default function VaultDetailScreen() {
 
       <ScrollView contentContainerClassName="px-4 pb-10">
         <View className="rounded-2xl p-5 mb-4" style={{ backgroundColor: color.brand[600] }}>
-          <Text className="text-white/80 text-xs">Đang để dành</Text>
+          <Text className="text-white/80 text-xs">Saved</Text>
           <Text className="text-white text-3xl font-bold tabular-nums mt-1">
             {formatAmountVND(BigInt(vault.balance ?? 0))}
           </Text>
@@ -117,7 +117,7 @@ export default function VaultDetailScreen() {
                 <View className="h-2 rounded-full bg-white" style={{ width: `${pct}%` }} />
               </View>
               <Text className="text-white/80 text-xs mt-1">
-                {pct}% của mục tiêu {formatAmountVND(BigInt(vault.target_amount ?? 0))}
+                {pct}% of target {formatAmountVND(BigInt(vault.target_amount ?? 0))}
               </Text>
             </>
           )}
@@ -127,9 +127,9 @@ export default function VaultDetailScreen() {
             P2P spends into this vault. At most one vault can be the target. */}
         <View className="flex-row items-center justify-between bg-white dark:bg-slate-800 rounded-2xl p-4 mb-3 border border-slate-100 dark:border-slate-700">
           <View className="flex-1 pr-3">
-            <Text className="font-semibold text-slate-900 dark:text-white">Nhận tiền làm tròn</Text>
+            <Text className="font-semibold text-slate-900 dark:text-white">Receive round-up</Text>
             <Text className="text-xs text-slate-500 mt-0.5">
-              Mỗi lần chuyển tiền lẻ, phần dư sẽ tự động bỏ vào hũ này.
+              On each Transfer, the spare change is added to this Vault automatically.
             </Text>
           </View>
           <Switch
@@ -139,7 +139,7 @@ export default function VaultDetailScreen() {
               setRoundUpTarget.mutate(
                 { vaultId: String(vault.id), enabled: next },
                 {
-                  onError: (e) => Alert.alert('Không thực hiện được', describeError(e)),
+                  onError: (e) => Alert.alert('Could not complete', describeError(e)),
                 },
               );
             }}
@@ -160,14 +160,14 @@ export default function VaultDetailScreen() {
                 className="font-semibold"
                 style={{ color: mode === m ? color.brand[600] : color.neutral[500] }}
               >
-                {m === 'deposit' ? 'Bỏ vào' : 'Rút về'}
+                {m === 'deposit' ? 'Add' : 'Withdraw'}
               </Text>
             </Pressable>
           ))}
         </View>
 
         <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
-          <Text className="text-xs text-slate-500 mb-1">Số tiền</Text>
+          <Text className="text-xs text-slate-500 mb-1">Amount</Text>
           <TextInput
             value={raw}
             onChangeText={setRaw}
@@ -176,8 +176,8 @@ export default function VaultDetailScreen() {
             className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums"
           />
           <Text className="text-xs text-slate-500 mt-2">
-            Khả dụng: {formatAmountVND(available)}{' '}
-            {mode === 'deposit' ? '(ví chính)' : '(trong hũ)'}
+            Available: {formatAmountVND(available)}{' '}
+            {mode === 'deposit' ? '(main Wallet)' : '(in Vault)'}
           </Text>
         </View>
 
@@ -188,12 +188,12 @@ export default function VaultDetailScreen() {
           style={{ backgroundColor: color.brand[600], opacity: guard.isPending ? 0.6 : 1 }}
         >
           <Text className="font-bold text-white text-base">
-            {guard.isPending ? 'Đang xử lý…' : mode === 'deposit' ? 'Bỏ vào hũ' : 'Rút về ví'}
+            {guard.isPending ? 'Processing…' : mode === 'deposit' ? 'Add to Vault' : 'Withdraw to Wallet'}
           </Text>
         </Pressable>
 
         <Text className="text-xs text-slate-400 text-center mt-3">
-          Mỗi lần bỏ vào hoặc rút ra đều là một giao dịch có ghi sổ cái.
+          Every deposit or withdrawal is a Transaction recorded in the ledger.
         </Text>
       </ScrollView>
       {pinPrompt}

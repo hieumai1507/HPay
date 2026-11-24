@@ -38,44 +38,44 @@ export default function KycStatusScreen() {
     return (
       <View className="flex-1 bg-slate-50 dark:bg-slate-900 justify-center items-center gap-3">
         <ActivityIndicator size="large" color="#0E90A3" />
-        <Text className="color-slate-600 text-sm">Đang tải thông tin...</Text>
+        <Text className="color-slate-600 text-sm">Loading...</Text>
       </View>
     );
   }
 
   let icon = '🔎';
-  let title = 'AI đang kiểm tra hồ sơ';
-  let desc = 'Thường mất dưới 1 phút. Bạn có thể tiếp tục dùng app, chúng tôi sẽ thông báo ngay khi xong.';
+  let title = 'AI is reviewing your documents';
+  let desc = 'This usually takes under a minute. You can keep using the app and we will notify you as soon as it is done.';
   let badgeStatus: 'processing' | 'completed' | 'pending_approval' | 'failed' = 'processing';
   let showButton = true;
-  let btnLabel = 'Trở về trang chủ';
+  let btnLabel = 'Back to home';
   let btnAction = handleStartApp;
   let btnVariant: 'primary' | 'secondary' = 'secondary';
 
   if (kycStatus === 'verified' || kycStatus === 'auto_approved') {
     icon = '✅';
-    title = 'Xác minh thành công';
-    desc = 'Tài khoản của bạn đã được nâng hạn mức lên 100.000.000 ₫/ngày.';
+    title = 'Verification successful';
+    desc = 'Your Account Limit has been raised to 100,000,000 ₫ per day.';
     badgeStatus = 'completed';
-    btnLabel = 'Bắt đầu sử dụng ví';
+    btnLabel = 'Start using your Wallet';
     btnAction = handleStartApp;
     btnVariant = 'primary';
   } else if (kycStatus === 'manual_review') {
     icon = '👩‍💼';
-    title = 'Cần kiểm tra thêm';
-    desc = 'Hồ sơ được chuyển cho chuyên viên xét duyệt. Dự kiến phản hồi trong 1–2 giờ làm việc.';
+    title = 'Additional review needed';
+    desc = 'Your submission has been sent to a reviewer. Expect a response within 1–2 business hours.';
     badgeStatus = 'pending_approval';
-    btnLabel = 'Trở về trang chủ';
+    btnLabel = 'Back to home';
     btnAction = handleStartApp;
     btnVariant = 'secondary';
   } else if (kycStatus === 'rejected') {
     icon = '❌';
-    title = 'Xác minh bị từ chối';
+    title = 'Verification rejected';
     desc = reasons
-      ? `Hồ sơ của bạn không được chấp nhận. Lý do: ${reasons}. Vui lòng thực hiện xác minh lại.`
-      : 'Hồ sơ hoặc hình ảnh của bạn không hợp lệ. Vui lòng thực hiện xác minh lại.';
+      ? `Your submission was not accepted. Reason: ${reasons}. Please verify again.`
+      : 'Your submission or photos are invalid. Please verify again.';
     badgeStatus = 'failed';
-    btnLabel = 'Xác minh lại';
+    btnLabel = 'Verify again';
     btnAction = handleRetryKyc;
     btnVariant = 'primary';
   }

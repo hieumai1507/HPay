@@ -15,7 +15,7 @@ export function NotAvailable({ title = NOT_AVAILABLE_TITLE, body = NOT_AVAILABLE
         <Text className="text-sm text-slate-500 text-center">{body}</Text>
       </View>
       <View className="p-4">
-        <Button label="Quay lại" variant="secondary" onPress={() => router.back()} />
+        <Button label="Back" variant="secondary" onPress={() => router.back()} />
       </View>
     </SafeAreaView>
   );

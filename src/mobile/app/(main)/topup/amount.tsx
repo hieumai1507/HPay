@@ -35,9 +35,9 @@ function TopupForm() {
 
   const validationError =
     amount !== null && txnLimit !== null && amount > txnLimit
-      ? `Vượt hạn mức KYC (tối đa ${formatAmountVND(txnLimit)})`
+      ? `Exceeds your KYC limit (max ${formatAmountVND(txnLimit)})`
       : !parsed.ok && parsed.reason === 'too_large'
-        ? 'Số tiền quá lớn'
+        ? 'Amount is too large'
         : null;
 
   const canSubmit = amount !== null && !validationError && !guard.isPending;
@@ -70,7 +70,7 @@ function TopupForm() {
           <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
             <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
           </Pressable>
-          <Text className="text-base font-semibold text-slate-900 dark:text-white">Nạp tiền</Text>
+          <Text className="text-base font-semibold text-slate-900 dark:text-white">Top up</Text>
           <View className="w-8" />
         </View>
 
@@ -82,13 +82,13 @@ function TopupForm() {
             autoFocus
           />
           {txnLimit !== null && (
-            <Text className="text-center text-xs text-slate-500">Hạn mức mỗi giao dịch: {formatAmountVND(txnLimit)}</Text>
+            <Text className="text-center text-xs text-slate-500">Limit per Transaction: {formatAmountVND(txnLimit)}</Text>
           )}
         </View>
 
         <View className="p-4">
           <Button
-            label="Nạp tiền"
+            label="Top up"
             loading={guard.isPending}
             disabled={!canSubmit}
             onPress={submit}

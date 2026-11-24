@@ -21,7 +21,7 @@ function calculatePasswordStrength(password: string): {
   label: string;
   color: string;
 } {
-  if (!password) return { score: 0, label: 'Trống', color: color.neutral[300] };
+  if (!password) return { score: 0, label: 'Empty', color: color.neutral[300] };
   let score = 0;
   if (password.length >= 8) score++;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
@@ -30,15 +30,15 @@ function calculatePasswordStrength(password: string): {
 
   switch (score) {
     case 1:
-      return { score, label: 'Yếu', color: color.danger[600] };
+      return { score, label: 'Weak', color: color.danger[600] };
     case 2:
-      return { score, label: 'Trung bình', color: color.warning[600] };
+      return { score, label: 'Fair', color: color.warning[600] };
     case 3:
-      return { score, label: 'Khá', color: color.brand[600] };
+      return { score, label: 'Good', color: color.brand[600] };
     case 4:
-      return { score, label: 'Mạnh', color: color.success[600] };
+      return { score, label: 'Strong', color: color.success[600] };
     default:
-      return { score: 0, label: 'Yếu', color: color.danger[600] };
+      return { score: 0, label: 'Weak', color: color.danger[600] };
   }
 }
 
@@ -92,21 +92,21 @@ export default function RegisterScreen() {
 
         {/* Title */}
         <View style={styles.header}>
-          <Text style={styles.title}>Tạo tài khoản</Text>
-          <Text style={styles.subtitle}>Chỉ mất 2 phút, miễn phí trọn đời</Text>
+          <Text style={styles.title}>Create account</Text>
+          <Text style={styles.subtitle}>Takes 2 minutes. Free for life</Text>
         </View>
 
         {/* Form Fields */}
         <View style={styles.form}>
           {/* Full Name */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Họ và tên</Text>
+            <Text style={styles.fieldLabel}>Full name</Text>
             <Controller
               control={control}
               name="fullName"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TextInput
-                  placeholder="Nhập họ và tên của bạn"
+                  placeholder="Enter your full name"
                   placeholderTextColor={color.neutral[400]}
                   autoCapitalize="words"
                   onBlur={onBlur}
@@ -121,7 +121,7 @@ export default function RegisterScreen() {
 
           {/* Phone */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Số điện thoại</Text>
+            <Text style={styles.fieldLabel}>Phone number</Text>
             <View style={[styles.phoneInputWrapper, errors.phone && styles.inputError]}>
               <Text style={styles.phonePrefix}>+84</Text>
               <View style={styles.phoneDivider} />
@@ -147,14 +147,14 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Mật khẩu</Text>
+            <Text style={styles.fieldLabel}>Password</Text>
             <View style={[styles.passwordInputWrapper, errors.password && styles.inputError]}>
               <Controller
                 control={control}
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    placeholder="Nhập mật khẩu (tối thiểu 8 ký tự)"
+                    placeholder="Enter your password (at least 8 characters)"
                     placeholderTextColor={color.neutral[400]}
                     secureTextEntry={secureText}
                     onBlur={onBlur}
@@ -215,9 +215,9 @@ export default function RegisterScreen() {
                   {value && <Text style={styles.checkboxTick}>✓</Text>}
                 </View>
                 <Text style={styles.checkboxLabel}>
-                  Tôi đồng ý với{' '}
-                  <Text style={styles.linkText}>Điều khoản sử dụng</Text> và{' '}
-                  <Text style={styles.linkText}>Chính sách bảo mật</Text> của HPay
+                  I agree to the{' '}
+                  <Text style={styles.linkText}>Terms of use</Text> and{' '}
+                  <Text style={styles.linkText}>Privacy policy</Text> of HPay
                 </Text>
               </Pressable>
             )}
@@ -227,10 +227,10 @@ export default function RegisterScreen() {
 
         {/* Footer Actions */}
         <View style={styles.footer}>
-          <Button label="Tiếp tục" onPress={handleSubmit(onSubmit)} style={styles.submitButton} />
+          <Button label="Next" onPress={handleSubmit(onSubmit)} style={styles.submitButton} />
           <Pressable onPress={() => router.push('/(auth)/login')} style={styles.loginLink}>
             <Text style={styles.footerText}>
-              Đã có tài khoản? <Text style={styles.linkBold}>Đăng nhập</Text>
+              Already have an account? <Text style={styles.linkBold}>Log in</Text>
             </Text>
           </Pressable>
         </View>
