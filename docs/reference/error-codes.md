@@ -127,7 +127,7 @@ Also unmapped: raw database errors (unique violation 23505 on `transactions.reve
 | ERR_PIN_NOT_SET | 403 | the user has no PIN; set one first | auth.ErrPINNotSet |
 | ERR_PIN_INCORRECT | 403 | wrong PIN (counts toward the lockout) | auth.ErrPINIncorrect |
 | ERR_PIN_LOCKED | 429 | five wrong PINs; PIN use locked for 15 minutes | auth.ErrPINLocked |
-| ERR_PIN_COOLING | 403 | a PIN transaction above 2,500,000 VND within 24 hours of a PIN reset or operator clear | auth.ErrPINCooling |
+| ERR_PIN_COOLING | 403 | a PIN transaction above 10,000 cents ($100.00) within 24 hours of a PIN reset or operator clear | auth.ErrPINCooling |
 | ERR_PIN_RESET_RATE_LIMITED | 429 | more than 3 PIN reset codes requested in an hour | auth.ErrPINResetRateLimited |
 | ERR_OTP_DELIVERY_UNAVAILABLE | 503 | no real code delivery channel is configured (production and demo until a provider is chosen) | auth.ErrSenderUnavailable |
 | ERR_TOTP_NOT_ENROLLED | 403 | the 2fa band (or enrolment confirm) needs an authenticator that is not set up | auth.ErrTOTPNotEnrolled |

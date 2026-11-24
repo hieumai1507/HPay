@@ -61,7 +61,7 @@ Registration/login with refresh rotation; wallets and double-entry ledger; P2P t
 
 ## Out of scope / not present
 
-- Real bank or card rails, real SMS/email delivery, push notifications, multi-currency (wallet currency is `VND` everywhere in queries), card issuing.
+- Real bank or card rails, real SMS/email delivery, push notifications, multi-currency (the wallet currency is `USD` everywhere, one constant `wallet.DefaultCurrency`), card issuing.
 - Server-side PIN: no PIN is stored or verified by the backend (audit BE-C2); see [crosscutting-concepts.md](crosscutting-concepts.md).
 - Other products mentioned in old docs are reference material only and have no code in this repo.
 - Kubernetes/infra-as-code, observability stack (metrics, tracing): none in repo. Only `/healthz` and structured access logs exist.

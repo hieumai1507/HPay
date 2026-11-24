@@ -22,7 +22,7 @@ audit:
 # Organization
 
 ## 1. Purpose
-Business wallets: an organization has one VND wallet, members with roles (`admin`, `maker`, `checker`), versioned approval policies, topup, and the maker side of disbursements (org wallet to a user wallet). The approval of a disbursement lives in `approval-maker-checker.md`; the money movement is the workflow engine plus `ledger.Post`. This context does not own the ledger or the workflow.
+Business wallets: an organization has one USD wallet, members with roles (`admin`, `maker`, `checker`), versioned approval policies, topup, and the maker side of disbursements (org wallet to a user wallet). The approval of a disbursement lives in `approval-maker-checker.md`; the money movement is the workflow engine plus `ledger.Post`. This context does not own the ledger or the workflow.
 
 ## 2. Key concepts
 - **Role** `org_role` enum `admin|maker|checker` (000005:10). One role per user per org (`member_unique`, 000005:36).
@@ -34,7 +34,7 @@ Business wallets: an organization has one VND wallet, members with roles (`admin
 
 | ID | Rule | Enforced by | Test |
 |----|------|-------------|------|
-| BR-ORG-01 | Creating an org creates the org, its VND wallet and the creator's `admin` membership, plus an audit row, in one transaction. Name is trimmed, 2-200 chars. | `org/service.go:CreateOrg` (71-107) | `TestIntegration_ListUserOrgs` |
+| BR-ORG-01 | Creating an org creates the org, its USD wallet and the creator's `admin` membership, plus an audit row, in one transaction. Name is trimmed, 2-200 chars. | `org/service.go:CreateOrg` (71-107) | `TestIntegration_ListUserOrgs` |
 | BR-ORG-02 | Only an org `admin` can add members; roles are `admin|maker|checker`; a checker needs `checker_level >= 1` (the DB also caps at 5). The user is looked up by phone. | `service.go:AddMember` (143-185), CHECK on `org_members.checker_level` (000005:34) | none |
 | BR-ORG-03 | A user can be a member of an org only once (hence has exactly one role there). Duplicate -> `ErrMemberExists`. | `member_unique` (000005:36), `service.go:175` | none |
 | BR-ORG-04 | Role checks demand an EXACT role match: `requireRole(want)` fails with `ErrForbiddenRole` otherwise; non-members get `ErrNotMember`. | `service.go:requireRole` (449-461) | `TestOrgDisbursementHTTP_ForbiddenRole` |
@@ -44,9 +44,9 @@ Business wallets: an organization has one VND wallet, members with roles (`admin
 | BR-ORG-08 | Concurrent saves of the same name collide on `UNIQUE(org_id,name,version)` and map to `ErrPolicyVersionConflict` (409). The next-version read is NOT locked. | constraint `approval_policies_org_name_version_key` (000013:8-9), `service.go:256` | `TestOrgAdminPolicy_ConcurrentInsertsRaceToOneWinner`, `TestOrgAdminPolicy_VersionConflictMapsToSentinelError` |
 | BR-ORG-09 | `approval_policies.created_by` has no FK so platform-admin ids can be recorded. | migration 000012 | `TestOrgAdminPolicy_CreatePolicyAsAdmin_NoOrgMembershipRequired` |
 | BR-ORG-10 | Policy change is audited (`org.policy_change`, actor type `user` or `admin`). | `service.go:261-267` | none |
-| BR-ORG-11 | Per-transaction cap for org topup and disbursement is a fixed 1,000,000,000 VND; above it -> `wallet.ErrLimitExceeded`; amount `<= 0` -> `ErrAmountInvalid`. No KYC tiers for orgs. | `service.go:orgTxnLimit` (46), checks 282-287, 366-371 | none |
+| BR-ORG-11 | Per-transaction cap for org topup and disbursement is a fixed 4,000,000 cents ($40,000.00); above it -> `wallet.ErrLimitExceeded`; amount `<= 0` -> `ErrAmountInvalid`. No KYC tiers for orgs. | `service.go:orgTxnLimit` (46), checks 282-287, 366-371 | none |
 | BR-ORG-12 | Topup is admin-only, requires an active org, moves SYSTEM_CASH_IN -> org wallet through `ledger.Post` and completes synchronously. Duplicate idempotency key returns the original transaction. | `service.go:Topup` (278-334, `duplicateTopup` 336) | none |
-| BR-ORG-13 | Disbursement is maker-only (an org admin cannot disburse), requires an active org, an existing receiver user (by phone) with a main VND wallet. | `service.go:CreateDisbursement` (362-390) | `TestOrgDisbursementHTTP_ForbiddenRole`, `TestOrgDisbursementHTTP_Success` |
+| BR-ORG-13 | Disbursement is maker-only (an org admin cannot disburse), requires an active org, an existing receiver user (by phone) with a main USD wallet. | `service.go:CreateDisbursement` (362-390) | `TestOrgDisbursementHTTP_ForbiddenRole`, `TestOrgDisbursementHTTP_Success` |
 | BR-ORG-14 | Fail-fast: a disbursement is refused with `ErrNoPolicy` if no active policy matches the amount, and with `ErrInsufficientBalance` if `org balance < amount + fee`. The balance check is soft; MOVE_FUNDS is the hard check. | `service.go:392-409` | none |
 | BR-ORG-15 | Fee comes from `fees.For(TxnTypeOrgDisbursement, KycStatusNone, amount)`. | `service.go:403` | none |
 | BR-ORG-16 | The transaction row and `engine.Start("org_disbursement", ...)` are created in one DB transaction. Workflow v2 steps: VALIDATE, FRAUD_CHECK, ACTIONS_BEFORE_GL, WAIT_APPROVAL, MOVE_FUNDS (compensatable), CONFIRM. | `service.go:411-440`, migration 000010:24-35 | `TestOrgDisbursementTwoTierEndToEnd` |

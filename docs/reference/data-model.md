@@ -8,7 +8,7 @@ code: [src/backend/db/migrations/000001..000013 (*.up.sql), src/backend/sqlc.yam
 
 # Data model
 
-Final PostgreSQL schema after applying migrations 000001 to 000013 in order. PostgreSQL 16. All money is `BIGINT` minor units (VND, no decimals). Migrations are written with `IF NOT EXISTS` / `DROP TYPE IF EXISTS ... CASCADE` for enums (see note under Enums).
+Final PostgreSQL schema after applying migrations 000001 to 000013 in order. PostgreSQL 16. All money is `BIGINT` minor units (US cents; 1 = $0.01). Migrations are written with `IF NOT EXISTS` / `DROP TYPE IF EXISTS ... CASCADE` for enums (see note under Enums).
 
 Migration index: 01 users/admin/auth, 02 wallets+ledger+system seed, 03 services/workflow/outbox, 04 offers/fees/money requests, 05 org/approval/KYC/fraud/recon/AI, 06 user_offers + service dispatch columns + forward-fixes, 07 ledger append-only trigger, 08 vault wallets, 09 round-up + workflow p2p_transfer v2, 10 action pipeline workflows (p2p_transfer v3, org_disbursement v2), 11 `approval_status` + `cancelled`, 12 drop FK on `approval_policies.created_by`, 13 unique policy version.
 
@@ -73,7 +73,7 @@ id UUID PK; email VARCHAR(160) NOT NULL UNIQUE; password_hash TEXT; full_name VA
 | id | UUID | no | gen_random_uuid() PK |
 | owner_type | owner_type | no | |
 | owner_id | UUID | no | (no FK, polymorphic: users / organizations / system user) |
-| currency | VARCHAR(3) | no | 'VND' |
+| currency | VARCHAR(3) | no | 'USD' |
 | purpose | VARCHAR(20) | no | 'main' (also 'vault', system_cash, system_fee, system_suspense) |
 | label | VARCHAR(60) | yes | |
 | balance | BIGINT | no | 0 |

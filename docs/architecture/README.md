@@ -10,7 +10,7 @@ code: [src/backend/cmd/server/main.go, src/backend/internal/api/router.go, src/b
 
 ## System summary
 
-1. HPay is a Vietnamese-dong (VND) e-wallet: P2P transfer, money requests / split bill, vaults (savings pockets), bank top-up, KYC, and business (org) wallets with maker-checker disbursement.
+1. HPay is a US-dollar (USD) e-wallet: P2P transfer, money requests / split bill, vaults (savings pockets), bank top-up, KYC, and business (org) wallets with maker-checker disbursement.
 2. One Go binary (`src/backend/cmd/server`, Gin + pgx + go-redis) serves everything; `--role=api|worker|admin|all` chooses which HTTP surfaces and background loops run (`main.go:36`, `config.go:13-41`).
 3. State lives in PostgreSQL (append-only double-entry ledger, workflow tables, outbox); Redis carries the workflow streams (`wf:steps:<handler>`, `wf:events`) and rate-limit counters.
 4. Money-moving transactions are executed by a DB-defined workflow engine (steps VALIDATE, FRAUD_CHECK, ..., MOVE_FUNDS, CONFIRM) driven by a transactional outbox, not inline in the HTTP request.

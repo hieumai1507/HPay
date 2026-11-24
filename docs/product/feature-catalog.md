@@ -79,7 +79,7 @@ All use `/v1/admin/*` with an admin JWT; backend does not check roles (see roles
 |---|---|---|
 | Double-entry ledger, append-only | `ledger`, migration 000007 | implemented (BE-C1 caveat) |
 | Workflow engine with retry, compensation, recovery | `workflow` | implemented (compensation failure leaves state unresolved, audit) |
-| Fee policies by type and KYC tier | `fee` | implemented; only a 1,000 VND p2p fee seeded |
+| Fee policies by type and KYC tier | `fee` | implemented; only a 25-cent ($0.25) p2p fee seeded |
 | OfferGuard limits and auth matrix | `offerguard` | implemented (race BE-H2) |
 | Action pipeline (3rd-party actions per service) | `workflow/handlers/action_pipeline.go` | implemented; real HTTP only in `production`, SSRF risk |
 | Fraud rule engine step | `fraud` | implemented |

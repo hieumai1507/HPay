@@ -49,7 +49,7 @@ Workers (role worker/all): outbox relay, workflow worker, recovery, approval swe
 | ENGINE_DYNAMIC_DISPATCH | enabled | no | no | Read in `transfer/service.go`; only the literal `false` disables service-driven workflow dispatch |
 | OFFERGUARD_ENABLED | enabled | no | no | Only literal `false` disables every OfferGuard limit. The server refuses to start with `false` when `APP_ENV` is `production` or `demo`; allowed in `dev` and `ci` only. Read once in `config.go` (`Config.OfferGuardDisabled`) and passed to the transfer service. |
 | DEFAULT_OFFER_CODE | `OFFER_CUST_L0` | no | no | `offerguard` offer for users without a `user_offers` row (most restrictive customer offer) |
-| ROUND_UP_UNIT_VND | handler default | no | no | Round-up step rounding unit |
+| ROUND_UP_UNIT | 100 (cents) | no | no | Round-up step rounding unit, in cents |
 | TEST_DATABASE_URL | none | tests only | yes | Integration tests; skipped if unset |
 | TEST_REDIS_ADDR | none | tests only | no | Used by CI test job |
 | DB_URL (Makefile only) | postgres://HPay:HPay@localhost:5432/HPay?sslmode=disable | no | yes | Makefile/migrate and seed target |

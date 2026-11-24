@@ -12,7 +12,7 @@ Audit IDs refer to [../audit/AUDIT-REPORT.md](../audit/AUDIT-REPORT.md). Its "Ve
 
 ## 1. Money is int64 minor units
 
-All amounts are `int64` VND (no decimals; VND has no minor unit in practice, so 1 unit = 1 dong). Columns are `BIGINT` (`primary_pocket_max`, `daily_limit`, `balance`, `amount`, `fixed_fee`). Fee math: `fixed + amount*percent_bp/10_000`, integer division rounds down (`fee/fee.go:25-26`); no overflow protection (audit "Ledger Post / Fee"). Mobile mirrors this with `bigint` and emits JSON integers without passing through `Number` (`mobile/src/api/client.ts:76-86`), but the engine request still does `Number(amount)` (`mobile/app/(main)/transfer/confirm.tsx:46`), and `schema.d.ts` types amounts as `number`.
+All amounts are `int64` US cents (the minor unit of the dollar, 1 = $0.01; ADR-0019, which amends the currency sentence of ADR-0003). Columns are `BIGINT` (`primary_pocket_max`, `daily_limit`, `balance`, `amount`, `fixed_fee`). Fee math: `fixed + amount*percent_bp/10_000`, integer division rounds down (`fee/fee.go:25-26`); no overflow protection (audit "Ledger Post / Fee"). Mobile mirrors this with `bigint` and emits JSON integers without passing through `Number` (`mobile/src/api/client.ts:76-86`), but the engine request still does `Number(amount)` (`mobile/app/(main)/transfer/confirm.tsx:46`), and `schema.d.ts` types amounts as `number`.
 
 ## 2. Idempotency
 

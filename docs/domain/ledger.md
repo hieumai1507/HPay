@@ -25,7 +25,7 @@ audit:
 The ledger owns the only code path that changes a wallet balance: `ledger.Post`. It validates a set of legs, locks the wallets, rejects overdrafts on customer wallets, writes append-only `ledger_entries` rows with a running `balance_after`, and updates `wallets.balance`. It does NOT own transaction rows, statuses, fees (it just posts the legs it is handed), idempotency or replay protection (see 6 and 10).
 
 ## 2. Key concepts
-- **Wallet**: the row in `wallets` that holds a `balance` (BIGINT, minor units, VND). Customer wallets, org wallets, vaults and system pools are all wallets (`owner_type` enum `user|organization|system`, 000002:13).
+- **Wallet**: the row in `wallets` that holds a `balance` (BIGINT, minor units: US cents). Customer wallets, org wallets, vaults and system pools are all wallets (`owner_type` enum `user|organization|system`, 000002:13).
 - **Leg**: `ledger.Leg{WalletID, Direction, Amount}` (`ledger.go:27`). Amount is always positive; `debit` subtracts, `credit` adds (`ledger.go:104-108`).
 - **Entry**: one `ledger_entries` row per leg.
 - **System wallets**: three seeded rows with fixed UUIDs and `system_code` `SYSTEM_CASH_IN` (...0001), `SYSTEM_FEE` (...0002), `SYSTEM_SUSPENSE` (...0003) (000002:98-100). Opening balance is 0. They may go negative (cash-in does by design, 000002:94-97).
