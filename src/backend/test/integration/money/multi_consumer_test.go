@@ -27,7 +27,7 @@ func TestP1_ManyConsumersFinishEveryTransferOnce(t *testing.T) {
 	}
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	rdb := redis.NewClient(&redis.Options{Addr: addr})
+	rdb := redis.NewClient(&redis.Options{Addr: addr, DB: 9}) // own DB: stray consumers must not touch other tests' streams
 	defer rdb.Close()
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		t.Skipf("redis unreachable: %v", err)
