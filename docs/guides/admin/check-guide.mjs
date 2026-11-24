@@ -85,6 +85,20 @@ if (fs.existsSync(srcDir)) {
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
   const source = walk(srcDir).filter((f) => /\.(tsx?|css)$/.test(f) && !/\.test\./.test(f)).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
   const labels = new Set([...md.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1].trim()));
+  // Also warn about sentences the guide quotes ("...") that the admin source does not contain.
+  const quoted = new Set([...md.matchAll(/"([A-Z][^"\n]{7,80}?)"/g)].map((m) => m[1].trim().replace(/[.,]$/, '')));
+  const quotedMissing = [...quoted].filter((q) => {
+    const core = q.replace(/\s*\.\.\.\s*/g, ' ').split(' ... ')[0].trim();
+    const parts = core.split(/\s{2,}|\.\.\./).map((x) => x.trim()).filter((x) => x.length > 6);
+    return !parts.every((p) => source.includes(p) || source.toLowerCase().includes(p.toLowerCase()));
+  });
+  // Every sidebar entry named in the guide's menu lists must exist in Sidebar.tsx.
+  const navLabels = [...source.matchAll(/label: '([^']+)', icon/g)].map((m) => m[1]);
+  for (const n of ['Dashboard', 'KYC Review', 'Fraud Monitor', 'Workflow', 'My Tasks', 'Needs attention', 'Reconciliation', 'Service Catalog', 'Offer Factory', 'Organizations & Policy', 'AI Settings', 'Audit Log']) {
+    if (!navLabels.includes(n)) fail(`menu entry named in the checker is not in the sidebar any more: ${n}`);
+  }
+  if (navLabels.length !== 12) fail(`the sidebar has ${navLabels.length} entries, the guide says 12`);
+  for (const q of quotedMissing) warnings.push(`quoted text "${q}"`);
   for (const lab of labels) {
     if (/^(Tip|Careful|Not available yet|The safe rule|TO BE FILLED.*|You should see:?)$/i.test(lab)) continue;
     const core = lab.replace(/[ ]*[⚡→←✓✕☑⟳⤓↩🔒]+[ ]*/g, ' ').replace(/\s+/g, ' ').trim();

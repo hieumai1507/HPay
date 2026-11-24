@@ -1,26 +1,26 @@
 # HPay Admin: User Guide for Staff
 
-Version: 2026-11-24 (matches the admin app after the sample-free demo data, the English text and the layout fixes). English only.
+Version: 2026-11-24, second revision (matches the admin app after the display, role-guard, policy and phone-layout fixes). English only.
 
 ---
 
 ## What changed in this version
 
-Date: 2026-11-24. Every screenshot was retaken.
+Date: 2026-11-24, second revision. Every screenshot was retaken. There are now 36 pictures. Seven are new: the phone menu closed and open, the Ops dashboard, the offer authentication matrix, and the validations list. The policy edit and the Ops view-only pictures were also redone.
 
-- **Section 3, Your first 10 minutes:** new demo values (customer Tran Van Ba, flag #c751, one reversal of 500,000 ₫).
-- **Section 4, Roles:** the **KYC Review** page is now hidden from Ops and Risk Officer; menus re-listed from the code. New Figure 5.
-- **5.1 Dashboard:** the daily cards show a dash and "(no analytics API yet)". The stuck-payments card now shows a real count. Cards your role cannot use say so.
-- **5.2 KYC Review:** new customer name, new screenshots.
-- **5.3 Fraud Monitor:** English evidence text, new columns, the page no longer shows a technical title.
-- **5.4 Workflow and 5.5 My Tasks:** money now reads like 500,000 ₫. Dates read day/month/year.
-- **5.6 Needs attention:** now a full chapter with the menu number. It describes both kinds of case.
-- **5.7 Reconciliation:** the date box starts on today.
-- **5.8 Service Catalog:** rewritten. Five services with English names, a larger window with five tabs, plain notices on two tabs, empty states on two tabs.
-- **5.9 Offer Factory:** rewritten. English plan names, real limits and a real authentication matrix.
-- **5.10 Organizations & Policy:** rewritten around the real policy list, **Edit**, **Save as version N** and **Earlier versions**.
-- **5.11 AI Settings:** new provider wording. **5.12 Audit Log:** new screenshot and notes.
-- **Section 6, Glossary:** new terms (level, signature, version) and updated demo values.
+- **2.6 How the screen is laid out and new 2.7 Using HPay Admin on a phone:** the menu is a drawer on a phone, opened with a menu button.
+- **Section 3, Your first 10 minutes:** new demo values (flag #efe2, customer Tran Van Ba).
+- **Section 4, Roles:** menus re-derived from the code. Ops now sees "No access" on **KYC Review**, the same as on other pages it may not open. New figure of the Ops dashboard.
+- **5.1 Dashboard:** cards your role may not use say "Not available for your role" and are not links. **Workflows stuck > 5 min** shows a real count.
+- **5.2 KYC Review:** the whole row opens the request. The demo now shows two placeholder pictures labelled **ID card** and **Selfie**.
+- **5.3 Fraud Monitor:** the title is "Fraud monitoring". The demo flag shows a dash for Amount and User.
+- **5.4 Workflow:** the detail page shows the Transaction code and Amount, and plain sentences for errors. New figure notes on step results.
+- **5.6 Needs attention, 5.7 Reconciliation:** wording and the date box (it opens on today).
+- **5.8 Service Catalog:** the row button shows the real step count. Five tabs explained with one figure each.
+- **5.9 Offer Factory:** real plan status, service counts and the authentication matrix. New figure.
+- **5.10 Organizations & Policy:** rewritten around the real policy list, editing and saving a new version.
+- **5.11 AI Settings:** the offline provider is called "Offline test engine (no real AI)".
+- **Section 6, Glossary, and section 7, FAQ:** updated.
 
 ---
 
@@ -80,9 +80,9 @@ Log out when you leave your desk. Your session also ends when you close the brow
 ### 2.5 If the page shows an error or you are logged out
 
 - **You are sent back to the login page.** Your session ran out. Log in again.
-- **A red message says "Could not load".** Press the **Refresh** button on that page, or press F5 on your keyboard. If it stays, tell your contact (section 8).
+- **A red message says "Could not load".** Press the refresh button of your browser, or press F5 on your keyboard. On **Fraud Monitor** and **Workflow** you can also press **⟳ Refresh**. If the message stays, tell your contact (section 8).
 - **"No access".** Your role cannot open that page. See section 4.
-- **"Page not found" (404).** The address is wrong. Click **← Back to Dashboard**.
+- **"Page not found."** The address is wrong. Click **← Back to Dashboard**.
 
 ### 2.6 How the screen is laid out
 
@@ -90,23 +90,41 @@ Log out when you leave your desk. Your session also ends when you close the brow
 
 *Figure 2: The Dashboard. Badge 1 is the left menu. Badge 2 is the Needs attention entry. Badge 3 is Log out. Badge 4 is the Pending KYC card. Badge 5 is the note "(no analytics API yet)".*
 
-- **Left menu (badge 1):** one entry for each page you can use. It only shows pages your role may open.
+- **Left menu (badge 1):** one entry for each page you can use. It only shows pages your role may open. On a wide screen the small arrows at the bottom of the menu shrink it to icons.
 - **Top bar:** the page name, your name, your role and **Log out**.
 - **Main area:** the page itself.
 - A **red number** next to **Needs attention** in the menu means cases are waiting for a person. The demo has none, so Figure 2 shows no number.
 
-Money is written with commas and the currency sign after the number, for example 1,000,000 ₫. Dates are written day/month/year.
+Money is written with commas and the currency sign after the number, for example 1,000,000 ₫. Dates are written day/month/year, for example 24/11/2026. The date box on **Reconciliation** follows the language of your browser.
+
+### 2.7 Using HPay Admin on a phone
+
+You can use HPay Admin on a phone or a narrow window (below 768 pixels). The pages are the same. Only the menu changes. It hides to give the page more room.
+
+1. Look at the top left corner. Find the menu button with three lines (badge 1 in Figure 3).
+2. Tap the menu button. *You should see: the dark menu slides in over the page and the page behind it goes grey (Figure 4).*
+3. Tap the page you want in the menu (badge 2 in Figure 4). *You should see: the page opens and the menu closes.*
+
+To close the menu without choosing a page, tap the grey area outside the menu. On a computer keyboard you can also press Escape.
+
+![A phone-sized Dashboard with the menu button in the top left corner marked.](admin/img/33-phone-menu-closed.png)
+
+*Figure 3: The Dashboard on a phone with the menu closed. Badge 1 is the menu button.*
+
+![A phone-sized Dashboard with the menu open over the page.](admin/img/36-phone-menu-open.png)
+
+*Figure 4: The menu open. Badge 1 is the menu. Badge 2 is the Workflow entry.*
 
 ---
 
 ## 3. Your first 10 minutes
 
-Do these steps in order. They only read information, so they are safe. Use the practice system with the demo data. The values below are what the demo shows on 2026-11-24. Yours may differ a little.
+Do these steps in order. They only read information, so they are safe. Use the practice system with the demo data. The values below are what the demo shows on 2026-11-24. Yours may differ a little, for example the short flag number.
 
 1. Log in (section 2.3) as the demo Superadmin. *You should see: the Dashboard.*
 2. Look at the three cards under **Needs attention**. *You should see: "1" on **Pending KYC**, "1" on **Open Fraud flags** and "0" on **Workflows stuck > 5 min**.* Click **Pending KYC**.
-3. On **KYC Review**, click **Open →** on the row for Tran Van Ba. *You should see: two photo boxes, the registration details and notes from the AI.* Click **← Back**. Do not approve anything yet.
-4. Click **Fraud Monitor** in the left menu. *You should see: one open flag, **#c751**, rule **VELOCITY_5MIN**, status **Open**.* Click the flag number to read its explanation below the table.
+3. On **KYC Review**, click the row for Tran Van Ba. *You should see: two picture boxes, the registration details and notes from the AI.* Click **← Back**. Do not approve anything yet.
+4. Click **Fraud Monitor** in the left menu. *You should see: one open flag, for example **#efe2**, rule **VELOCITY_5MIN**, status **Open**.* Click the flag number to read its explanation below the table.
 5. Click **Workflow** in the left menu. *You should see: a list of payments with a **Status** for each, such as **Failed** and **Completed**.* Click **Open →** on any row to see its steps.
 6. Click **My Tasks**. *You should see: one request, a **reversal** of 500,000 ₫, with a **Process** button.* Do not press **Approve** or **Reject** while practising.
 7. Click **Needs attention**. *You should see: "Open cases: 0" and "Nothing needs attention." That is the good result.*
@@ -126,27 +144,33 @@ Your **role** decides which pages you can open and which buttons work. Your role
 
 | Role | Can do | Menu items you will see |
 |---|---|---|
-| **Superadmin** | Everything: review KYC, resolve fraud flags, handle workflows and approvals, run reconciliation, edit organization policies, manage AI settings, change services. | All 12 |
-| **Ops** | Handle workflows and approvals, run reconciliation. | Dashboard, Workflow, My Tasks, Needs attention, Reconciliation, Organizations & Policy, Audit Log |
-| **KYC Reviewer** | Approve or reject identity (KYC) requests. | Dashboard, KYC Review, Workflow, My Tasks, Audit Log |
-| **Risk Officer** | Resolve fraud flags, handle workflows and approvals. | Dashboard, Fraud Monitor, Workflow, My Tasks, Needs attention, Organizations & Policy, Audit Log |
-| **Viewer** | Look only. No buttons that change anything. | Dashboard, Workflow, My Tasks |
+| **Superadmin** | Everything: review KYC, resolve fraud flags, handle workflows and approvals, run reconciliation, edit organization policies, manage AI settings, change a service's status. | All 12 |
+| **Ops** | Handle workflows and approvals, run reconciliation. Can read, but not edit, organization policies. | Dashboard, Workflow, My Tasks, Needs attention, Reconciliation, Organizations & Policy, Audit Log (7) |
+| **KYC Reviewer** | Approve or reject identity (KYC) requests. | Dashboard, KYC Review, Workflow, My Tasks, Audit Log (5) |
+| **Risk Officer** | Resolve fraud flags, handle workflows and approvals. Can read, but not edit, organization policies. | Dashboard, Fraud Monitor, Workflow, My Tasks, Needs attention, Organizations & Policy, Audit Log (7) |
+| **Viewer** | Look only. No buttons that change anything. | Dashboard, Workflow, My Tasks (3) |
 
-How this table was built: from the role list in the admin app code, as it works today. The roles can change; ask a Superadmin if your menu looks different.
+How this table was built: from the role list and the page rules in the admin app code, as they work today. The roles can change; ask a Superadmin if your menu looks different.
+
+Only a Superadmin sees **Service Catalog**, **Offer Factory** and **AI Settings**.
 
 **What "View only" means.** You can see the information but cannot change it. A button may be greyed out, or a row may say **View only** instead of a **Process** button. Hover over a greyed button to read the reason. It says: "Your role does not have permission for this action."
 
 ![Dashboard of an Ops user with a shorter menu than a Superadmin.](admin/img/03-ops-menu.png)
 
-*Figure 3: What an Ops user sees. Badge 1 is the shorter menu: no KYC Review, Fraud Monitor, Service Catalog, Offer Factory or AI Settings. Badge 2 is the role name.*
+*Figure 5: What an Ops user sees. Badge 1 is the shorter menu: no KYC Review, Fraud Monitor, Service Catalog, Offer Factory or AI Settings. Badge 2 is the role name.*
 
 ![A No access panel on the AI Settings page.](admin/img/22-no-access.png)
 
-*Figure 4: If you type the address of a page your role cannot open, you see "No access". Badge 1 marks the words "No access".*
+*Figure 6: If you type the address of a page your role cannot open, you see "No access". Badge 1 marks the words "No access".*
 
 ![The KYC Review address opened by an Ops user, showing No access.](admin/img/25-kyc-ops.png)
 
-*Figure 5: An Ops user who types the KYC Review address also sees "No access". The KYC Review entry is missing from their menu.*
+*Figure 7: An Ops user who types the KYC Review address also sees "No access". Badge 1 is the message. Badge 2 is the menu, which has no KYC Review entry.*
+
+![Dashboard of an Ops user with two cards greyed out.](admin/img/34-ops-dashboard.png)
+
+*Figure 8: The Dashboard for an Ops user. Badges 1 and 2 are cards that say "Not available for your role". Badge 3 is the one card an Ops user may open.*
 
 > **Careful**
 > The dashboard cards follow the same rule. A card your role cannot use shows a dash and the words "Not available for your role". It is not a link. That is normal.
@@ -163,7 +187,7 @@ How this table was built: from the role list in the admin app code, as it works 
 
 **Task: Find out what is waiting**
 
-1. Click **Dashboard** in the left menu. *You should see: four number cards, a chart and three alert cards (Figure 2).*
+1. Click **Dashboard** in the left menu. *You should see: four number cards, a chart box and three alert cards (Figure 2).*
 2. Read the alert cards under **Needs attention**: **Pending KYC**, **Open Fraud flags**, **Workflows stuck > 5 min**.
 3. Click a card. *You should see: the matching page opens.*
 
@@ -174,8 +198,10 @@ How this table was built: from the role list in the admin app code, as it works 
 | **Workflows stuck > 5 min** | Payments that have not moved for more than 5 minutes. Click it to open the **Workflow** page. |
 | **New users (today)**, **Transactions (24h)**, **Volume (24h)**, **Failure rate** | Daily numbers. Not connected yet (see below). |
 
+A card your role may not use says "Not available for your role" and is not a link (Figure 8). An Ops user, for example, cannot use **Pending KYC** or **Open Fraud flags**. They still see **Workflows stuck > 5 min**.
+
 > **Not available yet**
-> The four daily-number cards show "—" and the words "(no analytics API yet)". The **Volume by hour** chart shows "no data yet". These parts are not connected to data. Use the **Workflow** page for payment problems.
+> The four daily-number cards show a dash and the words "(no analytics API yet)". The **Volume by hour** chart shows "no data yet". These parts are not connected to data. Use the **Workflow** page for payment problems.
 
 **If something looks wrong.** If a card says "Could not load this count", the system is busy. Press F5. If a card says "Not available for your role", your role cannot see that information (section 4).
 
@@ -187,28 +213,30 @@ How this table was built: from the role list in the admin app code, as it works 
 
 **When you need it.** When **Pending KYC** on the Dashboard is above zero.
 
+**Who sees it.** Superadmin and KYC Reviewer. Other roles see "No access" (Figure 7).
+
 ![KYC list with the Pending tab, the search box and the Open link marked.](admin/img/04-kyc-list.png)
 
-*Figure 6: The KYC list. Badge 1 is the Pending tab. Badge 2 is the search box. Badge 3 is Open →.*
+*Figure 9: The KYC list. Badge 1 is the Pending tab. Badge 2 is the search box. Badge 3 is Open →.*
 
 **Task A: Approve a request**
 
 1. Click **KYC Review** in the left menu. *You should see: the list, with the **Pending** tab selected.*
-2. Click **Open →** at the end of a row (badge 3 in Figure 6). *You should see: two photo boxes, the registration details and the AI analysis (Figure 7).*
-3. Compare the name and face with the photos. Read the **AI analysis** notes.
+2. Click anywhere on the row, or click **Open →** at its end (badge 3 in Figure 9). *You should see: two picture boxes, the registration details and the AI analysis (Figure 10).*
+3. Compare the name and face with the pictures. Read the **AI analysis** notes.
 4. Click **✓ Approve (A)**. *You should see: a green message "Application approved."*
 
-![KYC detail page showing the photo boxes, details, AI analysis and the Approve and Reject buttons.](admin/img/05-kyc-detail.png)
+![KYC detail page showing the ID card and Selfie pictures, details, AI analysis and the Approve and Reject buttons.](admin/img/05-kyc-detail.png)
 
-*Figure 7: One request. Badge 1 is the AI analysis. Badge 2 is the registration details. Badge 3 is Approve. Badge 4 is Reject. Badge 5 is Back.*
+*Figure 10: One request. Badge 1 is the ID card picture (the Selfie is next to it). Badge 2 is the registration details. Badge 3 is the AI analysis. Badge 4 is Approve. Badge 5 is Reject. Badge 6 is Back.*
 
 > **Careful**
-> **✓ Approve (A)** works at once. There is no "Are you sure?" window. Check the photos before you click. Do not press the **A** key by accident.
+> **✓ Approve (A)** works at once. There is no "Are you sure?" window. Check the pictures before you click. Do not press the **A** key by accident.
 
 **Task B: Reject a request**
 
 1. Open the request as in Task A.
-2. Click **✕ Reject (R)**. *You should see: a window titled "Reject KYC application" (Figure 8).*
+2. Click **✕ Reject (R)**. *You should see: a window titled "Reject KYC application" (Figure 11).*
 3. Click the big box and type the reason. It needs at least 10 characters. The reason is saved to the Audit log.
 4. Click **Confirm rejection** (badge 3). *You should see: a green message "Application rejected."*
 
@@ -216,18 +244,18 @@ To stop, click **Cancel** (badge 2) instead. Nothing changes.
 
 ![The reject window with the reason box, Cancel and Confirm rejection.](admin/img/06-kyc-reject-dialog.png)
 
-*Figure 8: The reject window. Badge 1 is the reason box. Badge 2 is Cancel. Badge 3 is Confirm rejection.*
+*Figure 11: The reject window. Badge 1 is the reason box. Badge 2 is Cancel. Badge 3 is Confirm rejection.*
 
 **Task C: Find a customer**
 
-1. Click the search box (badge 2 in Figure 6).
+1. Click the search box (badge 2 in Figure 9).
 2. Type part of the name or phone number. *You should see: the list shrinks.*
 
 **What the columns and tabs mean**
 
 | Item | Meaning |
 |---|---|
-| **Pending** tab | Needs a person to decide. |
+| **Pending** tab | Needs a person to decide. The number next to it is how many wait. |
 | **Auto-approved by AI** tab | The AI approved it. Look only. |
 | **Rejected** tab | Already rejected. Look only. |
 | **AI Score** | 0 to 100. Higher means the documents look more genuine. Green is 70 or more, amber 40 to 69, red below 40. |
@@ -240,26 +268,28 @@ Keyboard shortcuts exist (J and K move up and down, Enter opens, A approves, R r
 > Only **Pending** requests can be decided. If another person already handled one, you see "This application was already handled elsewhere." Nothing is lost.
 
 > **Not available yet**
-> In the demo the two photo boxes are empty. The demo has no photo files. In real use you see the ID card and the selfie.
+> In the demo the two pictures are plain placeholder drawings, not real documents. In real use you see the customer's ID card photo and selfie.
 
-**If something looks wrong.** If the photos are blank in real use, press F5; the photo links expire after a short time. If the list is empty, the queue is clear.
+**If something looks wrong.** If a picture is blank in real use, press F5; the picture links expire after a short time. If the list is empty, the queue is clear.
 
 ---
 
 ### 5.3 Fraud Monitor
 
-**What this page is for.** Review payments the system marked as suspicious (a "fraud flag") and decide what to do.
+**What this page is for.** Review payments the system marked as suspicious (a "fraud flag") and decide what to do. The page heading reads "Fraud monitoring".
 
 **When you need it.** When **Open Fraud flags** on the Dashboard is above zero.
 
+**Who sees it.** Superadmin and Risk Officer.
+
 ![Fraud Monitor with the status filter, the flag number and the two action buttons marked.](admin/img/07-fraud-list.png)
 
-*Figure 9: The fraud list. Badge 1 is the status filter. Badge 2 is the flag number. Badge 3 is Mark as safe. Badge 4 is Confirm fraud.*
+*Figure 12: The fraud list. Badge 1 is the status filter. Badge 2 is the flag number. Badge 3 is Mark as safe. Badge 4 is Confirm fraud.*
 
 **Task A: Read a flag**
 
 1. Click **Fraud Monitor** in the left menu. *You should see: one row per flag.*
-2. Click the flag number, for example **#c751** (badge 2). *You should see: its explanation below the table. It lists the reasons in plain words, such as "5 transactions in 5 minutes", and an "AI assessment".*
+2. Click the flag number, for example **#efe2** (badge 2). *You should see: its explanation below the table. It lists the reasons in plain words, such as "5 transactions in 5 minutes", and an "AI assessment".*
 
 **Task B: Mark a flag as safe**
 
@@ -269,14 +299,14 @@ Keyboard shortcuts exist (J and K move up and down, Enter opens, A approves, R r
 
 **Task C: Confirm fraud and choose a consequence**
 
-1. Click **🔒 Confirm fraud — choose consequence…** (badge 4). *You should see: a window "Confirm resolution" with three choices (Figure 10).*
+1. Click **🔒 Confirm fraud — choose consequence…** (badge 4). *You should see: a window "Confirm resolution" with three choices (Figure 13).*
 2. Click one choice (badges 1 and 2 show two of them).
 3. Type a reason in the box (badge 3). It needs at least 10 characters.
 4. Click **Confirm Fraud resolution** (or **Mark as safe** if you chose the third option). To stop, click **Cancel** (badge 4).
 
 ![The fraud resolution window with three choices, a reason box and Cancel.](admin/img/08-fraud-resolve-dialog.png)
 
-*Figure 10: The three consequences. Badge 1 is "Lock Account + cancel Pending Transactions". Badge 2 is "Mark as safe / Record only, no action". Badge 3 is the reason box. Badge 4 is Cancel.*
+*Figure 13: The three consequences. Badge 1 is "Lock Account + cancel Pending Transactions". Badge 2 is "Mark as safe / Record only, no action". Badge 3 is the reason box. Badge 4 is Cancel.*
 
 | Choice | What happens |
 |---|---|
@@ -295,8 +325,8 @@ Keyboard shortcuts exist (J and K move up and down, Enter opens, A approves, R r
 | **Rule** | Why it was flagged: **VELOCITY_5MIN** (many payments in 5 minutes), **AMOUNT_SPIKE** (much bigger than usual), **NEW_DEVICE** (new phone), **ODD_HOURS** (middle of the night). |
 | **Score** | Risk from 0 to 100. 80 or more is red, 60 to 79 is amber. |
 | **Transaction** | The payment's code. |
-| **Amount** | The payment amount. It can show "—" when the amount is not known. |
-| **User** | The customer. It can show "—" when the customer is not known. |
+| **Amount** | The payment amount. In the demo it shows "—" because the amount is not known. |
+| **User** | The customer. In the demo it shows "—" because the customer is not known. |
 | **Age** | Time since the flag was raised. "⚠ SLA" means a high-risk flag has waited too long. Handle it first. |
 | **Status** | **Open** (not handled), **Cleared** (marked safe), **Blocked** (fraud confirmed). |
 
@@ -308,13 +338,15 @@ Other controls: the **Status: Open** filter, the **Rule: All** filter and **⟳ 
 
 ### 5.4 Workflow
 
-**What this page is for.** Watch each payment as it moves through its steps. A "workflow" is the list of steps a payment goes through, such as check the user, check for fraud, move the money, confirm. One run of those steps is a "workflow instance".
+**What this page is for.** Watch each payment as it moves through its steps. A "workflow" is the list of steps a payment goes through, such as check the user, check for fraud, move the money, confirm. One run of those steps is a "workflow instance". The page heading reads "Workflow Monitor".
 
 **When you need it.** When a payment looks stuck or failed.
 
+**Who sees it.** Every role. Only Superadmin, Ops and Risk Officer can press the action buttons.
+
 ![The workflow list with the Stuck filter, status filter and Open links marked.](admin/img/09-workflow-list.png)
 
-*Figure 11: The workflow list. Badge 1 is the "Stuck > 5 min" button. Badge 2 is the status filter. Badge 3 is Open →.*
+*Figure 14: The workflow list. Badge 1 is the "Stuck > 5 min" button. Badge 2 is the status filter. Badge 3 is Open →.*
 
 **Task A: Find stuck payments**
 
@@ -323,14 +355,16 @@ Other controls: the **Status: Open** filter, the **Rule: All** filter and **⟳ 
 
 **Task B: See why a payment failed**
 
-1. Click **Open →** on the row (badge 3). *You should see: the payment details and a step timeline (Figure 12).*
-2. Read the **TIMELINE STEP EXECUTIONS**. The step that failed has a red cross.
+1. Choose **Status: Failed** in the filter (badge 2). *You should see: only failed payments.*
+2. Click **Open →** on the row (badge 3). *You should see: the payment details and a step timeline (Figure 15).*
+3. Read the **Transaction** and **Amount** at the top. Then read the **TIMELINE STEP EXECUTIONS**.
+4. Find the step with a red cross. *You should see: a plain sentence under it, for example "The record this step needed was not found."*
 
 **Task C: Retry a failed step**
 
 1. Open the payment (Task B).
-2. Click the box under **Reason for this action (required):** and type why (badge 2 in Figure 12).
-3. Click **⟳ Retry** followed by the step name (badge 3). *You should see: a green message "Retry command sent. The system will retry the current step."*
+2. Click the box under **Reason for this action (required):** and type why (badge 2 in Figure 15).
+3. Click **⟳ Retry** followed by the step name, for example **⟳ Retry CONFIRM** (badge 3). *You should see: a green message "Retry command sent. The system will retry the current step."*
 
 **Task D: Undo a payment (compensate)**
 
@@ -341,25 +375,32 @@ The button **Force fail + compensate** at the top right does the same as **Compe
 
 ![A workflow detail page with the timeline, the reason box and the Retry and Compensate buttons marked.](admin/img/10-workflow-detail.png)
 
-*Figure 12: One payment. Badge 1 is the timeline. Badge 2 is the reason box. Badge 3 is Retry. Badge 4 is Compensate now. Badge 5 is Monitor (back).*
+*Figure 15: One payment. Badge 1 is the timeline. Badge 2 is the reason box. Badge 3 is Retry. Badge 4 is Compensate now. Badge 5 is Monitor (back). Badge 6 is the data panel for technical staff.*
 
 > **Careful**
 > **Compensate** moves money back. It happens at once, with no confirm window. Use it only when told to, and always write a clear reason. **Retry** only repeats the failed step.
+
+**What you see on the detail page**
+
+- **Title:** the transaction code first, then the kind of payment and its version, for example "MP23CB0BF89393 · p2p_transfer v3". Next to it is the status in words, such as "FAILED at CONFIRM" or "WAITING APPROVAL".
+- **Transaction** and **Amount:** the code and the size of the payment.
+- **Timeline:** one line per step. A green tick means it worked. A red cross means it failed. A step that was tried again shows a badge such as "attempt 2". Under a finished step, a line starting **Result:** shows what the step did, in short technical words. You can ignore it.
+- The **DATA** panel on the right is for technical staff. Ignore it.
 
 **What the statuses mean**
 
 | Status | Meaning |
 |---|---|
 | **Running** | In progress. |
-| **Waiting** | Waiting for something outside, such as an approval. The list can show it as **waiting_approval**. |
+| **Waiting** | Waiting for something outside, such as an approval. The list shows it as **waiting_approval**. |
 | **Completed** | Finished correctly. |
 | **Failed** | A step failed. Needs a person. |
 | **Compensated** | Failed, and the money was given back. |
 | **Age** | Time since it started, in minutes. Red means stuck. |
 
-The list refreshes by itself every 10 seconds. The code boxes on the detail page ("out:" lines and the input box) are for technical staff; ignore them.
+The list refreshes by itself every 10 seconds.
 
-**If something looks wrong.** If **Retry** and **Compensate now** are grey, your role cannot act (Viewer). If the failure repeats, do not retry again and again. Tell your contact (section 8) with the Transaction code.
+**If something looks wrong.** If **Retry** and **Compensate now** are grey, your role cannot act (Viewer). If the failure repeats, do not retry again and again. Tell your contact (section 8) with the Transaction code. On a payment that is only waiting for approval, the buttons are shown too. Do not press them. Process the approval in **My Tasks** instead.
 
 ---
 
@@ -371,13 +412,13 @@ The list refreshes by itself every 10 seconds. The code boxes on the detail page
 
 ![My Tasks inbox with the intro line, the approval level and the Process button marked.](admin/img/11-tasks-list.png)
 
-*Figure 13: The inbox. Badge 1 is the intro line. Badge 2 is the approval level. Badge 3 is Process.*
+*Figure 16: The inbox. Badge 1 is the intro line. Badge 2 is the approval level. Badge 3 is Process.*
 
 **Task: Approve or reject a request**
 
 1. Click **My Tasks** in the left menu. *You should see: one row per waiting request.*
 2. Read the **Order type**, **Amount** and **Request reason**.
-3. Click **Process** at the end of the row. *You should see: a window "Process order" (Figure 14).*
+3. Click **Process** at the end of the row. *You should see: a window "Process order" (Figure 17).*
 4. Type your reason in **Decision reason**. It needs at least 10 characters.
 5. Click **Approve** or **Reject**. *You should see: a green message "Order approved." or "Order rejected."*
 
@@ -385,7 +426,7 @@ To stop, click **Cancel**.
 
 ![The Process order window with the reason box and Cancel, Reject and Approve buttons.](admin/img/12-tasks-dialog.png)
 
-*Figure 14: The decision window. Badge 1 is the reason box. Badge 2 is Cancel. Badge 3 is Reject. Badge 4 is Approve.*
+*Figure 17: The decision window. Badge 1 is the reason box. Badge 2 is Cancel. Badge 3 is Reject. Badge 4 is Approve.*
 
 > **Careful**
 > **Approve** on a **reversal** gives money back to a customer. **Approve** and **Reject** work at once. If you press the wrong one, you cannot take it back from this page. Read the amount and reason first.
@@ -395,6 +436,7 @@ To stop, click **Cancel**.
 | **Order type** | The kind of request: **reversal** (give money back), **account_lock** (lock a customer), or a policy change. |
 | **Transaction code** | The payment the request is about. |
 | **Amount** | The size of the payment, for example 500,000 ₫. |
+| **Request reason** | Why the maker asked for it. |
 | **Approval level** | **L1**, **L2** and so on. Bigger requests need more levels of approval. |
 | **Expires** | After this time the request is closed without a decision. |
 
@@ -402,7 +444,7 @@ To stop, click **Cancel**.
 
 ![My Tasks as seen by an Ops user.](admin/img/24-tasks-ops.png)
 
-*Figure 15: Ops users can press Process (badge 1). A Viewer sees "View only" there instead.*
+*Figure 18: Ops users can press Process (badge 1). A Viewer sees "View only" there instead.*
 
 ---
 
@@ -412,15 +454,17 @@ To stop, click **Cancel**.
 
 **When you need it.** When the red number appears next to **Needs attention** in the menu.
 
+**Who sees it.** Superadmin, Ops and Risk Officer.
+
 **Task: Check for parked cases**
 
-1. Click **Needs attention** in the left menu. *You should see: "Open cases: 0" and "Nothing needs attention." when all is well (Figure 16).*
+1. Click **Needs attention** in the left menu. *You should see: "Open cases: 0" and "Nothing needs attention." when all is well (Figure 19).*
 2. If rows appear, read the **Ref code**, **Amount**, **Age** and **Reason** columns.
 3. Click **Audit log** (on an approval) or **Detail** (on a payment) to read more. *You should see: the Audit Log page, or the payment's step timeline.*
 
 ![Needs attention page showing the empty state.](admin/img/13-attention.png)
 
-*Figure 16: The page when nothing is parked. Badge 1 is the menu entry. Badge 2 is the "Nothing needs attention." message.*
+*Figure 19: The page when nothing is parked. Badge 1 is the menu entry. Badge 2 is the "Nothing needs attention." message.*
 
 > **Careful**
 > This page only shows cases. It cannot fix them and it moves no money. A parked case is serious. Tell your contact (section 8) with the Ref code.
@@ -433,7 +477,7 @@ To stop, click **Cancel**.
 | **Age** | Time since it was parked. |
 | **Reason** | Why it needs a person. |
 
-The red number in the menu is the total of both kinds. It updates about every 30 seconds. Ops and Risk Officer roles see this page. Other roles do not.
+The red number in the menu is the total of both kinds. It updates about every 30 seconds.
 
 > **Not available yet**
 > There is no button here to resolve a case. How a parked case is solved is still being decided.
@@ -446,16 +490,18 @@ The red number in the menu is the total of both kinds. It updates about every 30
 
 **What this page is for.** Compare HPay's records of top-ups with the bank's statement, day by day. "Reconciliation" means checking that two lists agree.
 
-**When you need it.** Once a day, or when finance asks you to re-check a date. The system also runs by itself each night.
+**When you need it.** Once a day, or when finance asks you to re-check a date.
+
+**Who sees it.** Superadmin and Ops.
 
 ![Reconciliation with the date box, Run Reconciliation and Export Excel marked.](admin/img/14-recon.png)
 
-*Figure 17: Reconciliation. Badge 1 is the date box. Badge 2 is Run Reconciliation. Badge 3 is Export Excel.*
+*Figure 20: Reconciliation. Badge 1 is the date box. Badge 2 is Run Reconciliation. Badge 3 is Export Excel.*
 
 **Task A: Look at one day**
 
-1. Click **Reconciliation** in the left menu. *You should see: the page opens on today's date.*
-2. Click the date box (badge 1) and choose a date. *You should see: the results for that day, or "Nothing here yet" if it has not run.*
+1. Click **Reconciliation** in the left menu. *You should see: the page opens on today's date, for example "Reconciliation for 2026-11-24".*
+2. Click the date box (badge 1) and choose a date. *You should see: the results for that day. If that day has not been run, the table says "Nothing here yet".*
 
 **Task B: Run a check for a day**
 
@@ -492,54 +538,60 @@ After a run, the top cards show **Total reconciled**, **Matched**, **Mismatched*
 
 **When you need it.** When a service has a problem and customers must not use it for a while.
 
+**Who sees it.** Superadmin only.
+
 ![Service Catalog with the search box, maintenance button, pipeline button and Add service marked.](admin/img/15-services.png)
 
-*Figure 18: The service list. Badge 1 is the search box. Badge 2 is Put in maintenance. Badge 3 is the Action pipeline button. Badge 4 is Add service.*
+*Figure 21: The service list. Badge 1 is the search box. Badge 2 is Put in maintenance. Badge 3 is the Action pipeline button. Badge 4 is Add service.*
 
 **Task A: Look at a service**
 
 1. Click **Service Catalog** in the left menu.
-2. Click **⚡ Action pipeline** on a row (badge 3). The label ends with the number of steps, for example "(2 steps)". *You should see: a window "Transaction Design Manager" with five tabs (Figure 19).*
-3. Click each tab to read it (Figures 20 to 24).
-4. Click **Close** when done.
+2. Click **⚡ Action pipeline** on a row (badge 3). The label ends with the real number of steps, for example "(2 steps)". Four of the five demo services show "(0 steps)". *You should see: a window "Transaction Design Manager" with five tabs (Figure 22).*
+3. Click each tab to read it (Figures 23 to 28).
+4. Click **Close** when done. Pressing Escape also closes the window.
 
 ![The Transaction Design Manager window on its first tab, Overview.](admin/img/16-service-pipeline.png)
 
-*Figure 19: The service window. Badge 1 is the Overview tab. Badge 2 is the X that closes the window. Badge 3 is Save transaction design (grey).*
+*Figure 22: The service window. Badge 1 is the Overview tab. Badge 2 is the X that closes the window. Badge 3 is Save transaction design (grey).*
 
 The window shows only what the system knows about the service. It opens on **Overview** each time you open a service. If the window is taller than your screen, it scrolls inside. The tab bar scrolls sideways on a narrow screen.
 
 | Tab | What you see |
 |---|---|
 | **Overview** | Service code, name, transaction type, action priority and ledger posting. |
-| **Trans Definition (GL)** | A notice: "Ledger rules are not shown here yet" (Figure 20). |
-| **Trans Validations** | The input fields and their rules, or "No input fields configured for this service." (Figure 21). |
-| **Action Pipeline** | The steps the service runs, or "No actions configured" (Figures 22 and 23). |
-| **Offer Auth Matrix** | A notice and a link **Open Offer Factory →** (Figure 24). |
+| **Trans Definition (GL)** | A notice: "Ledger rules are not shown here yet" (Figure 23). |
+| **Trans Validations** | The input fields and their rules (Figure 24), or "No input fields configured for this service." (Figure 25). The number in the tab name is how many fields. |
+| **Action Pipeline** | The steps the service runs (Figure 26), or "No actions configured" (Figure 27). |
+| **Offer Auth Matrix** | A notice and a link **Open Offer Factory →** (Figure 28). |
 
 ![The Trans Definition (GL) tab showing a plain notice.](admin/img/26-service-ledger-tab.png)
 
-*Figure 20: The ledger tab. Badge 1 is the tab. Badge 2 is the notice. There is no table.*
+*Figure 23: The ledger tab. Badge 1 is the tab. Badge 2 is the notice. There is no table.*
 
-![The Trans Validations tab showing an empty state.](admin/img/30-service-validations-tab.png)
+![The Trans Validations tab for P2P transfer, listing two input fields.](admin/img/32-service-validations-fields.png)
 
-*Figure 21: The validations tab for a service with no input fields. Badge 1 is the tab. Badge 2 is the empty-state message.*
+*Figure 24: The validations tab for P2P transfer. Badge 1 is the tab. Badge 2 is the heading of the list of fields.*
 
-![The Action Pipeline tab for a service with no steps.](admin/img/27-service-actions-tab.png)
+![The Trans Validations tab for Vault savings showing an empty state.](admin/img/30-service-validations-tab.png)
 
-*Figure 22: The pipeline tab for a service with no steps. Badge 1 is the tab. Badge 2 is "No actions configured".*
+*Figure 25: The validations tab for a service with no input fields. Badge 1 is the tab. Badge 2 is the empty-state message.*
 
 ![The Action Pipeline tab for P2P transfer, listing two steps.](admin/img/31-service-actions-steps.png)
 
-*Figure 23: The pipeline tab for P2P transfer. Badge 1 is the tab. Badge 2 is the list of steps. Badge 3 is the detail of the chosen step.*
+*Figure 26: The pipeline tab for P2P transfer. Badge 1 is the tab. Badge 2 is the list of steps. Badge 3 is the detail of the chosen step.*
+
+![The Action Pipeline tab for a service with no steps.](admin/img/27-service-actions-tab.png)
+
+*Figure 27: The pipeline tab for a service with no steps. Badge 1 is the tab. Badge 2 is "No actions configured".*
 
 ![The Offer Auth Matrix tab showing a notice and a link to Offer Factory.](admin/img/28-service-auth-tab.png)
 
-*Figure 24: The authentication tab. Badge 1 is the tab. Badge 2 is the link Open Offer Factory →.*
+*Figure 28: The authentication tab. Badge 1 is the tab. Badge 2 is the link Open Offer Factory →.*
 
 **Task B: Put a service in maintenance, then back**
 
-1. Click **Put in maintenance ⚡** on the row (badge 2 in Figure 18). *You should see: a browser window "Confirm changing the status of service ... to: MAINTENANCE?"*
+1. Click **Put in maintenance ⚡** on the row (badge 2 in Figure 21). *You should see: a browser window "Confirm changing the status of service ... to: MAINTENANCE?"*
 2. Click **OK** to confirm or **Cancel** to stop. *You should see: the Status becomes **Maintenance** (amber).*
 3. To restore, click **Reactivate →** on the same row, then **OK**. *You should see: the Status is **Active** again.*
 
@@ -555,7 +607,7 @@ The window shows only what the system knows about the service. It opens on **Ove
 > **Not available yet**
 > **+ Add service** is greyed out: HPay cannot create a service from this page yet. In the service window the **Save transaction design** button is also grey: the design can be read but not changed. An amber banner at the top of the page says so. The boxes on the **Overview** tab look editable but nothing can be saved.
 
-**If something looks wrong.** Only a Superadmin can change a service's status. If **Put in maintenance ⚡** is grey, that is why.
+**If something looks wrong.** Only a Superadmin can open this page and change a service's status. If **Put in maintenance ⚡** is grey, your role cannot.
 
 ---
 
@@ -565,21 +617,24 @@ The window shows only what the system knows about the service. It opens on **Ove
 
 **When you need it.** When someone asks "what is the limit for this plan?"
 
-![Offer Factory with the New plan button and Configure links marked.](admin/img/17-offers.png)
+**Who sees it.** Superadmin only.
 
-*Figure 25: The plan list. Badge 1 is + New plan. Badge 2 is Configure →.*
+![Offer Factory with the New plan button, the Authorized services column and Configure links marked.](admin/img/17-offers.png)
+
+*Figure 29: The plan list. Badge 1 is + New plan. Badge 2 is the Authorized services column. Badge 3 is Configure →.*
 
 **Task: Read a plan's limits**
 
-1. Click **Offer Factory** in the left menu. *You should see: a table of five plans.*
-2. Click **Configure →** on a row (badge 2). *You should see: the plan page (Figure 26).*
+1. Click **Offer Factory** in the left menu. *You should see: a table of five plans, each with its status and who last changed it.*
+2. Click **Configure →** on a row (badge 3). *You should see: the plan page (Figure 30).*
 3. Click a service in the **AUTHORIZED SERVICES** list. *You should see: that service's limits on the right.*
-4. Read **MAX PER TRANSACTION**, **DAILY LIMIT**, **MONTHLY LIMIT** and the **Authentication matrix**.
-5. Click **← Back to Plans**.
+4. Read **MAX PER TRANSACTION**, **DAILY LIMIT** and **MONTHLY LIMIT**.
+5. Read the **Authentication matrix** (Figure 31).
+6. Click **← Back to Plans**.
 
-![A plan page with the services, limits, authentication matrix and the grey Save Plan settings button.](admin/img/18-offer-detail.png)
+![A plan page with the services, limits, authentication matrix and the Save Plan settings button.](admin/img/18-offer-detail.png)
 
-*Figure 26: One plan. Badge 1 is the services list. Badge 2 is a limit. Badge 3 is the Authentication matrix. Badge 4 is Save Plan settings (grey). Badge 5 is Back to Plans.*
+*Figure 30: One plan. Badge 1 is the services list. Badge 2 is a limit. Badge 3 is the Authentication matrix. Badge 4 is Save Plan settings. Badge 5 is Back to Plans.*
 
 | Column | Meaning |
 |---|---|
@@ -587,16 +642,20 @@ The window shows only what the system knows about the service. It opens on **Ove
 | **Plan name** | The plan's readable name. |
 | **Target role** | **customer** (personal) or **merchant** (business). |
 | **Level** | L0, L1, L2... The higher, the more the customer may do. This is the "tier". |
-| **Authorized services** | How many services the plan can use. |
+| **Authorized services** | How many services the plan can use. In the demo, Business Enterprise has 0, so its plan page says "This offer has no configured services." |
 | **Status** | **Active** or **Draft**. |
 | **Updated by** | Who last changed the plan. |
 
-Limits are shown as whole numbers with the amount in words under the box, for example 62,500,000 ₫.
+Below each limit box the amount is also written with commas, for example 100,000,000 ₫. The boxes themselves show the number without commas.
 
-The **Authentication matrix** says what proof a customer must give, by payment size: **PIN**, **OTP** (a code by text message) or **2FA** (PIN and code). Bigger payments need stronger proof.
+The **Authentication matrix** says what proof a customer must give, by payment size. There are three bands: **Small Amount**, **Medium Amount** and **Large Amount**. Each band names the proof it needs: **PIN**, **OTP** (a code by text message) or **2FA** (PIN and code). Bigger payments need stronger proof.
+
+![The authentication matrix of a plan with the three amount bands marked.](admin/img/35-offer-auth-matrix.png)
+
+*Figure 31: The authentication matrix. Badge 1 is the heading. Badge 2 is the Small Amount band, here "Requires PIN". Badge 3 is the Large Amount band, here "Requires 2FA".*
 
 > **Not available yet**
-> You cannot save changes to a plan yet. **Save Plan settings** is greyed out and **+ New plan** does nothing. An amber banner on the plan page says so. The numbers on the plan page are for reading only.
+> You cannot save changes to a plan yet. **Save Plan settings** looks active but does nothing. **+ New plan** opens an empty page that stays on "Loading..." (see the open issues list). An amber banner on the plan page says changes cannot be saved. The numbers on the plan page are for reading only.
 
 **If something looks wrong.** The page opens only for a Superadmin. Others see "No access".
 
@@ -604,54 +663,58 @@ The **Authentication matrix** says what proof a customer must give, by payment s
 
 ### 5.10 Organizations & Policy
 
-**What this page is for.** See each business customer (an "organization") and the rules for approving its payments. A **policy** says how many approvers (checkers) must sign a payment of a given size. This page shows the real policies of the organization.
+**What this page is for.** See each business customer (an "organization") and the rules for approving its payments. This page shows the real policies of the organization you choose.
 
 **When you need it.** When a business asks why a large payment needs two approvals, or when you must change the rule.
 
-**What you see on a policy**
+**Who sees it.** Superadmin, Ops and Risk Officer can read it. Only a Superadmin can change it.
 
-- **The name and version**, for example "Large spend (version 3)". A policy changes by getting a new version, never by being overwritten.
-- **The amount range**, for example "From 10,000,000 ₫ with no upper limit". The policy applies to payments in that range.
-- **Levels.** Each level is one round of approval. "Level 1" signs first, then "Level 2".
-- **Signatures.** "Needs 1 signature from a level 1 checker" means one checker at that level must approve. A person who approves is giving a signature.
-- **Active.** The version in use today.
+**Words on this page**
+
+- **Policy.** A rule that says who must approve a payment of a given size. The demo policy is "Large spend" for Acme Corp.
+- **Version.** A policy is never overwritten. A change makes a new numbered version, for example "Large spend (version 3)". The newest one in use is marked **Active**.
+- **Amount range.** The sizes the policy covers, for example "From 10,000,000 ₫ with no upper limit".
+- **Level.** One round of approval. "Level 1" approves first. Then "Level 2".
+- **Signature.** One approval from a checker. "Needs 1 signature from a level 1 checker" means one checker at that level must approve.
 
 ![Organizations page with the heading, a level, the organization card and the Edit button marked.](admin/img/19-orgs.png)
 
-*Figure 27: The policy page. Badge 1 is the heading with the organization name. Badge 2 is a level. Badge 3 is the organization card. Badge 4 is Edit.*
+*Figure 32: The policy page. Badge 1 is the heading with the organization name. Badge 2 is a level. Badge 3 is the organization card. Badge 4 is Edit.*
 
 **Task A: Read a policy**
 
-1. Click **Organizations & Policy** in the left menu. *You should see: the first organization and its active policy (Figure 27).*
+1. Click **Organizations & Policy** in the left menu. *You should see: the first organization and its active policy (Figure 32).*
 2. Click another organization card in the left list if you have more than one. *You should see: that organization's policies.*
 3. Read the levels. *You should see: lines such as "Needs 1 signature from a level 1 checker".*
 
+The yellow note above the policy says how many orders are waiting for approval, for example "1 order is awaiting approval". Those orders keep the rule that was active when they were created.
+
 **Task B: Save a new version with a different number of signatures**
 
-1. Click **Edit** on the policy (badge 4 in Figure 27). *You should see: **−** and **+** buttons, **Remove**, **+ Add level**, **Discard changes** and a green **Save as version 4** button (Figure 28).*
+1. Click **Edit** on the policy (badge 4 in Figure 32). *You should see: **−** and **+** buttons, **Remove**, **+ Add level**, **Discard changes** and a green **Save as version 4** button (Figure 33).*
 2. Click **+** or **−** next to a level to change its number of signatures. *You should see: the number change.*
-3. Click **Save as version 4**. *You should see: a green message such as: Saved version 4 of "Large spend" for Acme Corp.*
+3. Check every number. Then click **Save as version 4**. *You should see: a green message such as: Saved version 4 of "Large spend" for Acme Corp.*
 
 To leave without saving, click **Discard changes**. Nothing changes.
 
 ![The policy in edit mode with the minus button, Add level, Discard changes and Save as version 4 marked.](admin/img/29-orgs-edit.png)
 
-*Figure 28: Edit mode, before saving. Badge 1 is the minus button for level 1. Badge 2 is + Add level. Badge 3 is Discard changes. Badge 4 is Save as version 4.*
+*Figure 33: Edit mode, before saving. Badge 1 is the minus button for level 1. Badge 2 is + Add level. Badge 3 is Discard changes. Badge 4 is Save as version 4.*
 
 > **Careful**
-> **Save as version 4** works at once. It creates a NEW version. It does not change orders that are already waiting. Those orders keep the rule that was active when they were created. The yellow note on the page tells you how many orders are waiting. A level needs at least 1 signature. Check every number before you save.
+> **Save as version 4** works at once. It creates a NEW version. It does not change orders that are already waiting. Those orders keep the rule that was active when they were created. A new version applies only to orders created after you save it. A level needs at least 1 signature.
 
 **Other edit buttons.** **+ Add level** adds a new last level with 1 signature. **Remove** deletes a level. It shows only when the policy has more than one level. The levels are then numbered again from 1.
 
-**What "Earlier versions" means.** When a new version becomes active, the old version is kept. A line **Earlier versions (n)** appears under the policy. Click it to open the list. Each old version shows its name, version number, amount range, a short summary such as "L1×1 · L2×1" and the badge **Replaced**. Old versions are for reading only. The demo has only one version, so Figure 27 has no such line.
+**What "Earlier versions" means.** When a new version becomes active, the old version is kept. A line **Earlier versions (n)** appears under the policy. Click it to open the list. Each old version shows its name, version number, amount range and a short summary such as "L1×1 · L2×1". Each has the badge **Replaced**. Old versions are for reading only. In the demo, after you save, version 3 appears here. Figure 32 has no such line yet.
 
 **If there is no policy.** The page says "This organization has no approval policy yet, so its members cannot send disbursements."
 
-**If something looks wrong.** If you see "Your role does not have permission for this action. (orgs.edit)", you can read the page but not change it (Figure 29). **Edit** is greyed out. Only a Superadmin can edit.
+**If something looks wrong.** If you see "Your role does not have permission for this action. (orgs.edit)", you can read the page but not change it (Figure 34). **Edit** is greyed out. Only a Superadmin can edit.
 
 ![Organizations page as seen by an Ops user, with the permission note and the greyed Edit button.](admin/img/23-orgs-view-only.png)
 
-*Figure 29: View only. Badge 1 is the permission note. Badge 2 is the grey Edit button.*
+*Figure 34: View only. Badge 1 is the permission note. Badge 2 is the grey Edit button.*
 
 ---
 
@@ -663,7 +726,7 @@ To leave without saving, click **Discard changes**. Nothing changes.
 
 ![AI Settings with the keys list, the Add a new API key form and the routing section marked.](admin/img/20-ai-settings.png)
 
-*Figure 30: AI Settings. Badge 1 is the key list. Badge 2 is the Add a new API key form. Badge 3 is Model routing by function.*
+*Figure 35: AI Settings. Badge 1 is the key list. Badge 2 is the Add a new API key form. Badge 3 is Model routing by function.*
 
 **Task: Read the current setup**
 
@@ -681,7 +744,7 @@ Changing settings is for experts. The page has **+ Save new key** and **Save rou
 | Word | Meaning |
 |---|---|
 | **Provider** | The company running the AI (Anthropic or OpenAI), or **Offline test engine (no real AI)**, a built-in stand-in used for practice. The demo uses it for both jobs. |
-| **Model Name** | Which version of the AI to use. |
+| **Model Name** | Which version of the AI to use. In the demo it says "mock". |
 | **API key** | A secret code that lets HPay use the AI service. |
 
 **If something looks wrong.** Only a Superadmin can open this page. Others see "No access".
@@ -694,9 +757,11 @@ Changing settings is for experts. The page has **+ Save new key** and **Save rou
 
 **When you need it.** When someone asks "who approved this?" or "when was this rejected?"
 
+**Who sees it.** Every role except Viewer.
+
 ![Audit Log with the search box and column headings marked.](admin/img/21-audit.png)
 
-*Figure 31: The audit log. Badge 1 is the search box. Badge 2 is Actor. Badge 3 is Event details.*
+*Figure 36: The audit log. Badge 1 is the search box. Badge 2 is Actor. Badge 3 is Event details.*
 
 **Task: Find an entry**
 
@@ -715,9 +780,9 @@ Changing settings is for experts. The page has **+ Save new key** and **Save rou
 The log cannot be edited. It is read-only for everyone.
 
 > **Not available yet**
-> In the demo system the table is empty ("Nothing here yet"), so no rows can be shown in Figure 31.
+> In the demo system the table is empty ("Nothing here yet"), so no rows can be shown in Figure 36.
 
-**If something looks wrong.** The page opens for every role except Viewer. If you see "No access", ask a Superadmin to look up an entry for you.
+**If something looks wrong.** If you see "No access" (a Viewer does), ask a Superadmin to look up an entry for you.
 
 ---
 
@@ -732,7 +797,7 @@ The log cannot be edited. It is read-only for everyone.
 | **Approval level (L1, L2)** | Large requests need several rounds of approval. L1 signs first, then L2, and so on. |
 | **Level (in a policy)** | One round of approval inside an organization's policy. |
 | **Signature** | One approval given by a checker. "Needs 2 signatures" means two checkers must approve. |
-| **Policy version** | A numbered copy of a policy. Saving a change creates the next number. Old versions stay as **Earlier versions**. |
+| **Policy version** | A numbered copy of a policy. Saving a change creates the next number. Old versions stay as **Earlier versions**. Orders already waiting keep the version they started with. |
 | **Reconciliation** | Checking that HPay's records agree with the bank's records for a day. |
 | **Workflow instance** | One payment as it moves through its steps. |
 | **Stuck** | A workflow instance that has not moved for more than 5 minutes. |
@@ -740,6 +805,8 @@ The log cannot be edited. It is read-only for everyone.
 | **Compensation** | Undoing the steps a payment already did, for example giving the money back. |
 | **Reversal** | A request to give money back for a finished payment. It needs approval. |
 | **Plan / offer** | A package of services and limits given to a customer. Demo plans: Personal (unverified), Personal (KYC tier 1), Personal (KYC tier 2), Business Starter (Maker/Checker L1), Business Enterprise (Maker/Checker L2). |
+| **Authentication matrix** | The table on a plan that says whether a payment needs a PIN, an OTP or 2FA, by its size. |
+| **PIN, OTP, 2FA** | PIN is the customer's secret number. OTP is a one-time code sent by text message. 2FA is a PIN plus a code. |
 | **Service** | One thing customers can do, such as send money or pay a bill. Demo services: P2P transfer, Request money & split bill, Bank top-up, Corporate payroll, Vault savings. |
 | **Policy** | The rule saying how many approvers a payment of a given size needs. Demo example: "Large spend" for the organization Acme Corp. |
 | **Tier / level** | How much HPay knows a customer. Higher level means higher limits. |
@@ -760,15 +827,19 @@ The log cannot be edited. It is read-only for everyone.
 
 **I see "Not available yet", "(no analytics API yet)" or a dash on a card.** That part of HPay Admin is not built yet, or your role cannot see it. It is not your mistake. Use the other pages named in this guide.
 
+**A card says "Not available for your role".** Your role cannot use that page. It is not a fault. Ask a Superadmin if you need access.
+
 **The list is empty.** "Nothing here yet" or "Nothing needs attention." usually means all is clear. Check the tab and filter at the top (for example **Status: Open**).
 
 **I approved the wrong item.** Stay calm. Do not try to fix it yourself. Write down the item, the time and what you did. Contact your manager at once (section 8). Your action is saved in the Audit log with your name.
 
-**I saved a policy version by mistake.** Do not save again. Tell your manager. Old versions are kept under **Earlier versions**, so the previous rule can be restored by saving a new version with the old numbers.
+**I saved a policy version by mistake.** Do not save again. Tell your manager. Old versions are kept under **Earlier versions**, so the previous rule can be restored by saving a new version with the old numbers. Orders that were already waiting are not affected.
 
 **The page looks wrong or stuck.** Press F5 to reload. If it still looks wrong, log out and in again.
 
-**I cannot find a menu item.** Your role does not include it (section 4).
+**I cannot find a menu item.** Your role does not include it (section 4). On a phone, tap the menu button first (section 2.7).
+
+**The menu is missing on my phone.** It is hidden on a narrow screen. Tap the menu button in the top left corner (section 2.7).
 
 ---
 
