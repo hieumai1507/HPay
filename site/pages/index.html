@@ -1,0 +1,92 @@
+<!--title:HPay — a fintech e-wallet built end to end-->
+<section class="hero"><div class="wrap"><div class="grid">
+  <div class="copy">
+    <span class="eyebrow">Digital wallet and business payments</span>
+    <h1>A wallet where every unit of money can be accounted for.</h1>
+    <p class="lede">HPay is a full fintech product built as one repository: a Go backend on a double-entry ledger, a React console for operations staff, and an Expo mobile app for customers.</p>
+    <div class="actions">
+      <a class="btn primary" href="product.html">See the product</a>
+      <a class="btn ghost" href="technical.html">Read the engineering</a>
+    </div>
+    <p class="note">Demo project. Screenshots show seeded demo data. Read the <a href="honest.html">honest notes</a> for what is not finished.</p>
+  </div>
+  <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <img src="img/workflows.png" width="1440" height="900" alt="HPay admin workflow monitor listing payments with their status: one failed, one waiting for approval, the rest completed">
+  </figure>
+</div></div></section>
+
+<section class="tight band"><div class="wrap">
+  <div class="stats">
+    <div class="stat"><div class="n">600/600</div><div class="l">transfers completed in a 200-user load test</div><div class="s">0 wallets differ from their ledger sum</div></div>
+    <div class="stat"><div class="n">18</div><div class="l">written architecture decisions</div><div class="s">each with options and consequences</div></div>
+    <div class="stat"><div class="n">15</div><div class="l">bug records with root cause</div><div class="s">each has a regression test</div></div>
+    <div class="stat"><div class="n">27</div><div class="l">database migrations</div><div class="s">applied in CI on every backend change</div></div>
+  </div>
+  <p class="note" style="margin-top:16px">Numbers come from runs on a development laptop. See <a href="quality.html">Quality</a> for what was measured and how noisy it is.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Who uses it</span>
+    <h2>Three kinds of people, one system</h2>
+    <p>Each role has its own screens and its own limits. The product tour shows them with real screenshots.</p>
+  </div>
+  <div class="cards">
+    <a class="card" href="product.html#customer"><span class="tag">Customer · mobile app</span>
+      <h3>Send, request and save money</h3>
+      <p>Sign up with a phone number, verify identity, top up, send to a friend, split a bill, pay with a QR code, keep savings in vaults.</p>
+      <span class="more">Customer features →</span></a>
+    <a class="card" href="product.html#business"><span class="tag amber">Business · mobile app</span>
+      <h3>Pay out with two people signing</h3>
+      <p>A maker proposes a payout and one or more checkers approve it with a one-time code before any money moves.</p>
+      <span class="more">Business features →</span></a>
+    <a class="card" href="product.html#operations"><span class="tag">Operations · admin console</span>
+      <h3>Watch, review and fix</h3>
+      <p>Review identity documents, handle fraud flags, retry stuck payments, reconcile balances, manage plans and limits.</p>
+      <span class="more">Operations console →</span></a>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">How a payment works</span>
+    <h2>Request, confirm, then a workflow does the rest</h2>
+    <p>A transfer is not one database write. It is a short chain of steps that can fail in the middle, so each step is recorded and can be undone.</p>
+  </div>
+  <ol class="flow">
+    <li><b>Request</b><span>The app asks for a transfer. Limits and fees are checked and shown.</span></li>
+    <li><b>Confirm</b><span>The user enters a PIN. Bigger amounts ask for a code or a second factor.</span></li>
+    <li><b>Reserve and check</b><span>Funds are held and fraud rules run.</span></li>
+    <li><b>Post</b><span>Two ledger lines are written in one transaction: money out, money in.</span></li>
+    <li><b>Notify</b><span>Both people are told. If a step failed, earlier steps are compensated.</span></li>
+  </ol>
+  <div class="actions" style="margin-top:32px"><a class="btn ghost" href="technical.html#architecture">See the architecture</a></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="split">
+    <div class="sec-head" style="margin:0">
+      <span class="eyebrow">Built to be trusted</span>
+      <h2>Rules you can set, decisions you can read</h2>
+      <p>Limits, fees and the checks each amount needs are configured per plan, not hard-coded. Behind them, money software fails in the gaps: a retry, a crash between two writes, two requests at once. Each gap that mattered has a decision record, and each bug that got through has a record with its root cause and the test that now guards it.</p>
+      <div class="actions"><a class="btn primary" href="technical.html#decisions">Read the decisions</a></div>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/offers.png" width="1440" height="900" loading="lazy" alt="Offer factory showing a plan with its per-payment, daily and monthly limits and the authentication tiers by amount">
+    </figure>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Stack</span>
+    <h2>What it is made of</h2>
+  </div>
+  <div class="cards">
+    <div class="card"><h3>Backend</h3><p>Go, Gin, PostgreSQL 16 with pgx and sqlc, Redis Streams, argon2id, OpenAPI contract.</p></div>
+    <div class="card"><h3>Admin console</h3><p>React, Vite, TypeScript, TanStack Query and Router, Tailwind, Vitest, Playwright.</p></div>
+    <div class="card"><h3>Mobile app</h3><p>Expo, React Native, expo-router, TanStack Query, Jest.</p></div>
+    <div class="card"><h3>Delivery</h3><p>Docker Compose, GitHub Actions with separate backend, admin, e2e and mobile pipelines.</p></div>
+  </div>
+</div></section>
+

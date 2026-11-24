@@ -1,0 +1,56 @@
+<!--title:HPay — Run it-->
+<section class="hero" style="padding-bottom:24px"><div class="wrap">
+  <div class="sec-head" style="margin:0">
+    <span class="eyebrow">Run it</span>
+    <h1>Run HPay on your machine</h1>
+    <p class="lede">You need Docker, Go, Node 20 or newer, <code>sqlc</code> 1.27 and <code>golang-migrate</code>. The full steps with troubleshooting are in the setup guide.</p>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>Backend</h2><p>Starts Postgres and Redis, applies the migrations, loads demo data and serves the API on port 8080.</p></div>
+<pre><span class="c"># from the repository root</span>
+cd src/backend
+cp .env.example .env
+docker compose up -d
+sqlc generate
+make migrate-up
+make seed
+go run ./cmd/server</pre>
+</div></section>
+
+<section><div class="wrap">
+  <div class="split">
+    <div>
+      <div class="sec-head"><h2>Admin console</h2><p>Opens on port 5173.</p></div>
+<pre>cd src/admin
+npm ci
+npm run dev</pre>
+      <p style="margin-top:16px;color:var(--ink-2)">Demo logins, created by the seed with <code>--e2e-admins</code>: <code>e2e-checker@HPay.dev</code> (superadmin) and <code>e2e-maker@HPay.dev</code> (operations). Password <code>E2ETest@123</code>. These exist only in demo data.</p>
+    </div>
+    <div>
+      <div class="sec-head"><h2>Mobile app</h2><p>Expo. Set the API address to your machine, not <code>localhost</code>, if you use a phone.</p></div>
+<pre>cd src/mobile
+npm ci
+npx expo start</pre>
+      <p style="margin-top:16px;color:var(--ink-2)">Demo customer: <code>0900000001</code> with password <code>Demo@123</code>.</p>
+    </div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>Tests</h2></div>
+<pre><span class="c"># backend, in Docker (also works where Go-built programs are blocked)</span>
+.\scripts\test-backend.ps1
+.\scripts\test-backend.ps1 -GoArgs "./internal/ledger -race -count=1 -v"
+
+<span class="c"># admin</span>
+cd src/admin &amp;&amp; npm run lint &amp;&amp; npm test &amp;&amp; npm run test:e2e
+
+<span class="c"># mobile</span>
+cd src/mobile &amp;&amp; npx tsc --noEmit &amp;&amp; npm run lint &amp;&amp; npm test</pre>
+  <div class="actions" style="margin-top:24px">
+    <a class="btn primary" href="{{REPO}}/blob/main/docs/guides/setup-local-environment.md" rel="noopener">Full setup guide</a>
+    <a class="btn ghost" href="{{REPO}}" rel="noopener">Repository</a>
+  </div>
+</div></section>

@@ -1,0 +1,49 @@
+<!--title:HPay — Quality-->
+<section class="hero" style="padding-bottom:24px"><div class="wrap">
+  <div class="sec-head" style="margin:0">
+    <span class="eyebrow">Quality</span>
+    <h1>What was checked, and how</h1>
+    <p class="lede">Numbers from runs on a development laptop and in GitHub Actions. Each has a source you can open. Where a number is noisy, it says so.</p>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>Automated checks</h2></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Area</th><th>What runs</th><th>Last result</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>All Go packages with <code>go test ./... -race</code> against real Postgres and Redis. CI also runs gofmt, vet, the OpenAPI check, sqlc and migrations.</td><td class="num">23 packages pass</td></tr>
+      <tr><td>Admin console</td><td>Lint, type check, unit tests, and Playwright end-to-end tests against the real API.</td><td class="num">52 unit, 30 e2e (1 skipped)</td></tr>
+      <tr><td>Mobile app</td><td>Type check, lint and Jest component tests.</td><td class="num">255 tests pass</td></tr>
+      <tr><td>Ledger integrity</td><td>After each load test, every wallet balance is compared with the sum of its ledger lines.</td><td class="num">0 mismatches</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note" style="margin-top:12px">CI runs as four workflows: backend, admin (lint and unit), admin end-to-end, and mobile. Each starts only when files it depends on change.</p>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head">
+    <h2>Load test</h2>
+    <p>The test drives the real payment path: request, confirm with a PIN, the workflow through the outbox, Redis Streams and workers. Settings: 200 users, 50 workers, 60 seconds, a fresh database, Docker on a laptop with 4 CPUs.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">600/600</div><div class="l">transfers completed in the first baseline</div><div class="s">0 failed, 0 ledger mismatches</div></div>
+    <div class="stat"><div class="n">8.9 → 34.5</div><div class="l">accepted per second, before and after ADR-0018</div><div class="s">one run per column</div></div>
+    <div class="stat"><div class="n">43.7 → 67.2 s</div><div class="l">end-to-end median, before and after</div><div class="s">got worse: the workflow is now the limit</div></div>
+  </div>
+  <div class="callout" style="margin-top:24px"><b>How to read this.</b> Run-to-run noise on a laptop is large. In one earlier comparison the same setting gave an end-to-end median of 20.6 s in one run and 34.8 s in the next. Use these as a direction, not a benchmark. Twelve transfers failed in the latest run and have not been investigated yet; it is on the <a href="{{REPO}}/blob/main/docs/planning/BACKLOG.md" rel="noopener">backlog</a>.</div>
+  <div class="actions" style="margin-top:24px"><a class="btn ghost" href="{{REPO}}/blob/main/docs/quality/performance/2026-11-24-load-test-baseline.md" rel="noopener">Read the full load-test note</a></div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head">
+    <h2>How a change is made</h2>
+    <p>Work follows a fixed path, written as skills in the repository: clarify, write the spec, plan, design test cases, write failing tests first, implement, verify every case, review, then update the documentation. A bug fix first searches the bug ledger, then records itself there.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><h3>Red tests first</h3><p>A test must fail for the right reason before the fix. Mutation checks then confirm the tests catch a deliberately broken version.</p></div>
+    <div class="card"><h3>Bugs leave a record</h3><p>15 records with symptom, root cause, other places with the same flaw, fix and regression test.</p></div>
+    <div class="card"><h3>Reviews are independent</h3><p>Code, security and test reviewers run separately and their findings are merged. A change that touches money, locking or the workflow also needs before and after load numbers.</p></div>
+    <div class="card"><h3>Docs change with code</h3><p>Domain rules, architecture pages, API and error references, and the user guide are updated in the same change.</p></div>
+  </div>
+</div></section>

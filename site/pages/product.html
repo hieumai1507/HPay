@@ -1,0 +1,113 @@
+<!--title:HPay — Product tour-->
+<section class="hero" style="padding-bottom:24px"><div class="wrap">
+  <div class="sec-head" style="margin:0">
+    <span class="eyebrow">Product tour</span>
+    <h1>What each person can do</h1>
+    <p class="lede">Three roles, each with its own screens. Pick the one you care about.</p>
+    <div class="actions">
+      <a class="btn ghost" href="#customer">Customer</a>
+      <a class="btn ghost" href="#business">Business</a>
+      <a class="btn ghost" href="#operations">Operations</a>
+    </div>
+  </div>
+</div></section>
+
+<section id="customer" class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="tag">Customer · mobile app</span>
+    <h2>Everyday money, with safeguards you do not have to think about</h2>
+    <p>The app is built with Expo and React Native. These are the screens that exist in the code today.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><h3>Sign up and sign in</h3><p>Phone number and password, a one-time code, and a session that renews itself. If a renewal token is used twice, every session is closed.</p></div>
+    <div class="card"><h3>Identity check (KYC)</h3><p>Photograph an ID card and a selfie. A vision model scores them, borderline cases go to a human reviewer, and a verified account gets higher limits.</p></div>
+    <div class="card"><h3>Top up</h3><p>Add money from a simulated bank with a code. Retrying never credits twice.</p></div>
+    <div class="card"><h3>Send money</h3><p>Pick a person, see the fee, confirm with a PIN, and follow the payment on a progress screen.</p></div>
+    <div class="card"><h3>Request money and split a bill</h3><p>Ask someone to pay you back with a note, or split a bill across a group and watch who has paid.</p></div>
+    <div class="card"><h3>QR code</h3><p>Show a code so anyone can pay you without typing a phone number.</p></div>
+    <div class="card"><h3>Savings vaults</h3><p>Set money aside in named vaults, with an optional round-up on each payment.</p></div>
+    <div class="card"><h3>Security settings</h3><p>Set or reset the PIN, and turn on a second factor (TOTP) for larger amounts.</p></div>
+  </div>
+  <div class="callout" style="margin-top:32px"><b>Screenshots from the phone are not here yet.</b> The mobile app has been built and tested with 255 automated tests, but it has not been run on a physical device. They will be added after that run.</div>
+</div></section>
+
+<section id="business"><div class="wrap">
+  <div class="split">
+    <div class="sec-head" style="margin:0">
+      <span class="tag amber">Business · mobile app</span>
+      <h2>Two people sign before money moves</h2>
+      <p>A company opens a business wallet. One member, the maker, proposes a payout. One or more checkers must approve it, each with a one-time code. Which payouts need which approvals is set by a policy, and that policy is edited in the admin console.</p>
+      <ul style="color:var(--ink-2);padding-left:20px;display:grid;gap:4px;margin:0">
+        <li>Approval levels: a payout can need a level 1 signature, then a level 2 signature.</li>
+        <li>A policy is versioned. A new version only applies to orders created after it is saved.</li>
+        <li>An order waiting for approval keeps the policy it was created under.</li>
+      </ul>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/orgs.png" width="1440" height="900" loading="lazy" alt="Organizations and policy page showing the Acme Corp approval policy, version 3, with two approval levels">
+    </figure>
+  </div>
+</div></section>
+
+<section id="operations" class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="tag">Operations · admin console</span>
+    <h2>The back office for staff who keep it running</h2>
+    <p>A React console with role-based access. A superadmin sees everything; an operations user sees the queues they work. A full guide for non-technical staff, with 36 annotated screenshots, is in the repository.</p>
+  </div>
+
+  <div class="split" style="margin-bottom:56px">
+    <div>
+      <h3>Review identity documents</h3>
+      <p style="color:var(--ink-2);margin-top:8px">A queue of applications the AI could not decide. The reviewer sees the photos, the score and the reasons, then approves or rejects with a reason. Keyboard shortcuts move through the queue.</p>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/kyc-list.png" width="1440" height="900" loading="lazy" alt="KYC review queue with tabs for pending, auto-approved by AI and rejected">
+    </figure>
+  </div>
+
+  <div class="split flip" style="margin-bottom:56px">
+    <div>
+      <h3>Watch every payment</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Each payment is a workflow with steps. The monitor shows its status and age. A failed payment can be retried or compensated by someone with permission; a payment waiting for approval is marked as such.</p>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/workflows.png" width="1440" height="900" loading="lazy" alt="Workflow monitor listing payments with their status">
+    </figure>
+  </div>
+
+  <div class="split" style="margin-bottom:56px">
+    <div>
+      <h3>Reconcile balances</h3>
+      <p style="color:var(--ink-2);margin-top:8px">Compare each wallet balance with the sum of its ledger lines and see any difference. The ledger is the source of truth; a wallet that disagrees with it is a bug to be found, not a number to be adjusted.</p>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/recon.png" width="1440" height="900" loading="lazy" alt="Reconciliation page">
+    </figure>
+  </div>
+
+  <div class="split flip" style="margin-bottom:56px">
+    <div>
+      <h3>Configure services without code</h3>
+      <p style="color:var(--ink-2);margin-top:8px">The service catalog describes how each kind of payment runs: its validations, its action pipeline and how it posts to the ledger.</p>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/services.png" width="1440" height="900" loading="lazy" alt="Service catalog listing payment services">
+    </figure>
+  </div>
+
+  <div class="split">
+    <div>
+      <h3>Plans, limits and authentication tiers</h3>
+      <p style="color:var(--ink-2);margin-top:8px">A plan sets the per-payment, daily and monthly limits for each service and a minimum gap between payments. A matrix decides what each amount needs: a PIN for small amounts, a code for medium ones, a second factor for large ones.</p>
+    </div>
+    <figure class="shot"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+      <img src="img/offers.png" width="1440" height="900" loading="lazy" alt="Offer factory showing a plan and its services">
+    </figure>
+  </div>
+
+  <div class="actions" style="margin-top:48px">
+    <a class="btn primary" href="{{REPO}}/blob/main/docs/guides/admin-user-guide.md" rel="noopener">Open the admin user guide</a>
+    <a class="btn ghost" href="honest.html">What is not finished</a>
+  </div>
+</div></section>

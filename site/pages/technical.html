@@ -1,0 +1,109 @@
+<!--title:HPay — Engineering-->
+<section class="hero" style="padding-bottom:24px"><div class="wrap">
+  <div class="sec-head" style="margin:0">
+    <span class="eyebrow">Engineering</span>
+    <h1>How it stays correct when things go wrong</h1>
+    <p class="lede">A payment system is judged by its failures: a retry, a crash between two writes, two requests at once. This page shows the design and the decisions behind it. Every claim links to a record in the repository.</p>
+  </div>
+</div></section>
+
+<section id="architecture" class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Architecture</span>
+    <h2>One API, one database, a queue for the slow parts</h2>
+    <p>The API writes the payment and an outbox event in the same database transaction. A relay moves outbox events to Redis Streams. Workers run the steps of the payment and write the ledger.</p>
+  </div>
+  <div class="diagram">
+    <svg viewBox="0 0 760 330" role="img" aria-label="Architecture: mobile app and admin console call the Go API. The API writes to Postgres, including an outbox table. A relay moves outbox events to Redis Streams. Workers read the streams, run payment steps and post to the ledger in Postgres. A recovery process reclaims stuck work.">
+      <rect class="box" x="20" y="30" width="150" height="56" rx="10"/><text x="95" y="56" text-anchor="middle" font-weight="600" font-size="14">Mobile app</text><text class="sub" x="95" y="74" text-anchor="middle">Expo, React Native</text>
+      <rect class="box" x="20" y="120" width="150" height="56" rx="10"/><text x="95" y="146" text-anchor="middle" font-weight="600" font-size="14">Admin console</text><text class="sub" x="95" y="164" text-anchor="middle">React, Vite</text>
+      <rect class="brandbox" x="250" y="75" width="160" height="70" rx="10"/><text x="330" y="105" text-anchor="middle" font-weight="600" font-size="14">Go API</text><text class="sub" x="330" y="124" text-anchor="middle">auth, limits, idempotency</text>
+      <rect class="store" x="250" y="220" width="160" height="80" rx="10"/><text x="330" y="248" text-anchor="middle" font-weight="600" font-size="14">PostgreSQL</text><text class="sub" x="330" y="266" text-anchor="middle">ledger, transactions</text><text class="sub" x="330" y="282" text-anchor="middle">outbox, workflow state</text>
+      <rect class="box" x="500" y="30" width="110" height="56" rx="10"/><text x="555" y="56" text-anchor="middle" font-weight="600" font-size="14">Relay</text><text class="sub" x="555" y="74" text-anchor="middle">outbox to streams</text>
+      <rect class="store" x="500" y="120" width="110" height="56" rx="10"/><text x="555" y="146" text-anchor="middle" font-weight="600" font-size="14">Redis Streams</text><text class="sub" x="555" y="164" text-anchor="middle">step queues</text>
+      <rect class="brandbox" x="500" y="220" width="110" height="80" rx="10"/><text x="555" y="248" text-anchor="middle" font-weight="600" font-size="14">Workers</text><text class="sub" x="555" y="266" text-anchor="middle">run steps,</text><text class="sub" x="555" y="282" text-anchor="middle">post to ledger</text>
+      <rect class="box" x="650" y="120" width="100" height="56" rx="10"/><text x="700" y="146" text-anchor="middle" font-weight="600" font-size="14">Recovery</text><text class="sub" x="700" y="164" text-anchor="middle">reclaim stuck</text>
+      <path class="ln" d="M170 58 L250 100"/><path class="ln" d="M170 148 L250 120"/>
+      <path class="ln" d="M330 145 L330 220"/><path class="ln" d="M410 250 L500 250"/>
+      <path class="ln" d="M410 110 L500 58"/><path class="ln" d="M555 86 L555 120"/>
+      <path class="ln" d="M555 176 L555 220"/><path class="ln" d="M650 148 L610 148"/>
+    </svg>
+  </div>
+  <p class="note" style="margin-top:12px">Fact check: the relay, streams, workers and recovery are in <code>internal/outbox</code> and <code>internal/workflow</code> (<code>recovery.go</code> reclaims stream messages with XAUTOCLAIM and sweeps stuck instances in the database).</p>
+</div></section>
+
+<section id="decisions"><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Decisions</span>
+    <h2>The choices that matter for money</h2>
+    <p>Each one has a written record with the options considered. Four of them are shown here in full shape: the problem, the choice, and what it cost.</p>
+  </div>
+
+  <article class="decision">
+    <h3>Idempotency keys belong to a user and to one request <span class="id">ADR-0011 · BUG-0002</span></h3>
+    <div class="cols">
+      <div><h4>Problem</h4><p>The key was unique across all users and not tied to what was asked. Another user's key, or the same key with a different amount, returned someone else's or a stale result.</p></div>
+      <div><h4>Choice</h4><p>Unique on <code>(user, key)</code> plus a hash of the request on the transaction row. Same key and same request returns the first result. Same key and a different request is a 409. A missing key is rejected.</p></div>
+      <div><h4>Alternatives rejected</h4><p>A separate keys table (two writes that must stay in step), Redis-only keys (not a source of truth, unsafe if evicted), and a hash alone (the cross-user leak stays).</p></div>
+      <div><h4>Cost</h4><p>Keys live as long as transactions. A client that sends a fresh key on every retry is not deduplicated.</p></div>
+    </div>
+    <p><a href="{{REPO}}/blob/main/docs/adr/0011-idempotency-per-user-bound-to-request.md" rel="noopener">Read the decision</a></p>
+  </article>
+
+  <article class="decision">
+    <h3>Daily limits hold under parallel requests <span class="id">BUG-0017 · BUG-0021</span></h3>
+    <div class="cols">
+      <div><h4>What happened</h4><p>A request waits for its PIN and does not count toward the quota. Five held requests of 1,500,000 each all passed the check against a 2,500,000 daily limit, and all five started when confirmed in parallel.</p></div>
+      <div><h4>Fix</h4><p>Re-check the limits when a held request is confirmed, inside the transaction that starts the workflow, under a per-user advisory lock. Volume is counted from when money started to move, in a fixed UTC+7 window.</p></div>
+      <div><h4>Proof</h4><p>A red test that reproduced the five-of-five result, then a regression test that runs the confirms in parallel under <code>-race</code>.</p></div>
+      <div><h4>Related</h4><p>The same flaw was found later in the pay path of money requests (BUG-0021) and fixed the same way.</p></div>
+    </div>
+    <p><a href="{{REPO}}/blob/main/docs/bugs/BUG-0017-offer-limit-window-race.md" rel="noopener">Read the bug record</a></p>
+  </article>
+
+  <article class="decision">
+    <h3>The ledger cannot post the same payment twice <span class="id">ADR-0010 · BUG-0001</span></h3>
+    <div class="cols">
+      <div><h4>Problem</h4><p>Workers can receive the same step twice after a crash or a redelivery. A step that posts to the ledger then posted the same payment twice (BUG-0001).</p></div>
+      <div><h4>Choice</h4><p>A guard row per payment and kind of posting is inserted in the same database transaction as the entries. A duplicate is recognised and the step completes as already done.</p></div>
+      <div><h4>Locking</h4><p>Every wallet a posting touches is locked in one <code>ORDER BY id ... FOR NO KEY UPDATE</code> statement, so two transfers in opposite directions cannot wait on each other. The weaker lock is needed because inserting a transaction row takes a shared lock on its wallets.</p></div>
+      <div><h4>Check</h4><p>After every load test, each wallet balance is compared with the sum of its ledger lines.</p></div>
+    </div>
+    <p><a href="{{REPO}}/blob/main/docs/adr/0010-ledger-postings-guard.md" rel="noopener">Read the decision</a></p>
+  </article>
+
+  <article class="decision">
+    <h3>PIN hashing with a server-side pepper <span class="id">ADR-0018</span></h3>
+    <div class="cols">
+      <div><h4>Problem</h4><p>A PIN has few possible values, so a leaked database could be cracked offline whatever the hash. The old setting was also so heavy that it limited how many payments could be accepted per second.</p></div>
+      <div><h4>Choice</h4><p>Mix the PIN with a secret held outside the database (HMAC), then hash with argon2id at the OWASP minimum cost. The hash records which secret was used, so the secret can be rotated. Old hashes still verify and are rewritten on the next correct entry.</p></div>
+      <div><h4>Result</h4><p>In one load run on a laptop, accepted payments per second rose from 8.9 to 34.5. End-to-end time got worse, from 43.7 s to 67.2 s at the median, because the workflow became the next limit.</p></div>
+      <div><h4>Honest note</h4><p>One run per column, large run-to-run noise. Treat it as a direction. A rotation drill has not been done.</p></div>
+    </div>
+    <p><a href="{{REPO}}/blob/main/docs/adr/0018-pin-pepper-and-hash-cost.md" rel="noopener">Read the decision</a> · <a href="{{REPO}}/blob/main/docs/runbooks/pin-pepper.md" rel="noopener">Runbook</a></p>
+  </article>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">More records</span>
+    <h2>Other decisions, one line each</h2>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Record</th><th>What it settles</th></tr></thead>
+    <tbody>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0003-money-as-int64-minor-units.md" rel="noopener">ADR-0003</a></td><td>Money is an integer in the smallest unit. No floats anywhere on the money path.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0004-outbox-and-redis-streams.md" rel="noopener">ADR-0004</a></td><td>Events are written with the payment and relayed to Redis Streams, so a commit and its event cannot drift apart.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0008-server-side-pin.md" rel="noopener">ADR-0008</a> · <a href="{{REPO}}/blob/main/docs/adr/0014-transaction-pin-gate.md" rel="noopener">0014</a></td><td>The PIN is stored only as a salted hash and checked on the server. A payment waits as "awaiting auth" and money does not move until the right credential is given.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0009-reversal-failure-needs-manual-and-fail-closed-fraud.md" rel="noopener">ADR-0009</a> · <a href="{{REPO}}/blob/main/docs/adr/0013-reversal-uniqueness-and-needs-manual.md" rel="noopener">0013</a></td><td>A reversal that cannot complete goes to a "needs manual" state for a person instead of creating a negative balance, and a reversal cannot be applied twice.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0012-explicit-app-env.md" rel="noopener">ADR-0012</a></td><td>The environment must be named. A missing one no longer silently runs as development.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0015-admin-rbac.md" rel="noopener">ADR-0015</a></td><td>Admin permissions are checked on the server, per route.</td></tr>
+      <tr><td><a href="{{REPO}}/blob/main/docs/adr/0016-pin-reset.md" rel="noopener">ADR-0016</a> · <a href="{{REPO}}/blob/main/docs/adr/0017-totp-second-factor.md" rel="noopener">0017</a></td><td>A forgotten PIN is reset with the password and a one-time code. A second factor protects large amounts.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="actions" style="margin-top:32px">
+    <a class="btn ghost" href="{{REPO}}/tree/main/docs/adr" rel="noopener">All 18 decisions</a>
+    <a class="btn ghost" href="{{REPO}}/blob/main/docs/bugs/INDEX.md" rel="noopener">Bug ledger</a>
+    <a class="btn ghost" href="{{REPO}}/blob/main/docs/constitution.md" rel="noopener">Engineering principles</a>
+  </div>
+</div></section>

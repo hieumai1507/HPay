@@ -1,0 +1,36 @@
+<!--title:HPay — Honest notes-->
+<section class="hero" style="padding-bottom:24px"><div class="wrap">
+  <div class="sec-head" style="margin:0">
+    <span class="eyebrow">Honest notes</span>
+    <h1>What is not finished, and what is not proven</h1>
+    <p class="lede">A project is easier to trust when it states its own limits. These are the ones known today. The living lists are the <a href="{{REPO}}/blob/main/docs/planning/BACKLOG.md" rel="noopener">backlog</a> and the <a href="{{REPO}}/blob/main/docs/guides/admin/OPEN-ISSUES.md" rel="noopener">open admin issues</a>.</p>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>Not proven yet</h2></div>
+  <div class="cards">
+    <div class="card"><span class="tag amber">Mobile</span><h3>Not run on a physical phone</h3><p>The app is covered by 255 automated tests, type checks and lint, but it has not been run on a real device. There are no phone screenshots on this site for that reason.</p></div>
+    <div class="card"><span class="tag amber">Messaging</span><h3>Real SMS never sent</h3><p>The sender for one-time codes is written and checked against its configuration, but it has not been called with real provider keys. Demo environments return codes in the response.</p></div>
+    <div class="card"><span class="tag amber">Performance</span><h3>Numbers are noisy</h3><p>One laptop in Docker, one run per column. After the PIN change, accepted payments per second rose but end-to-end time got worse. Twelve failed transfers in the latest run are not yet explained.</p></div>
+    <div class="card"><span class="tag amber">Security</span><h3>No rotation drill</h3><p>PIN secrets can be rotated by design and by test, but a rotation has not been rehearsed against a real secret manager. No external penetration test has been done.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Known gaps in the admin console</h2><p>Found while writing the user guide and kept in the open-issues list.</p></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Gap</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>Fraud Monitor does not look up amount and user for a flag</td><td>Those two columns show a dash.</td></tr>
+      <tr><td>Audit log shows no rows in the demo</td><td>Admin actions are recorded, but the demo data has none to show.</td></tr>
+      <tr><td>Dashboard analytics are not connected</td><td>The daily cards and the volume chart show "no analytics API yet".</td></tr>
+      <tr><td>Some actions use browser pop-ups</td><td>Confirmations and results appear in a pop-up instead of in the page.</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <div class="sec-head"><h2>What this project is not</h2></div>
+  <div class="callout">HPay is a demo built to show how a payment product can be designed, tested and documented. It has no licence to hold money, no real bank or card connection, and no real customers. All data shown is seeded demo data.</div>
+</div></section>
