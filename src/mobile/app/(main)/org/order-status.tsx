@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApprovalDetailByRefCode, useCancelApproval, type ApprovalDetail } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { describeError } from '@/src/lib/errors';
 
 type DotState = 'done' | 'active' | 'wait' | 'rejected';
@@ -150,7 +150,7 @@ export default function OrderStatusScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
           <View className="items-center py-3 gap-2">
-            <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.amount))}</Text>
+            <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(data.amount))}</Text>
             <Text className="text-xs text-slate-500">{data.org_name}</Text>
             <View className={`px-3 py-1 rounded-full ${STATUS_CHIP[data.status]?.className ?? 'bg-slate-100'}`}>
               <Text className={`text-xs font-bold ${STATUS_CHIP[data.status]?.className ?? ''}`}>
@@ -174,7 +174,7 @@ export default function OrderStatusScreen() {
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
               <Text className="text-xs font-semibold text-slate-500">Fee</Text>
-              <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.fee))}</Text>
+              <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountUSD(BigInt(data.fee))}</Text>
             </View>
           </View>
 

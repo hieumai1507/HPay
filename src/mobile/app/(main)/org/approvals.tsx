@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useApprovalInbox, type ApprovalItem } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 
 function timeAgo(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -39,7 +39,7 @@ function ApprovalCard({ item }: { item: ApprovalItem }) {
       <View className="flex-row items-start justify-between mb-2">
         <View>
           <Text className="text-xs text-slate-500 mb-1">{item.org_name} · #{item.ref_code}</Text>
-          <Text className="text-2xl font-bold text-slate-900 dark:text-white">{formatAmountVND(BigInt(item.amount))}</Text>
+          <Text className="text-2xl font-bold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(item.amount))}</Text>
         </View>
         <View className="flex-row items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-full">
           <View className="w-1.5 h-1.5 rounded-full bg-amber-500" />

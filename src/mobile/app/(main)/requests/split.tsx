@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCreateSplit } from '@/src/queries';
 import { splitEven, validateCustomSplit } from '@/src/lib/split';
 import { useIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountWhileTyping, parseAmountToBigInt, formatAmountVND } from '@/src/lib/money';
+import { formatAmountWhileTyping, parseAmountToBigInt, formatAmountUSD } from '@/src/lib/money';
 
 type SplitMode = 'even' | 'custom';
 
@@ -89,7 +89,7 @@ export default function SplitBillScreen() {
     if (splitMode === 'custom') {
       const isCustomValid = validateCustomSplit(totalAmountVal, customAmountsBigInts);
       if (!isCustomValid) {
-        newErrors.customSum = `The custom amounts (${formatAmountVND(customSum)}) must exactly match the bill total (${formatAmountVND(totalAmountVal)})`;
+        newErrors.customSum = `The custom amounts (${formatAmountUSD(customSum)}) must exactly match the bill total (${formatAmountUSD(totalAmountVal)})`;
         hasErr = true;
       }
     }
@@ -110,7 +110,7 @@ export default function SplitBillScreen() {
 
       Alert.alert(
         'Success',
-        `Split bill created for a total of ${formatAmountVND(totalAmountVal)}`,
+        `Split bill created for a total of ${formatAmountUSD(totalAmountVal)}`,
         [{ text: 'OK', onPress: () => router.replace('/(main)/requests') }]
       );
     } catch (err: any) {
@@ -137,11 +137,11 @@ export default function SplitBillScreen() {
             <View className="w-full">
               <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Bill total</Text>
               <View className={`flex-row items-center bg-slate-50 dark:bg-slate-900 border ${errors.total ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl h-12 px-3`}>
-                <Text className="text-lg font-bold text-slate-400 mr-2">₫</Text>
+                <Text className="text-lg font-bold text-slate-400 mr-2">$</Text>
                 <TextInput
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
-                  keyboardType="number-pad"
+                  keyboardType="decimal-pad"
                   value={totalAmountStr}
                   onChangeText={(t) => {
                     setTotalAmountStr(formatAmountWhileTyping(t));
@@ -222,7 +222,7 @@ export default function SplitBillScreen() {
                     {splitMode === 'even' ? (
                       <View className="flex-[2] h-10 justify-center items-end">
                         <Text className="text-sm font-bold text-brand">
-                          {share ? formatAmountVND(share as bigint) : '0 ₫'}
+                          {share ? formatAmountUSD(share as bigint) : '$0.00'}
                         </Text>
                       </View>
                     ) : (
@@ -230,7 +230,7 @@ export default function SplitBillScreen() {
                         <TextInput
                           placeholder="Amount"
                           placeholderTextColor="#94a3b8"
-                          keyboardType="number-pad"
+                          keyboardType="decimal-pad"
                           value={customAmounts[index]}
                           onChangeText={(t) => handleCustomAmountChange(t, index)}
                           className="h-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 text-xs font-semibold text-brand text-right"

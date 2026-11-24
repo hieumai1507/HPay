@@ -16,7 +16,7 @@ export default function ResetPinScreen() {
       <View className="flex-1 bg-slate-50 p-5 justify-center gap-4">
         <Text className="text-xl font-bold text-slate-900">PIN reset</Text>
         <Text className="text-sm text-slate-600">
-          Your new PIN is active. For 24 hours, PIN payments are limited to 2,500,000 ₫.
+          Your new PIN is active. For 24 hours, PIN payments are limited to $100.00.
         </Text>
         <Button label="Done" accessibilityLabel="Done" onPress={() => router.back()} />
       </View>

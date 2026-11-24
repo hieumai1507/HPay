@@ -55,7 +55,7 @@ export default function KycStatusScreen() {
   if (kycStatus === 'verified' || kycStatus === 'auto_approved') {
     icon = '✅';
     title = 'Verification successful';
-    desc = 'Your Account Limit has been raised to 100,000,000 ₫ per day.';
+    desc = 'Your Account Limit has been raised to $400.00 per day.';
     badgeStatus = 'completed';
     btnLabel = 'Start using your Wallet';
     btnAction = handleStartApp;

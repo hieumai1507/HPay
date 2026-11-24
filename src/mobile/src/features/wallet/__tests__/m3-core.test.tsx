@@ -100,11 +100,11 @@ const baseTxn: TxnView = {
 describe('Test_TxnListItem_DirectionSign', () => {
   it('out txn shows − and neutral color; in txn shows + and success color', async () => {
     await render(<TxnListItem txn={baseTxn} />);
-    const out = screen.getByText(/−.*250,000/);
+    const out = screen.getByText(/−\$2,500\.00/);
     expect(out).toBeTruthy();
 
     await render(<TxnListItem txn={{ ...baseTxn, direction: 'in' }} />);
-    const inn = screen.getByText(/\+.*250,000/);
+    const inn = screen.getByText(/\+\$2,500\.00/);
     expect(inn).toBeTruthy();
   });
 
@@ -131,7 +131,7 @@ describe('Test_BalanceCard_HideToggle', () => {
     await render(
       <BalanceCard balanceMinorUnits={1234567n} visible onToggleVisible={onToggle} />,
     );
-    expect(screen.getByText(/1,234,567/)).toBeTruthy();
+    expect(screen.getByText(/12,345\.67/)).toBeTruthy();
   });
 });
 
@@ -141,11 +141,14 @@ describe('Test_AmountInput_LiveFormatting', () => {
     await render(<AmountInput value="" onChangeValue={onChange} />);
     const input = screen.getByLabelText('Amount');
 
-    fireEvent.changeText(input, '1234567');
-    expect(onChange).toHaveBeenLastCalledWith('1,234,567');
+    fireEvent.changeText(input, '123456');
+    expect(onChange).toHaveBeenLastCalledWith('123,456');
 
-    fireEvent.changeText(input, '50,000 ₫');
-    expect(onChange).toHaveBeenLastCalledWith('50,000');
+    fireEvent.changeText(input, '12.345');
+    expect(onChange).toHaveBeenLastCalledWith('12.34');
+
+    fireEvent.changeText(input, '$50,000.5');
+    expect(onChange).toHaveBeenLastCalledWith('50,000.5');
   });
 });
 

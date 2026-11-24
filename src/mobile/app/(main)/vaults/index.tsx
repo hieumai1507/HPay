@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { formatAmountVND, parseAmountStrict, percentOf } from '@/src/lib/money';
+import { formatAmountUSD, formatAmountWhileTyping, parseAmountStrict, percentOf } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { describeError } from '@/src/lib/errors';
 import { useCreateVault, useVaults, type Vault } from '@/src/queries';
@@ -84,7 +84,7 @@ export default function VaultsScreen() {
             )}
           </View>
           <Text className="font-bold text-slate-900 dark:text-white tabular-nums">
-            {formatAmountVND(BigInt(item.balance ?? 0))}
+            {formatAmountUSD(BigInt(item.balance ?? 0))}
           </Text>
         </View>
 
@@ -94,7 +94,7 @@ export default function VaultsScreen() {
               <View className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: color.brand[400] }} />
             </View>
             <Text className="text-xs text-slate-500 mt-1">
-              {pct}% of goal {formatAmountVND(BigInt(item.target_amount ?? 0))}
+              {pct}% of goal {formatAmountUSD(BigInt(item.target_amount ?? 0))}
             </Text>
           </View>
         )}
@@ -115,7 +115,7 @@ export default function VaultsScreen() {
       <View className="mx-4 mb-4 rounded-2xl p-5" style={{ backgroundColor: color.brand[600] }}>
         <Text className="text-white/80 text-xs">Total saved</Text>
         <Text className="text-white text-3xl font-bold tabular-nums mt-1">
-          {formatAmountVND(total)}
+          {formatAmountUSD(total)}
         </Text>
         <Text className="text-white/70 text-xs mt-1">
           {(vaults ?? []).length} Vaults · your money stays in your Wallet
@@ -154,9 +154,9 @@ export default function VaultsScreen() {
           />
           <TextInput
             value={target}
-            onChangeText={setTarget}
+            onChangeText={(t) => setTarget(formatAmountWhileTyping(t))}
             placeholder="Goal (optional)"
-            keyboardType="number-pad"
+            keyboardType="decimal-pad"
             className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 mb-3 text-slate-900 dark:text-white"
           />
           <View className="flex-row gap-2">

@@ -11,21 +11,21 @@ const SLIDES = [
     icon: '💠',
     title: 'Transfer money in\none tap',
     subtitle: 'A secure Wallet with multi-level Approval\nfor individuals and businesses',
-    amount: '12.450.000 ₫',
+    amount: '$12,450.00',
     cardHolder: '••4821',
   },
   {
     icon: '🏢',
     title: 'A Wallet built\nfor business',
     subtitle: 'Professional Maker-Checker workflow,\nflexible multi-level payment Approval',
-    amount: '850.000.000 ₫',
+    amount: '$85,000.00',
     cardHolder: 'DONG A GROUP',
   },
   {
     icon: '🛡️',
     title: 'Smart security\nand safe',
     subtitle: 'Identity verification powered by AI\nand 24/7 monitoring of unusual Transactions',
-    amount: '100.000.000 ₫',
+    amount: '$400.00',
     cardHolder: 'DAILY LIMIT',
   },
 ];
@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.alertCheckText}>✓</Text>
               </View>
               <View>
-                <Text style={styles.alertTitle}>Received 500,000 ₫</Text>
+                <Text style={styles.alertTitle}>Received $20.00</Text>
                 <Text style={styles.alertSub}>from Minh Anh · just now</Text>
               </View>
             </View>

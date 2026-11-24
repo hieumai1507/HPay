@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/src/lib/errors';
-import { parseAmountToBigInt } from '@/src/lib/money';
+import { parseCentsParam } from '@/src/lib/money';
 import { AmountDisplay, Button, color, space, type } from '@/src/ui';
 
 type Variant = 'success' | 'failed' | 'processing' | 'pending_approval';
@@ -25,7 +25,7 @@ export default function TransferResultScreen() {
   }>();
   const variant: Variant = params.variant ?? 'processing';
   const ui = VARIANT_UI[variant];
-  const amount = parseAmountToBigInt(params.amount ?? '') ?? 0n;
+  const amount = parseCentsParam(params.amount) ?? 0n;
 
   return (
     <SafeAreaView style={styles.safe}>

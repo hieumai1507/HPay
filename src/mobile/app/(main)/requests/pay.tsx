@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRequestDetail, usePayRequest, useFeePreview, useMainWallet } from '@/src/queries';
 import { FEATURE_AVAILABILITY } from '@/src/lib/availability';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { NotAvailable } from '@/src/ui';
 
@@ -122,23 +122,23 @@ function PayRequestForm() {
           
           <View className="flex-row justify-between items-center w-full">
             <Text className="text-sm text-slate-600 dark:text-slate-400">Source</Text>
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white">HPay VND Wallet</Text>
+            <Text className="text-sm font-semibold text-slate-900 dark:text-white">HPay Wallet (USD)</Text>
           </View>
           <View className="flex-row justify-between items-center w-full">
-            <Text className="text-xs text-slate-400 mt-0.5">Available balance: {formatAmountVND(walletBalanceBig)}</Text>
+            <Text className="text-xs text-slate-400 mt-0.5">Available balance: {formatAmountUSD(walletBalanceBig)}</Text>
           </View>
 
           <View className="h-px bg-slate-100 dark:bg-slate-700 w-full my-3" />
 
           <View className="flex-row justify-between items-center w-full">
             <Text className="text-sm text-slate-600 dark:text-slate-400">Amount</Text>
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatAmountVND(BigInt(req.amount))}</Text>
+            <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(req.amount))}</Text>
           </View>
 
           <View className="flex-row justify-between items-center w-full mt-2">
             <Text className="text-sm text-slate-600 dark:text-slate-400">Fee</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">
-              {feeData ? formatAmountVND(BigInt(feeData.fee)) : 'Calculating...'}
+              {feeData ? formatAmountUSD(BigInt(feeData.fee)) : 'Calculating...'}
             </Text>
           </View>
 
@@ -147,7 +147,7 @@ function PayRequestForm() {
           <View className="flex-row justify-between items-center w-full">
             <Text className="text-base font-bold text-slate-900 dark:text-white">Total</Text>
             <Text className="text-lg font-extrabold text-brand">
-              {feeData ? formatAmountVND(BigInt(feeData.total)) : formatAmountVND(BigInt(req.amount))}
+              {feeData ? formatAmountUSD(BigInt(feeData.total)) : formatAmountUSD(BigInt(req.amount))}
             </Text>
           </View>
         </View>

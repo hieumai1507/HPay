@@ -1,18 +1,19 @@
 /**
- * Split Bill math — pure BigInt, mirrors the backend's largest-remainder rule
+ * Split Bill math: pure BigInt, mirrors the backend's largest-remainder rule
  * (openapi /v1/money-requests/split). Client-side result is PREVIEW ONLY; the
  * server recomputes and is the source of truth. Money never touches Number/float (M06).
  */
 
 /**
- * Even split of `total` minor units across `n` payers. The remainder is spread
- * one minor unit at a time from the head of the list (largest-remainder), so
- * the parts always sum to exactly `total`.
+ * Even split of `total` cents across `n` payers. The remainder is spread one cent at a
+ * time from the head of the list (largest-remainder), so the parts always sum to exactly
+ * `total`. Every share is at least 1 cent: a total smaller than `n` is rejected.
  */
 export function splitEven(total: bigint, n: number): bigint[] {
   if (n <= 0) throw new Error('splitEven: n must be > 0');
   if (total < 0n) throw new Error('splitEven: total must be >= 0');
   const count = BigInt(n);
+  if (total < count) throw new Error('splitEven: total must be at least 1 cent per person');
   const base = total / count;
   const remainder = total % count;
   return Array.from({ length: n }, (_, i) => (BigInt(i) < remainder ? base + 1n : base));

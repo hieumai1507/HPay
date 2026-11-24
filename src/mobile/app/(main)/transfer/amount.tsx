@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMainWallet, useMe } from '@/src/queries';
-import { formatAmountVND, parseAmountToBigInt } from '@/src/lib/money';
+import { formatAmountUSD, parseAmountToBigInt } from '@/src/lib/money';
 import { AmountInput, Button } from '@/src/ui';
 
 export default function TransferAmountScreen() {
@@ -30,7 +30,7 @@ export default function TransferAmountScreen() {
     amount === null
       ? null
       : txnLimit !== null && amount > txnLimit
-        ? `Exceeds KYC Limit (max ${formatAmountVND(txnLimit)})`
+        ? `Exceeds KYC Limit (max ${formatAmountUSD(txnLimit)})`
         : balance !== null && amount > balance
           ? 'Exceeds available balance'
           : null;
@@ -62,7 +62,7 @@ export default function TransferAmountScreen() {
             autoFocus
           />
           {balance !== null && (
-            <Text className="text-center text-xs text-slate-500">Available balance: {formatAmountVND(balance)}</Text>
+            <Text className="text-center text-xs text-slate-500">Available balance: {formatAmountUSD(balance)}</Text>
           )}
           <TextInput
             className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800"

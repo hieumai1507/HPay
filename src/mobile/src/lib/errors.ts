@@ -74,7 +74,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   ERR_PIN_NOT_SET: 'You have not set a PIN yet. Please set a PIN first.',
   ERR_PIN_INCORRECT: 'Incorrect PIN.',
   ERR_PIN_LOCKED: 'Your PIN is locked for 15 minutes after too many incorrect attempts.',
-  ERR_PIN_COOLING: 'You recently reset your PIN. For 24 hours, PIN payments are limited to 2,500,000 ₫.',
+  ERR_PIN_COOLING: 'You recently reset your PIN. For 24 hours, PIN payments are limited to $100.00.',
   ERR_PIN_RESET_RATE_LIMITED: 'You have requested too many PIN reset codes. Please try again in 1 hour.',
   // second factor (ADR-0017)
   ERR_TOTP_NOT_ENROLLED: 'This transaction needs an authenticator app. Turn on two-step verification first.',

@@ -36,7 +36,7 @@ export default function KycIntroScreen() {
         <View style={styles.heroContent}>
           <Text style={styles.heroTitle}>Unlock all features</Text>
           <Text style={styles.heroDesc}>
-            Verify once to raise your transaction limit to 100,000,000 ₫/day.
+            Verify once to raise your transaction limit to $400.00/day.
           </Text>
         </View>
       </View>

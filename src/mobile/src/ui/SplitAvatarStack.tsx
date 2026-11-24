@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 
-import { formatAmountVND, percentOf } from '@/src/lib/money';
+import { formatAmountUSD, percentOf } from '@/src/lib/money';
 import { color } from './tokens';
 
 // Distinct per-person identity colors, cycled by position — mirrors the
@@ -67,7 +67,7 @@ export function SplitAvatarStack({ participants, collectedAmount, totalAmount, e
       </View>
 
       <Text className="text-lg font-bold text-slate-900 dark:text-white">
-        Collected {formatAmountVND(collectedAmount)} / {formatAmountVND(totalAmount)}
+        Collected {formatAmountUSD(collectedAmount)} / {formatAmountUSD(totalAmount)}
       </Text>
 
       <View className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
