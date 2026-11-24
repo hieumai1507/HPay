@@ -82,38 +82,91 @@ func (g *Guard) Check(ctx context.Context, userID uuid.UUID, serviceCode string,
 		return Decision{}, ErrLimitPerTxn
 	}
 
+	if err := g.checkWindows(ctx, cfg, userID, txnType, amount, true); err != nil {
+		return Decision{}, err
+	}
+	return Decision{OfferServiceID: cfg.ID, AuthMethod: g.authFor(ctx, cfg.ID, amount)}, nil
+}
+
+// ErrWindowCrossed means a held request was created in an earlier day than the one it would be
+// metered in. The quota counts a transaction by its creation time, so confirming it now would
+// let it dodge today's volume (and the lock-protected re-check would not see yesterday's
+// siblings). The caller must refuse and ask the user to request again.
+var ErrWindowCrossed = errors.New("request was created before the current limit window")
+
+// CheckWindows re-runs the offer rules that can change while a request waits for its credential:
+// offer active, service enabled, minimum and per-transaction cap, and the daily and monthly
+// volume. The engine calls it when a held request is confirmed, inside the transaction that
+// starts the workflow and under a per-user lock, because a request waiting for its credential
+// does not count toward the quota: the check made at request time cannot see its siblings
+// (BUG-0017, BE-H2). `amount` must include the fee, as the volume sum does. `createdAt` is when
+// the request was made. The interval throttle is NOT re-run: it measures the spacing of requests,
+// not of confirms.
+func (g *Guard) CheckWindows(ctx context.Context, userID uuid.UUID, serviceCode string, txnType store.TxnType, amount, fee int64, createdAt time.Time) error {
+	lim, err := g.resolve(ctx, userID, serviceCode)
+	if err != nil {
+		return err
+	}
+	if !lim.offerActive {
+		return ErrOfferInactive
+	}
+	if !lim.IsEnabled {
+		return ErrServiceDisabled
+	}
+	if amount < lim.MinAmount {
+		return ErrBelowMin
+	}
+	if lim.MaxAmountPerTxn > 0 && amount > lim.MaxAmountPerTxn {
+		return ErrLimitPerTxn
+	}
+	if day, _ := windowStarts(time.Now()); createdAt.Before(day) {
+		return ErrWindowCrossed
+	}
+	return g.checkWindows(ctx, lim, userID, txnType, amount+fee, false)
+}
+
+func (g *Guard) checkWindows(ctx context.Context, cfg limits, userID uuid.UUID, txnType store.TxnType, amount int64, interval bool) error {
 	now := time.Now()
+	startOfDay, startOfMonth := windowStarts(now)
 	if cfg.DailyLimit > 0 {
-		startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		used, err := g.volumeSince(ctx, userID, txnType, startOfDay)
 		if err != nil {
-			return Decision{}, err
+			return err
 		}
 		if used+amount > cfg.DailyLimit {
-			return Decision{}, ErrLimitDaily
+			return ErrLimitDaily
 		}
 	}
 	if cfg.MonthlyLimit > 0 {
-		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		used, err := g.volumeSince(ctx, userID, txnType, startOfMonth)
 		if err != nil {
-			return Decision{}, err
+			return err
 		}
 		if used+amount > cfg.MonthlyLimit {
-			return Decision{}, ErrLimitMonthly
+			return ErrLimitMonthly
 		}
 	}
-	if cfg.IntervalSeconds > 0 {
+	if interval && cfg.IntervalSeconds > 0 {
 		last, err := g.q.LastUserTxnAt(ctx, store.LastUserTxnAtParams{InitiatedBy: userID, Type: txnType})
 		if err != nil {
-			return Decision{}, err
+			return err
 		}
 		if last.Valid && now.Sub(last.Time) < time.Duration(cfg.IntervalSeconds)*time.Second {
-			return Decision{}, ErrTooFrequent
+			return ErrTooFrequent
 		}
 	}
+	return nil
+}
 
-	return Decision{OfferServiceID: cfg.ID, AuthMethod: g.authFor(ctx, cfg.ID, amount)}, nil
+// vietnamZone is UTC+7 with no daylight saving. A fixed offset avoids depending on tzdata,
+// which the distroless image does not ship (constitution C-12).
+var vietnamZone = time.FixedZone("Asia/Ho_Chi_Minh", 7*60*60)
+
+// windowStarts returns the start of the current day and month in Vietnam time.
+func windowStarts(now time.Time) (day, month time.Time) {
+	n := now.In(vietnamZone)
+	return time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, vietnamZone),
+		time.Date(n.Year(), n.Month(), 1, 0, 0, 0, 0, vietnamZone)
 }
 
 // limits is the resolved offer_services row plus whether its offer is active.

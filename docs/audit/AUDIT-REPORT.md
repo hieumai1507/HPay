@@ -77,7 +77,7 @@ Results of verifying the **[unverified]** items below. This section **overrides*
 - Fix: UNIQUE `(initiated_by, idempotency_key)` plus a request hash, return 409 if different. Require a key on every money-writing endpoint.
 - Additionally: `/money-requests`, `/money-requests/split`, `/vaults` do not appear to have `RequireIdempotencyKey` (`router.go:128-129`). **[verified, then fixed]**: money requests had no idempotency at all (create and split now require the key and replay per requester); `/vaults` and the round-up PATCH only change metadata and were deliberately left without a key.
 
-**BE-H2. Offer limit has a TOCTOU race** (`internal/offerguard/offerguard.go:92-121`, called from `transfer/service.go:315`)
+**BE-H2. Offer limit has a TOCTOU race** **[fixed 2026-11-24, BUG-0017]** (`internal/offerguard/offerguard.go:92-121`, called from `transfer/service.go:315`)
 - SUM the volume, compare against the limit, then INSERT in another tx. N parallel requests with different keys all pass. The `IntervalSeconds` throttle can also be bypassed.
 - Day/month boundaries use the server timezone, not a fixed Vietnam time.
 - Fix: `pg_advisory_xact_lock(hash(user,type))` or lock a counter row in the same tx as the INSERT.

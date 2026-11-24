@@ -248,7 +248,7 @@ Guarantees the code relies on or the design states, that the schema does NOT enf
 | 20 | Outbox delivery bookkeeping | No attempts/last_error/dead letter; index order (available_at) differs from relay query order (id) | Poison event can block queue |
 | 21 | Hot-path query indexes | No index on `transactions(initiated_by, type, created_at)` (OfferGuard/fraud), `kyc_requests(user_id|status)`, `fraud_flags(status)`, `approval_requests(status, org_id)` | Sequential scans |
 | 22 | Secrets at rest | `ai_keys.api_key` is plaintext (`key_ciphertext` unused by default) | |
-| 23 | Offer limit race | Daily/monthly limits are SUM-then-INSERT in separate steps; no lock or counter row | TOCTOU (BE-H2) |
+| 23 | Offer limit race | Fixed (BUG-0017): no counter row; the confirm step serializes per user with an advisory lock and re-sums the volume | none known |
 | 24 | Platform admin RBAC | `admin_users.role` exists but nothing in the router/DB restricts by role | Any admin can call every `/v1/admin` endpoint |
 
 Verified present (not missing): non-negative balance for non-system wallets, one main wallet per owner, vault needs label, one round-up target per owner, append-only ledger trigger, unique step execution per (instance, step, attempt), one action per checker per request, unique policy version per (org, name), no self money request.

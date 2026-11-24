@@ -657,6 +657,24 @@ func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmI
 		return Result{}, ErrAuthExpired
 	}
 
+	// BUG-0017: a held request does not count toward the daily/monthly quota, so the check made
+	// at request time cannot see its siblings. Serialize this user's confirms with a transaction
+	// lock (released at commit, after the status change that makes this amount count), then
+	// re-check the windows. The second of two racing confirms sees the first one's volume.
+	if s.guardOn {
+		if txn.ServiceCode == "" {
+			return Result{}, ErrAuthMethodUnavailable // fail closed: a held request always has its service code
+		}
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('limit-window:' || $1::text, 0))`, input.SenderUserID); err != nil {
+			return Result{}, err
+		}
+		if err := offerguard.NewWithQueries(qtx).CheckWindows(ctx, input.SenderUserID, txn.ServiceCode, txn.Type, txn.Amount, txn.Fee, txn.CreatedAt.Time); err != nil {
+			if errors.Is(err, offerguard.ErrWindowCrossed) {
+				return Result{}, ErrAuthExpired // request again: it is metered in today's window
+			}
+			return Result{}, err
+		}
+	}
 	started, err := qtx.StartAwaitingAuthTransaction(ctx, txn.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

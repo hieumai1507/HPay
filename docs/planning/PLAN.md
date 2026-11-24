@@ -1,4 +1,4 @@
-﻿# HPay â€“ Bug-fix and Monorepo Consolidation Plan
+# HPay â€“ Bug-fix and Monorepo Consolidation Plan
 
 Date: 2026-11-21. Basis: `docs/audit/AUDIT-REPORT.md` (including the verification appendix).
 Status: **in progress**. Completed so far: monorepo merge (src/ + docs/), git history reset, skills consolidated at `.claude/skills` with workflows `hpay-feature` / `hpay-bugfix` / `hpay-review`, subagents in `.claude/agents`, Docker-based backend test runner (`scripts/test-backend.ps1`; baseline in `docs/handoff/baseline.md`: 160 Go tests pass with `-race`, mobile jest 80 pass, eslint has pre-existing errors in admin (6) and mobile (3)). Docs conversion to English Markdown is in progress. Not started: Wave 1 onward.
@@ -343,7 +343,7 @@ BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency p
 | G15 | Fraud LLM advisory is fire-and-forget; rule errors are retryable (fail-closed verified) but there is no test for an advisor outage | regression guard | add a test |
 | G16 | Wave 5 content fixes still open: mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
 | G17 | Key rotation (Neon, Cloudinary, JWT) postponed by the owner; the local `.env` JWT secret is the public placeholder | secrets | owner, when ready |
-| G18 | Daily and monthly windows use the server time zone and read-then-insert (BE-H2) | race on the limit window | bugfix run |
+| G18 | Daily and monthly windows use the server time zone and read-then-insert (BE-H2) | fixed 2026-11-24, BUG-0017 | none |
 | G19 | Outbox and consumer idempotency for non-money steps | duplicate side effects | review per handler |
 
 ### Breaking changes of this pass

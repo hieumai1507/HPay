@@ -59,7 +59,7 @@ Not implemented from the approved table: **weekly rolling limits** (the offer mo
 5. **`wallet.TxnLimit` is not applied on the engine path** and is only live in money-request pay and `/users/me`. It disagrees with the offer numbers (100M per transaction for verified, 2M for unverified, versus the offer's 100M for everyone). To be removed after the offer path covers every money flow.
 6. **`primary_pocket_max` is not enforced anywhere.** It is a wallet balance ceiling, not a per-transaction limit. It is only stored and returned by the admin offer pages (`product/service.go:131,144`); no code checks a wallet balance or credit against it. Intent: enforce on credits or remove it from the offer model.
 7. **Auth matrix is a label only.** `auth_required` is returned but no PIN/OTP/2FA is verified for user transactions (audit BE-C2).
-8. **Daily/monthly checks use the server timezone and are not locked** (read then insert, audit BE-H2); the window start uses `time.Now().Location()`, UTC in the distroless image.
+8. **Daily/monthly checks** now use Asia/Ho_Chi_Minh and are re-checked at confirm under a per-user lock (BUG-0017). A request that needs no confirmation is still checked only at request time.
 9. **Admin cannot edit offers.** `product/service.go` has the queries but no write route is mounted; the admin offer editor posts to nonexistent endpoints, so offers can only be changed by migration or SQL.
 10. **User-facing and design text states other numbers.** None of these are decisions; they need aligning once the table is decided:
     - `src/mobile/app/(kyc)/intro.tsx:39` ("100 triệu ₫/ngày", shown to users)

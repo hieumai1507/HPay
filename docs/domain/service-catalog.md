@@ -159,7 +159,7 @@ There is no HTTP endpoint that creates or edits services, actions, offers, offer
 
 ## 10. Known gaps (as-is vs intended)
 - **SSRF** in the action pipeline is FIXED in the working tree (2026-11-21, not yet committed): BUG-0014, BR-SC-19. Remaining: no write-time validation (no endpoint exists yet), no DNS egress control at the deployment level, no private-network partner exception process.
-- **BE-H2**: offer limits are a read-then-insert race (`offerguard.go:92-121`); parallel requests can exceed daily/monthly limits and the interval throttle. Day/month boundaries use server local time.
+- **BE-H2**: FIXED (BUG-0017). Daily and monthly limits and the interval throttle are re-checked at confirm under a per-user advisory lock, and the day and month windows use Asia/Ho_Chi_Minh (UTC+7). Remaining: a request that needs no confirmation is checked only at request time.
 - **BE-C2**: the auth method from the matrix is only a returned label; the engine starts the workflow without verifying PIN/OTP (`transfer/service.go:390`). The matrix therefore does not enforce authentication.
 - **BE-H7**: gateway selection depends on `Env != "production"` while documented env values exclude `production`.
 - Not in audit: no admin write endpoints for the catalog (design docs describe a 5-tab admin builder; only status toggle and read-only views are shipped); status toggle is not audited; unknown service code falls back to P2P; `OFFER_BIZ_ENT` has no service rows; no constraint on matrix overlap; `workflow_name` has no FK so a typo yields `ErrDefinitionNotFound` at request time.

@@ -30,7 +30,7 @@ All amounts are `int64` VND (no decimals; VND has no minor unit in practice, so 
 - Workflow: `GetInstanceForUpdate` row lock, status/step/attempt guards drop stale events (`engine.go:90-139`). Recovery leases stuck instances by an UPDATE to `recovering` (`workflow/recovery.go:22-25`).
 - Approvals: `GetApprovalRequestForUpdate` plus unique approval action per checker/level; `FinalizeApprovalRequest` is the race arbiter (`approval/service.go:417,497`). KYC review uses a guarded UPDATE (`kyc/admin.go:104-136`).
 - Outbox: `FOR UPDATE SKIP LOCKED` (`store/queries/outbox.sql:11`). Claim query orders by `id` while the index is by `available_at` (audit outbox note).
-- Known gap: OfferGuard daily/monthly/interval checks are read-then-insert with no lock (TOCTOU, BE-H2, `offerguard.go:92-121`).
+- OfferGuard daily/monthly/interval checks are re-run at confirm under a per-user `pg_advisory_xact_lock` (BUG-0017, `transfer/service.go` `ExecuteEngineConfirm`, `offerguard.CheckWindows`). Requests that need no confirmation are checked only at request time.
 
 ## 4. Transactional outbox
 
