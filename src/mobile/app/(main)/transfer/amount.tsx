@@ -30,9 +30,9 @@ export default function TransferAmountScreen() {
     amount === null
       ? null
       : txnLimit !== null && amount > txnLimit
-        ? `Vượt hạn mức KYC (tối đa ${formatAmountVND(txnLimit)})`
+        ? `Exceeds KYC Limit (max ${formatAmountVND(txnLimit)})`
         : balance !== null && amount > balance
-          ? 'Vượt số dư khả dụng'
+          ? 'Exceeds available balance'
           : null;
 
   const canContinue = amount !== null && amount > 0n && !validationError;
@@ -48,7 +48,7 @@ export default function TransferAmountScreen() {
             <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
           </Pressable>
           <View className="items-center">
-            <Text className="text-xs text-slate-500">Chuyển đến</Text>
+            <Text className="text-xs text-slate-500">Transfer to</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{maskedName}</Text>
           </View>
           <View className="w-8" />
@@ -62,21 +62,21 @@ export default function TransferAmountScreen() {
             autoFocus
           />
           {balance !== null && (
-            <Text className="text-center text-xs text-slate-500">Số dư khả dụng: {formatAmountVND(balance)}</Text>
+            <Text className="text-center text-xs text-slate-500">Available balance: {formatAmountVND(balance)}</Text>
           )}
           <TextInput
             className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800"
             value={note}
             onChangeText={(t) => setNote(t.slice(0, 255))}
-            placeholder="Ghi chú (không bắt buộc)"
+            placeholder="Note (optional)"
             placeholderTextColor="#94a3b8"
-            accessibilityLabel="Ghi chú"
+            accessibilityLabel="Note"
           />
         </View>
 
         <View className="p-4">
           <Button
-            label="Tiếp tục"
+            label="Next"
             disabled={!canContinue}
             onPress={() =>
               amount !== null &&
