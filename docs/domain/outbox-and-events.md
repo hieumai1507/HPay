@@ -91,10 +91,28 @@ At-least-once end to end. Duplicates can arise from (a) relay crash/rollback aft
 | Component | Idempotent? | How |
 |---|---|---|
 | Relay publish | No (may publish a row twice) | not de-duplicated; downstream must cope |
-| Step start processing | Recording only | unique `(instance, step, attempt)`; handler side effect itself is not atomic with the record (audit BE-C1) |
+| Step start processing | Recording: yes. Handler effect: yes per handler (G19) | unique `(instance, step, attempt)` guards the record; the handler effect is not atomic with it (audit BE-C1), so each handler is itself safe to run twice, see the table below |
 | Result processing (engine) | Yes | status/current_step guard, row lock |
 | Recorded-result replay | Adds a duplicate result event | engine drops it |
 | Approval finalize insert | Yes | 23505 ignored (`approval/service.go:544-550`) |
+
+### Handler redelivery matrix (G19)
+The handler effect commits before `recordAndEmit`, so a crash, timeout or XAUTOCLAIM between the two re-runs the handler with the same `(instance, step, attempt)`. Review result, one row per registered handler. Test: `test/integration/money/handler_redelivery_test.go` runs each handler twice and compares side-effect snapshots; `EveryRegisteredHandlerHasAScenario` fails when a handler is registered without a row here and a scenario there.
+
+| Handler | Side effects | Class | Redelivery behaviour |
+|---|---|---|---|
+| `validator` | none (reads) | pure read | same answer |
+| `wallet` (MOVE_FUNDS) | ledger post + balances | guarded write | ledger posting guard, `ErrAlreadyPosted` returns success (ADR-0010, BUG-0001) |
+| `confirmer` | `UPDATE transactions ... WHERE status='processing'` | guarded UPDATE | second run matches no row; already `completed` is reported as success `replayed` (BUG-0020). No notification is sent yet; one added later needs a key from instance + step |
+| `fraud` | `INSERT fraud_flags` + advisory goroutine | duplicating insert, now guarded | advisory lock per transaction, reuse the existing flag, no second advisory (BUG-0019) |
+| `round_up` | ledger post of the rounding | guarded write | same posting guard, kind `round_up` |
+| `action_pipeline` | outbound HTTP per Directional Integration action | external call | the call IS repeated; header `Idempotency-Key = ref_code:action_code`, stable across attempts and recovery re-emits, so the partner must dedupe. Gap: delivery depends on the partner honouring the key; GL actions are not executed here |
+| `kyc_scorer` | LLM call + `SetKYCScore` | external call + guarded read | replay guard returns the stored score when `ai_score >= 0`. A crash between the LLM answer and `SetKYCScore` pays for a second call; the result is a score, not a money effect |
+| `kyc_classifier` | `ClassifyKYCGuarded` + user kyc status + offer in one tx | guarded UPDATE | returns the recorded status when the request is no longer `pending`; offer follows only when the guarded change applied |
+| `boom` | test only | n/a | n/a |
+
+### Other consumers of relay duplicates
+`relay.go` publishes at-least-once: a crash after XADD and before `MarkOutboxPublished` publishes the same row again. The stream has exactly two kinds of consumers, both tolerant: a duplicated `step.start` hits `processStepMessage`, which re-emits the recorded result when the step is already recorded and otherwise runs a handler from the matrix above (E04, plus the redelivery test); a duplicated `step.result` hits the engine, which drops it by status and `current_step` (E06, BR-OB-08). No other code reads the streams or the outbox table, so no further consumer needs a dedupe key. The advisory goroutine in `fraud` is started only when the flag is newly created.
 
 ## 6. Invariants
 - An event row exists iff its producing transaction committed (BR-OB-01).
@@ -135,7 +153,7 @@ There is no leader election, advisory lock or Redis lock anywhere in these loops
 
 ## 10. Known gaps (as-is vs intended)
 - Audit Medium "Outbox": at-least-once, no dead-letter, no attempts counter, poison event blocks the head of the queue; index ordered by `available_at` vs query `ORDER BY id`; `PumpLocal` marks published before processing.
-- BE-C1: duplicate delivery can re-run `wallet` handler's ledger post.
+- BE-C1 / G19: duplicate delivery re-runs the handler. Every handler is now safe (matrix in section 5). Open: no unique index on `fraud_flags(transaction_id)` (needs a migration), and `action_pipeline` relies on the partner honouring `Idempotency-Key`.
 - Audit Medium "Workflow": `consumer.go:77` uses `time.Sleep(1s)` instead of selecting on `ctx.Done()`.
 - BE-H7: `main.go:117` compares `Env != "production"` while config documents `dev|ci|demo` (affects which outbound gateway runs, not the outbox).
 - Not in audit: no outbox purge, no stream trim, fixed consumer name `c1`, recon cron does not catch up missed days, no leader election.

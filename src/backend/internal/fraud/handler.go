@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hieumai1507/hpay-backend/internal/ai"
@@ -76,7 +77,7 @@ func (h *handler) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 
 	// Flag or block: record a fraud_flags row with the deterministic evidence.
 	reasons, _ := json.Marshal(map[string]any{"signals": signals})
-	flagID, err := h.q.InsertFraudFlag(ctx, store.InsertFraudFlagParams{
+	flagID, created, err := h.insertFlagOnce(ctx, store.InsertFraudFlagParams{
 		TransactionID: txn.ID, RuleCode: topRuleCode(signals), Score: int32(score), Reasons: reasons,
 	})
 	if err != nil {
@@ -86,7 +87,10 @@ func (h *handler) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 	// LLM advisory is fire-and-forget: the FRAUD_CHECK step has a 3s budget but
 	// the model takes seconds — and the model must NEVER affect the decision
 	// (docs §9). Kick it off on a detached context and merge the text later.
-	h.enqueueAdvisory(flagID, txn, signals, score)
+	// A redelivered step reuses the flag and does not pay for a second advisory.
+	if created {
+		h.enqueueAdvisory(flagID, txn, signals, score)
+	}
 
 	if decision == DecisionBlock {
 		h.log.Warn("transaction blocked by fraud rules", "txn", txn.ID, "score", score)
@@ -94,6 +98,35 @@ func (h *handler) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 	}
 	// Grey zone: flag but let the money proceed.
 	return workflow.StepOutput{Context: map[string]any{"fraud_score": score, "fraud_verdict": "flagged", "fraud_flag_id": flagID.String()}}, nil
+}
+
+// insertFlagOnce writes the flag for a transaction at most once (G19, BUG-0019). The step
+// record is committed after this write, so a crash or timeout in between makes the broker
+// redeliver the step; a plain INSERT would then leave two open flags for one transaction.
+// A transaction-scoped advisory lock serialises concurrent redeliveries on the same
+// transaction (fraud_flags has no unique key on transaction_id and migrations are frozen
+// for this change). created is false when an earlier run's flag was reused.
+func (h *handler) insertFlagOnce(ctx context.Context, p store.InsertFraudFlagParams) (id uuid.UUID, created bool, err error) {
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('fraud_flag:' || $1::text, 0))`, p.TransactionID); err != nil {
+		return uuid.Nil, false, err
+	}
+	qtx := h.q.WithTx(tx)
+	id, err = qtx.GetFraudFlagIDByTransaction(ctx, p.TransactionID)
+	switch {
+	case err == nil:
+		return id, false, tx.Commit(ctx)
+	case !errors.Is(err, pgx.ErrNoRows):
+		return uuid.Nil, false, err
+	}
+	if id, err = qtx.InsertFraudFlag(ctx, p); err != nil {
+		return uuid.Nil, false, err
+	}
+	return id, true, tx.Commit(ctx)
 }
 
 // enqueueAdvisory runs the LLM off the step's critical path. Whatever happens here (no

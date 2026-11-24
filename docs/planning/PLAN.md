@@ -344,7 +344,7 @@ BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency p
 | G16 | Wave 5 content fixes still open: mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
 | G17 | Key rotation (Neon, Cloudinary, JWT) postponed by the owner; the local `.env` JWT secret is the public placeholder | secrets | owner, when ready |
 | G18 | Daily and monthly windows use the server time zone and read-then-insert (BE-H2) | fixed 2026-11-24, BUG-0017 | none |
-| G19 | Outbox and consumer idempotency for non-money steps | duplicate side effects | review per handler |
+| G19 | Outbox and consumer idempotency for non-money steps | fixed 2026-11-24, BUG-0019, BUG-0020 (follow-up: unique index on `fraud_flags(transaction_id)`, partner must honour `Idempotency-Key`) | none |
 
 ### Breaking changes of this pass
 `APP_ENV` is required; confirming a payment needs a PIN (users must set one); the 2fa band is refused; users without an offer fall to L0 (2,500,000 VND per transaction).

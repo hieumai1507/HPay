@@ -173,7 +173,7 @@ sequenceDiagram
 ```
 
 ## 6. Invariants
-- Exactly-once handler effect per `(instance, step, attempt)` is guaranteed only for the recording of the execution (unique index `idx_step_exec`), NOT for the handler's own side effects: the execution row is written after `Execute` returns, in a separate transaction (`consumer.go:154-189`). For MOVE_FUNDS and ROUND_UP the side effect is made replay-safe by the ledger posting guard (BR-LED-15); other handlers carry their own idempotency (or none, see Known gaps).
+- Exactly-once handler effect per `(instance, step, attempt)` is guaranteed only for the recording of the execution (unique index `idx_step_exec`), NOT for the handler's own side effects: the execution row is written after `Execute` returns, in a separate transaction (`consumer.go:154-189`). For MOVE_FUNDS and ROUND_UP the side effect is made replay-safe by the ledger posting guard (BR-LED-15); every other handler is replay-safe as classified in the redelivery matrix in `outbox-and-events.md` (G19, BUG-0019, BUG-0020).
 - No paused instance without an approval request: PauseHook runs in the advance transaction (`engine.go:176-186`).
 - Compensation attempts (101) never collide with forward attempts when retry < 101 (`engine.go:249` filters forward completions with `Attempt < 101`).
 - Terminal instance states: completed, failed, compensated. A result event for an unknown instance is dropped (`engine.go:92-94`).

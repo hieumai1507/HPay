@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -162,6 +163,14 @@ func (c *Confirmer) Execute(ctx context.Context, in workflow.StepInput) (workflo
 	}
 	q := store.New(c.pool)
 	if _, err := q.CompleteTransaction(ctx, in.TransactionID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// The guarded UPDATE matched nothing. If the transaction is already
+			// completed this is a redelivery (G19): the first run committed but its
+			// step record was lost. Report the same outcome instead of retrying forever.
+			if txn, gerr := q.GetTransactionByWorkflow(ctx, in.TransactionID); gerr == nil && txn.Status == store.TxnStatusCompleted {
+				return workflow.StepOutput{Context: map[string]any{"confirmed": true, "replayed": true}}, nil
+			}
+		}
 		return workflow.StepOutput{}, workflow.RetryableError{Err: err}
 	}
 	// F-later: notification push both sides.
