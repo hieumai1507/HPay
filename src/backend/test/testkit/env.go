@@ -136,7 +136,7 @@ func NewEnv(t *testing.T, defName string) *Env {
 	// env=dev so Challenge returns the OTP code to the test.
 	authSvc := auth.NewService(pool,
 		auth.NewJWTIssuer("integration-test-secret-0123456789", "user"), log, "dev")
-	authSvc.SetTOTPKey([]byte("0123456789abcdef0123456789abcdef")) // ADR-0017: tests use a fixed key
+	authSvc.SetTOTPKey([]byte("0123456789abcdef0123456789abcdef"))                             // ADR-0017: tests use a fixed key
 	pins, err := auth.NewPepperSet(auth.PepperKey{ID: "p1", Key: []byte(config.DevPINPepper)}) // ADR-0018: the public dev pepper
 	if err != nil {
 		t.Fatalf("test pepper: %v", err)

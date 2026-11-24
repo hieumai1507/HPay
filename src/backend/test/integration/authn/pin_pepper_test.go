@@ -339,7 +339,7 @@ func TestPinLogging_NoSecretsInLogsErrorsOrAudit(t *testing.T) {
 	}
 
 	rec(svc.SetPIN(ctx, uid, pepperPW, pin))
-	rec(svc.VerifyPIN(ctx, uid, pin))     // success
+	rec(svc.VerifyPIN(ctx, uid, pin))      // success
 	rec(svc.VerifyPIN(ctx, uid, "000001")) // failure
 	// legacy rehash
 	setRaw(t, e, uid, mustLegacy(t, pin))

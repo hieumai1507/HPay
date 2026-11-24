@@ -87,7 +87,7 @@ func TestPinHash_WrongPinWrongPepperWrongKeyIDFail(t *testing.T) {
 }
 
 const (
-	zSalt = "AAAAAAAAAAAAAAAAAAAAAA"                        // 16 bytes
+	zSalt = "AAAAAAAAAAAAAAAAAAAAAA"                      // 16 bytes
 	zSum  = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" // 32 bytes
 )
 
@@ -110,25 +110,25 @@ func TestPinHash_ParserAcceptsKRefusesUnknownFields(t *testing.T) {
 	}
 
 	bad := map[string]string{
-		"unknown field":       shaped("v=19", "m=19456,t=2,p=1,x=1", zSalt, zSum),
-		"unknown after k":     shaped("v=19", "m=19456,t=2,p=1,k=p1,x=1", zSalt, zSum),
-		"duplicate k":         shaped("v=19", "m=19456,t=2,p=1,k=p1,k=p2", zSalt, zSum),
-		"missing p":           shaped("v=19", "m=19456,t=2,k=p1", zSalt, zSum),
-		"misordered":          shaped("v=19", "t=2,m=19456,p=1", zSalt, zSum),
-		"k first":             shaped("v=19", "k=p1,m=19456,t=2,p=1", zSalt, zSum),
-		"empty k":             shaped("v=19", "m=19456,t=2,p=1,k=", zSalt, zSum),
-		"uppercase key id":    shaped("v=19", "m=19456,t=2,p=1,k=P1", zSalt, zSum),
-		"key id too long":     shaped("v=19", "m=19456,t=2,p=1,k=abcdefghijklmnopq", zSalt, zSum),
-		"trailing comma":      shaped("v=19", "m=19456,t=2,p=1,", zSalt, zSum),
-		"signed number":       shaped("v=19", "m=+19456,t=2,p=1", zSalt, zSum),
-		"wrong version":       shaped("v=18", "m=19456,t=2,p=1,k=p1", zSalt, zSum),
-		"not argon2id":        "$argon2i$v=19$m=19456,t=2,p=1,k=p1$" + zSalt + "$" + zSum,
-		"bad salt base64":     shaped("v=19", "m=19456,t=2,p=1,k=p1", "!!!!", zSum),
-		"salt too short":      shaped("v=19", "m=19456,t=2,p=1,k=p1", "AAAA", zSum),
-		"sum too short":       shaped("v=19", "m=19456,t=2,p=1,k=p1", zSalt, "AAAA"),
-		"extra segment":       shaped("v=19", "m=19456,t=2,p=1,k=p1", zSalt, zSum) + "$x",
-		"empty":               "",
-		"plain text":          "482915",
+		"unknown field":    shaped("v=19", "m=19456,t=2,p=1,x=1", zSalt, zSum),
+		"unknown after k":  shaped("v=19", "m=19456,t=2,p=1,k=p1,x=1", zSalt, zSum),
+		"duplicate k":      shaped("v=19", "m=19456,t=2,p=1,k=p1,k=p2", zSalt, zSum),
+		"missing p":        shaped("v=19", "m=19456,t=2,k=p1", zSalt, zSum),
+		"misordered":       shaped("v=19", "t=2,m=19456,p=1", zSalt, zSum),
+		"k first":          shaped("v=19", "k=p1,m=19456,t=2,p=1", zSalt, zSum),
+		"empty k":          shaped("v=19", "m=19456,t=2,p=1,k=", zSalt, zSum),
+		"uppercase key id": shaped("v=19", "m=19456,t=2,p=1,k=P1", zSalt, zSum),
+		"key id too long":  shaped("v=19", "m=19456,t=2,p=1,k=abcdefghijklmnopq", zSalt, zSum),
+		"trailing comma":   shaped("v=19", "m=19456,t=2,p=1,", zSalt, zSum),
+		"signed number":    shaped("v=19", "m=+19456,t=2,p=1", zSalt, zSum),
+		"wrong version":    shaped("v=18", "m=19456,t=2,p=1,k=p1", zSalt, zSum),
+		"not argon2id":     "$argon2i$v=19$m=19456,t=2,p=1,k=p1$" + zSalt + "$" + zSum,
+		"bad salt base64":  shaped("v=19", "m=19456,t=2,p=1,k=p1", "!!!!", zSum),
+		"salt too short":   shaped("v=19", "m=19456,t=2,p=1,k=p1", "AAAA", zSum),
+		"sum too short":    shaped("v=19", "m=19456,t=2,p=1,k=p1", zSalt, "AAAA"),
+		"extra segment":    shaped("v=19", "m=19456,t=2,p=1,k=p1", zSalt, zSum) + "$x",
+		"empty":            "",
+		"plain text":       "482915",
 	}
 	for name, s := range bad {
 		if _, err := parseArgonHash(s); err == nil {

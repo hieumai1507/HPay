@@ -50,6 +50,8 @@ func run(role string) error {
 
 	log := logger.New(cfg.Env)
 	log.Info("starting HPay", "role", cfg.Role, "env", cfg.Env)
+	// ADR-0018: the key id only, never the key.
+	log.Info("PIN pepper loaded", "key_id", cfg.PINPepperID, "old_keys", len(cfg.PINPepperOld))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -131,7 +133,11 @@ func run(role string) error {
 		// the same tx; the sweeper expires overdue requests (E10).
 		issuer := auth.NewJWTIssuer(cfg.JWTSecret, "user")
 		authSvc := auth.NewService(pool, issuer, log, cfg.Env)
-		authSvc.Wire(cfg.TOTPKey, auth.SenderConfig{
+		pins, err := auth.PepperSetFromConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("PIN pepper: %w", err)
+		}
+		authSvc.Wire(cfg.TOTPKey, pins, auth.SenderConfig{
 			Env: cfg.Env, Provider: cfg.SenderProvider,
 			Twilio: auth.TwilioConfig{AccountSID: cfg.TwilioAccountSID, APIKey: cfg.TwilioAPIKey, APISecret: cfg.TwilioAPISecret, From: cfg.TwilioFrom},
 		})

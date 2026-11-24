@@ -99,7 +99,7 @@ func (s *Service) ConfirmPINReset(ctx context.Context, userID uuid.UUID, code, n
 	if err := s.checkResetCode(ctx, userID, code); err != nil {
 		return err
 	}
-	hash, err := HashPassword(newPIN)
+	hash, err := s.pins.HashPIN(newPIN)
 	if err != nil {
 		return err
 	}
