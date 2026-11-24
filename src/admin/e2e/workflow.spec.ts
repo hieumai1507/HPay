@@ -15,7 +15,8 @@ import { test, expect } from './fixtures/auth';
 test.describe('Workflow Monitor', () => {
   test('instance list renders with status + definition filters', async ({ asMaker }) => {
     await asMaker.goto('/workflows');
-    await expect(asMaker.getByText('Workflow Monitor')).toBeVisible();
+    // The title is in the top bar and again as the page heading: assert the page heading.
+    await expect(asMaker.getByRole('heading', { name: 'Workflow Monitor' })).toBeVisible();
     await expect(asMaker.locator('table')).toBeVisible();
   });
 
