@@ -34,7 +34,7 @@ export default function AISettingsPage() {
     e.preventDefault();
     if (createKeyMutation.isPending) return;
     if (!newKeyName.trim() || !newKeyValue.trim()) {
-      alert('Vui lòng điền tên và giá trị API key.');
+      alert('Enter a name and an API key value.');
       return;
     }
     try {
@@ -45,9 +45,9 @@ export default function AISettingsPage() {
       });
       setNewKeyName('');
       setNewKeyValue('');
-      alert('Đã thêm AI Key mới thành công!');
+      alert('AI key added.');
     } catch (err: unknown) {
-      alert(`Lỗi: ${err instanceof Error ? err.message : String(err)}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -72,7 +72,7 @@ export default function AISettingsPage() {
       });
       setConfirmKeyDisable(null);
     } catch (err: unknown) {
-      alert(`Lỗi: ${err instanceof Error ? err.message : String(err)}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -90,9 +90,9 @@ export default function AISettingsPage() {
         model_name: modelName,
         key_id: provider === 'mock' ? undefined : keyId,
       });
-      alert(`Đã cập nhật cấu hình model routing cho ${functionName}!`);
+      alert(`Model routing updated for ${functionName}.`);
     } catch (err: unknown) {
-      alert(`Lỗi: ${err instanceof Error ? err.message : String(err)}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -101,7 +101,7 @@ export default function AISettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-bold text-slate-900">Cấu hình AI &amp; Model Routing (F11)</h2>
+        <h2 className="text-lg font-bold text-slate-900">AI &amp; model routing settings (F11)</h2>
         <span className="text-xs text-slate-500">Dynamic LLM Provider &amp; Secret Management</span>
       </div>
 
@@ -109,13 +109,13 @@ export default function AISettingsPage() {
       {!canManage && <div className="text-xs text-slate-500">{NO_PERMISSION_REASON} (ai.manage)</div>}
 
       {isLoading ? (
-        <div className="p-10 text-center text-slate-500">Đang tải AI config…</div>
+        <div className="p-10 text-center text-slate-500">Loading...</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Left Column: AI Keys Management */}
           <div className="flex flex-col gap-4">
             <div className="bg-white rounded-xl p-4.5 border border-slate-200 shadow-xs">
-              <h3 className="text-base font-bold text-slate-900 mb-3">Danh sách AI API Keys</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-3">AI API keys</h3>
               <div className="flex flex-col gap-2.5">
                 {keys.map((k) => {
                   const usedCount = settings.filter((s) => s.key_id === k.id).length;
@@ -129,7 +129,7 @@ export default function AISettingsPage() {
                           </Badge>
                           {usedCount > 0 && (
                             <span className="text-[11px] text-brand font-semibold bg-cyan-50 px-1.5 py-0.5 rounded">
-                              Dùng bởi {usedCount} chức năng
+                              Used by {usedCount} functions
                             </span>
                           )}
                         </div>
@@ -158,13 +158,13 @@ export default function AISettingsPage() {
 
             {/* Add New Key Form */}
             <div className="bg-white rounded-xl p-4.5 border border-slate-200 shadow-xs">
-              <h3 className="text-base font-bold text-slate-900 mb-3">Thêm API Key mới</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-3">Add a new API key</h3>
               <form onSubmit={handleCreateKey} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">Tên gợi nhớ (Name)</label>
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">Name</label>
                   <input
                     type="text"
-                    placeholder="Vd: Claude 3.5 Sonnet Prod Key"
+                    placeholder="E.g. Claude 3.5 Sonnet Prod Key"
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                     className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -185,7 +185,7 @@ export default function AISettingsPage() {
                   <label className="text-xs font-bold text-slate-500 mb-1 block">API Key Secret</label>
                   <input
                     type="password"
-                    placeholder="sk-ant-... hoặc sk-proj-..."
+                    placeholder="sk-ant-... or sk-proj-..."
                     value={newKeyValue}
                     onChange={(e) => setNewKeyValue(e.target.value)}
                     className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -197,7 +197,7 @@ export default function AISettingsPage() {
                   title={canManage ? undefined : NO_PERMISSION_REASON}
                   className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
                 >
-                  {createKeyMutation.isPending ? 'Đang tạo…' : '+ Lưu Key Mới'}
+                  {createKeyMutation.isPending ? 'Saving...' : '+ Save new key'}
                 </button>
               </form>
             </div>
@@ -206,9 +206,9 @@ export default function AISettingsPage() {
           {/* Right Column: Model Routing Settings */}
           <div className="flex flex-col gap-4">
             <div className="bg-white rounded-xl p-4.5 border border-slate-200 shadow-xs">
-              <h3 className="text-base font-bold text-slate-900 mb-1">Cấu hình Model Routing theo Chức Năng</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-1">Model routing by function</h3>
               <div className="text-xs text-slate-500 mb-4">
-                Chuyển đổi provider, model name hoặc key tự động mà không cần restart server backend.
+                Switch the provider, model name or key without restarting the backend server.
               </div>
 
               <div className="flex flex-col gap-3.5">
@@ -239,11 +239,11 @@ export default function AISettingsPage() {
         <Modal
           open={Boolean(confirmKeyDisable)}
           onClose={() => setConfirmKeyDisable(null)}
-          title="Xác nhận vô hiệu hóa API Key"
+          title="Confirm disabling API key"
         >
           <div className="flex flex-col gap-3.5">
             <div className="text-sm text-slate-700">
-              Cảnh báo: Key <b>{confirmKeyDisable.name}</b> đang được liên kết với chức năng AI active. Vô hiệu hóa key này sẽ khiến chức năng đó trả lỗi <code>ERR_KEY_INACTIVE</code> trừ khi bạn chọn key khác!
+              Warning: key <b>{confirmKeyDisable.name}</b> is linked to an active AI function. Disabling it makes that function return <code>ERR_KEY_INACTIVE</code> unless you choose another key.
             </div>
             <div className="flex justify-end gap-2.5 mt-2">
               <button
@@ -251,7 +251,7 @@ export default function AISettingsPage() {
                 onClick={() => setConfirmKeyDisable(null)}
                 className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50"
               >
-                Hủy
+                Cancel
               </button>
               <button
                 type="button"
@@ -259,7 +259,7 @@ export default function AISettingsPage() {
                 disabled={updateKeyMutation.isPending}
                 className="h-9 px-4 rounded-lg bg-rose-600 text-white font-semibold text-xs cursor-pointer hover:bg-rose-700 shadow-xs"
               >
-                Xác nhận vô hiệu hóa
+                Confirm disable
               </button>
             </div>
           </div>
@@ -340,7 +340,7 @@ function SettingRow({
               onChange={(e) => setKeyId(e.target.value)}
               className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
-              <option value="">-- Chọn Active Key --</option>
+              <option value="">-- Select an active key --</option>
               {filteredKeys.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.name} ({k.provider})
@@ -358,7 +358,7 @@ function SettingRow({
           onClick={() => onSave(setting.function_name, provider, modelName, keyId)}
           className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
         >
-          {isSaving ? 'Đang lưu…' : 'Lưu routing này'}
+          {isSaving ? 'Saving...' : 'Save routing'}
         </button>
       </div>
     </div>

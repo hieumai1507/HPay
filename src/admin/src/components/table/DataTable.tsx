@@ -12,7 +12,7 @@ export function DataTable<TData>({
   table,
   isLoading = false,
   totalCount,
-  emptyMessage = 'Không tìm thấy dữ liệu',
+  emptyMessage = 'Nothing here yet',
 }: DataTableProps<TData>) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
@@ -45,7 +45,7 @@ export function DataTable<TData>({
             {isLoading ? (
               <tr>
                 <td colSpan={table.getAllColumns().length} className="py-9 px-4 text-center text-brand font-semibold text-sm">
-                  ⏳ Đang tải dữ liệu...
+                  ⏳ Loading...
                 </td>
               </tr>
             ) : table.getRowModel().rows.length === 0 ? (

@@ -51,7 +51,7 @@ export default function ServiceCatalogPage() {
       const newStatus: ServiceItem['status'] = service.status === 'maintenance' ? 'active' : 'maintenance';
       if (
         !window.confirm(
-          `Xác nhận chuyển trạng thái dịch vụ ${service.name} sang: ${newStatus.toUpperCase()}?`,
+          `Confirm changing the status of service ${service.name} to: ${newStatus.toUpperCase()}?`,
         )
       )
         return;
@@ -76,11 +76,11 @@ export default function ServiceCatalogPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('code', {
-        header: 'Mã Dịch vụ',
+        header: 'Service code',
         cell: (info) => <span className="font-mono font-bold">{info.getValue()}</span>,
       }),
       columnHelper.accessor('name', {
-        header: 'Tên Dịch vụ / Tên đầy đủ',
+        header: 'Service name / Full name',
         cell: (info) => (
           <div>
             <b className="text-slate-900">{info.getValue()}</b>
@@ -95,7 +95,7 @@ export default function ServiceCatalogPage() {
         cell: (info) => <Badge tone="info">{info.getValue()}</Badge>,
       }),
       columnHelper.accessor('transactionType', {
-        header: 'Loại Giao dịch',
+        header: 'Transaction type',
         cell: (info) => (
           <Badge tone={info.getValue() === 'Refund' ? 'warning' : 'neutral'}>
             {info.getValue() || 'Normal Transaction'}
@@ -103,7 +103,7 @@ export default function ServiceCatalogPage() {
         ),
       }),
       columnHelper.accessor('actionPriority', {
-        header: 'Ưu tiên Action',
+        header: 'Action priority',
         cell: (info) => (
           <span className="text-xs font-semibold text-slate-700">
             {info.getValue() === 'before_gl' ? 'Before (3rd party → GL)' : 'After (GL → 3rd party)'}
@@ -111,7 +111,7 @@ export default function ServiceCatalogPage() {
         ),
       }),
       columnHelper.accessor('status', {
-        header: 'Trạng thái',
+        header: 'Status',
         cell: (info) => renderStatusBadge(info.getValue()),
       }),
       columnHelper.display({
@@ -129,7 +129,7 @@ export default function ServiceCatalogPage() {
       }),
       columnHelper.display({
         id: 'action',
-        header: 'Thao tác',
+        header: 'Actions',
         cell: (info) => (
           <button
             type="button"
@@ -140,7 +140,7 @@ export default function ServiceCatalogPage() {
               info.row.original.status === 'maintenance' ? 'text-emerald-600 hover:underline' : 'text-amber-600 hover:underline'
             }`}
           >
-            {info.row.original.status === 'maintenance' ? 'Kích hoạt lại →' : 'Tạm bảo trì ⚡'}
+            {info.row.original.status === 'maintenance' ? 'Reactivate →' : 'Put in maintenance ⚡'}
           </button>
         ),
       }),
@@ -168,12 +168,12 @@ export default function ServiceCatalogPage() {
     <div className="flex flex-col gap-4">
       {/* Topbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-bold text-slate-900">Danh mục Dịch vụ (Service Catalog &amp; Low-Code Configurator)</h2>
+        <h2 className="text-lg font-bold text-slate-900">Service catalog (Low-Code Configurator)</h2>
 
         <div className="flex items-center gap-2.5">
           <input
             type="text"
-            placeholder="🔍 Tìm mã, tên dịch vụ…"
+            placeholder="🔍 Search by code or name..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="h-9 w-60 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -184,7 +184,7 @@ export default function ServiceCatalogPage() {
             title="Not available yet: the backend has no create-service endpoint (POST /v1/admin/services)."
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
           >
-            + Thêm dịch vụ mới
+            + Add service
           </button>
         </div>
       </div>
@@ -202,25 +202,25 @@ export default function ServiceCatalogPage() {
           table={table}
           isLoading={isLoading}
           totalCount={total}
-          emptyMessage="Không tìm thấy dịch vụ nào trong Catalog"
+          emptyMessage="Nothing here yet"
         />
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-slate-500">
-            {services.length} Dịch vụ hệ thống · Hỗ trợ thiết lập Action Pipeline (GL Posting / Directional Integration / Internal Ingression) &amp; Input Validation Rules.
+            {services.length} system services · Supports setting up the Action Pipeline (GL Posting / Directional Integration / Internal Ingression) &amp; input validation rules.
           </span>
         </div>
       </div>
 
       {/* Add Modal */}
-      <Modal open={openAddModal} onClose={() => setOpenAddModal(false)} title="Thêm Dịch vụ mới vào Catalog">
+      <Modal open={openAddModal} onClose={() => setOpenAddModal(false)} title="Add a service to the catalog">
         <form onSubmit={handleCreate} className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-xs font-bold text-slate-500 mb-1 block">Mã Dịch vụ (Code)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">Service code</label>
               <input
                 type="text"
-                placeholder="Vd: P2P_TRANSFER, BILL_PAYMENT"
+                placeholder="E.g. P2P_TRANSFER, BILL_PAYMENT"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -228,10 +228,10 @@ export default function ServiceCatalogPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-500 mb-1 block">Tên Dịch vụ</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">Service name</label>
               <input
                 type="text"
-                placeholder="Vd: Chuyển tiền P2P"
+                placeholder="E.g. P2P Transfer"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -241,10 +241,10 @@ export default function ServiceCatalogPage() {
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-1 block">Tên đầy đủ (Full Name)</label>
+            <label className="text-xs font-bold text-slate-500 mb-1 block">Full name</label>
             <input
               type="text"
-              placeholder="Vd: Subscriber Transfer To Wallet (P2P)"
+              placeholder="E.g. Subscriber Transfer To Wallet (P2P)"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -253,35 +253,35 @@ export default function ServiceCatalogPage() {
 
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="text-xs font-bold text-slate-500 mb-1 block">Phân loại Category</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ServiceItem['category'])}
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
               >
-                <option value="transfer">transfer (Chuyển tiền)</option>
-                <option value="payment">payment (Thanh toán)</option>
-                <option value="wallet">wallet (Ví &amp; Nạp rút)</option>
-                <option value="org">org (Doanh nghiệp)</option>
+                <option value="transfer">transfer (Transfer)</option>
+                <option value="payment">payment (Payment)</option>
+                <option value="wallet">wallet (Wallet, top up &amp; withdraw)</option>
+                <option value="org">org (Organization)</option>
               </select>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-500 mb-1 block">Loại Giao dịch (Transaction Type)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 block">Transaction type</label>
               <select
                 value={transactionType}
                 onChange={(e) => setTransactionType(e.target.value)}
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
               >
                 <option value="Normal Transaction">Normal Transaction</option>
-                <option value="Refund">Refund (Hoàn tiền)</option>
-                <option value="Inquiry">Inquiry (Tra cứu)</option>
+                <option value="Refund">Refund</option>
+                <option value="Inquiry">Inquiry</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-slate-500 mb-1 block">Thứ tự Ưu tiên (Action Priority)</label>
+            <label className="text-xs font-bold text-slate-500 mb-1 block">Action priority</label>
             <select
               value={actionPriority}
               onChange={(e) => setActionPriority(e.target.value as ServiceItem['actionPriority'])}
@@ -298,7 +298,7 @@ export default function ServiceCatalogPage() {
               onClick={() => setOpenAddModal(false)}
               className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -306,7 +306,7 @@ export default function ServiceCatalogPage() {
               title="Not available yet: the backend has no create-service endpoint."
               className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
             >
-              Xác nhận tạo Dịch vụ
+              Confirm create service
             </button>
           </div>
         </form>
@@ -327,7 +327,7 @@ function renderStatusBadge(status: ServiceItem['status']) {
     case 'active':
       return <Badge tone="success">Active</Badge>;
     case 'maintenance':
-      return <Badge tone="warning">Bảo trì (Maintenance)</Badge>;
+      return <Badge tone="warning">Maintenance</Badge>;
     case 'disabled':
     default:
       return <Badge tone="neutral">Disabled</Badge>;

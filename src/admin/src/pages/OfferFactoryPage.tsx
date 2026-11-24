@@ -37,15 +37,15 @@ export default function OfferFactoryPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('code', {
-        header: 'Mã Offer',
+        header: 'Plan code',
         cell: (info) => <span className="font-mono font-semibold text-slate-900">{info.getValue()}</span>,
       }),
       columnHelper.accessor('name', {
-        header: 'Tên Gói Sản phẩm',
+        header: 'Plan name',
         cell: (info) => <b className="text-slate-900">{info.getValue()}</b>,
       }),
       columnHelper.accessor('role', {
-        header: 'Role Đối tượng',
+        header: 'Target role',
         cell: (info) => <Badge tone={info.getValue() === 'customer' ? 'info' : 'warning'}>{info.getValue()}</Badge>,
       }),
       columnHelper.accessor('level', {
@@ -53,11 +53,11 @@ export default function OfferFactoryPage() {
         cell: (info) => <b>L{info.getValue()}</b>,
       }),
       columnHelper.accessor('authorizedServicesCount', {
-        header: 'Dịch vụ Cấp phép',
+        header: 'Authorized services',
         cell: (info) => <b>{info.getValue()}</b>,
       }),
       columnHelper.accessor('isActive', {
-        header: 'Trạng thái',
+        header: 'Status',
         cell: (info) => (
           <Badge tone={info.getValue() ? 'success' : 'neutral'}>
             {info.getValue() ? 'Active' : 'Draft'}
@@ -65,19 +65,19 @@ export default function OfferFactoryPage() {
         ),
       }),
       columnHelper.accessor('updatedBy', {
-        header: 'Cập nhật bởi',
+        header: 'Updated by',
         cell: (info) => <span className="text-slate-700">{info.getValue()}</span>,
       }),
       columnHelper.display({
         id: 'action',
-        header: 'Thao tác',
+        header: 'Actions',
         cell: (info) => (
           <button
             type="button"
             onClick={() => navigate(`/offers/${info.row.original.id}`)}
             className="text-brand font-semibold text-xs hover:underline cursor-pointer bg-none border-none p-0"
           >
-            Cấu hình →
+            Configure →
           </button>
         ),
       }),
@@ -105,12 +105,12 @@ export default function OfferFactoryPage() {
     <div className="flex flex-col gap-4">
       {/* Topbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-bold text-slate-900">Offer Factory (Gói sản phẩm &amp; Hạn mức)</h2>
+        <h2 className="text-lg font-bold text-slate-900">Offer Factory (Plans &amp; Limits)</h2>
 
         <div className="flex items-center gap-2.5">
           <input
             type="text"
-            placeholder="🔍 Tìm gói Offer…"
+            placeholder="🔍 Search plans..."
             value={globalFilter}
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="h-9 w-60 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -120,7 +120,7 @@ export default function OfferFactoryPage() {
             onClick={() => navigate('/offers/new')}
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
           >
-            + Tạo Offer mới
+            + New plan
           </button>
         </div>
       </div>
@@ -131,12 +131,12 @@ export default function OfferFactoryPage() {
           table={table}
           isLoading={isLoading}
           totalCount={total}
-          emptyMessage="Không tìm thấy gói sản phẩm nào"
+          emptyMessage="Nothing here yet"
         />
 
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-slate-500">
-            {offers.length} Gói Offer · Cho phép quản lý phân hạng hạn mức &amp; ma trận xác thực cho Khách hàng &amp; Doanh nghiệp.
+            {offers.length} plans · Manage Limit tiers and the authentication matrix for customers and businesses.
           </span>
         </div>
       </div>
