@@ -10,10 +10,12 @@ interface PinPromptProps {
   visible: boolean;
   onSubmit: (pin: string) => void;
   onCancel: () => void;
+  /** When given, a Forgot PIN? link is shown. */
+  onForgot?: () => void;
 }
 
 /** Modal PIN entry. Collects digits only; it never compares them with anything. */
-export function PinPrompt({ visible, onSubmit, onCancel }: PinPromptProps) {
+export function PinPrompt({ visible, onSubmit, onCancel, onForgot }: PinPromptProps) {
   const [pin, setPin] = useState('');
 
   useEffect(() => {
@@ -29,6 +31,11 @@ export function PinPrompt({ visible, onSubmit, onCancel }: PinPromptProps) {
           <Text style={styles.title}>Enter PIN</Text>
           <Text style={styles.subtitle}>Enter your 6-digit PIN to confirm the Transaction</Text>
           <OTPInput value={pin} onChange={setPin} secureTextEntry />
+          {onForgot ? (
+            <Pressable accessibilityRole="link" accessibilityLabel="pin-forgot" onPress={onForgot}>
+              <Text style={styles.forgot}>Forgot PIN?</Text>
+            </Pressable>
+          ) : null}
           <View style={styles.row}>
             <Pressable
               accessibilityRole="button"
@@ -70,6 +77,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700', color: color.neutral[900], textAlign: 'center' },
   subtitle: { fontSize: 13, color: color.neutral[500], textAlign: 'center' },
+  forgot: { fontSize: 13, fontWeight: '600', color: color.brand[600], textAlign: 'center' },
   row: { flexDirection: 'row', gap: space[12] },
   btn: { flex: 1, alignItems: 'center', paddingVertical: space[12], borderRadius: radius.md },
   btnPrimary: { backgroundColor: color.brand[600] },

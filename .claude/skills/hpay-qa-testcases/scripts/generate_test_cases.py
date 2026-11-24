@@ -48,7 +48,7 @@ COL_WIDTHS = [14, 26, 16, 14, 8, 30, 40, 24, 36, 12, 11, 30, 10, 26, 20, 14, 13,
 TEST_TYPES = ["Happy Path", "Negative", "Edge Case", "Boundary", "Security/AuthZ"]
 PRIORITIES = ["P0", "P1", "P2"]
 STATUSES = ["Not Run", "Pass", "Fail", "Blocked", "N/A"]
-EXECUTORS = ["AUTO-API", "AUTO-WEB", "PARTIAL", "HUMAN"]
+EXECUTORS = ["AUTO-API", "AUTO-WEB", "AUTO-UI", "PARTIAL", "HUMAN"]
 
 HEADER_FILL = PatternFill("solid", fgColor="0B5FFF")
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
