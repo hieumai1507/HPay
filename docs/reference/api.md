@@ -132,7 +132,7 @@ Login is public; everything else requires `RequireAdmin` (admin JWT, no role che
 | GET | /v1/admin/fraud-flags | admin | | FraudFlags | Fraud flag list |
 | POST | /v1/admin/fraud-flags/:id/resolve | admin | | ResolveFraudFlag | Clear or confirm fraud |
 | POST | /v1/admin/reversals | admin | | CreateReversal | Request reversal (creates approval) |
-| GET | /v1/admin/approvals | admin | | AdminApprovals | Reversal approval tasks |
+| GET | /v1/admin/approvals | admin | | AdminApprovals | Reversal approval tasks; `status=pending` (default) or `status=needs_manual` (parked, G12; rows add `parked_at`, `reason` = why it was parked) |
 | POST | /v1/admin/approvals/:id/decide | admin | | AdminDecide | Finalize reversal approval |
 | POST | /v1/admin/recon/run | admin | | ReconRun | Run reconciliation for a date |
 | GET | /v1/admin/recon/runs/:date | admin | | ReconGet | Run result and signed report link |
@@ -141,7 +141,8 @@ Login is public; everything else requires `RequireAdmin` (admin JWT, no role che
 | PUT | /v1/admin/services/:id | admin | | UpdateServiceStatus | Change service status |
 | GET | /v1/admin/offers | admin | | ListOffers | Offers |
 | GET | /v1/admin/offers/:id | admin | | GetOffer | Offer with services |
-| GET | /v1/admin/workflows | admin | | ListWorkflows | Workflow instances |
+| GET | /v1/admin/attention/summary | admin | workflow.action | AttentionSummary | Counts `{needs_manual_approvals, compensation_failed_workflows, total}` for the alert badge (G12) |
+| GET | /v1/admin/workflows | admin | | ListWorkflows | Workflow instances; `status=compensation_failed` lists parked compensations (G12) |
 | GET | /v1/admin/workflows/:id | admin | | GetWorkflow | Instance with steps |
 | GET | /v1/admin/audit | admin | | ListAuditLogs | Audit log search |
 | GET | /v1/admin/orgs | admin | | ListOrgs | All organizations |

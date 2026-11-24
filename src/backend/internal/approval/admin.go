@@ -39,6 +39,23 @@ func (s *Service) AdminInbox(ctx context.Context, f listing.Filter) ([]store.Lis
 	return rows, total, nil
 }
 
+// AdminNeedsManual lists admin requests parked as needs_manual (ADR-0013), oldest first.
+// Read-only: resolving them is a separate, audited human step.
+func (s *Service) AdminNeedsManual(ctx context.Context, f listing.Filter) ([]store.ListNeedsManualAdminApprovalsRow, int64, error) {
+	f = f.Normalize()
+	rows, err := s.q.ListNeedsManualAdminApprovals(ctx, store.ListNeedsManualAdminApprovalsParams{
+		RefCode: f.Text(), Lim: f.Limit, Off: f.Offset,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.q.CountNeedsManualAdminApprovals(ctx, f.Text())
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
 // AdminDecide is the admin counterpart of Decide: no OTP (the admin is already
 // authenticated with an aud=admin token; otp_challenges is user-scoped), but
 // the same row-lock serialization, snapshot evaluation and in-tx executor.

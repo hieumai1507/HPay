@@ -39,7 +39,8 @@ var adminRoutes = []route{
 	{"POST", "/v1/admin/approvals/" + zeroID + "/decide", []string{"risk_officer", "ops", "superadmin"}},
 	{"POST", "/v1/admin/recon/run", []string{"ops", "superadmin"}},
 	{"GET", "/v1/admin/recon/runs/2026-01-01", []string{"ops", "superadmin"}},
-	{"GET", "/v1/admin/workflows", []string{"risk_officer", "ops", "superadmin"}},
+	{"GET", "/v1/admin/attention/summary", []string{"risk_officer", "ops", "superadmin"}}, // G12
+	{"GET", "/v1/admin/workflows",[]string{"risk_officer", "ops", "superadmin"}},
 	{"GET", "/v1/admin/workflows/" + zeroID, []string{"risk_officer", "ops", "superadmin"}},
 	{"GET", "/v1/admin/orgs", []string{"risk_officer", "ops", "superadmin"}},
 	{"PUT", "/v1/admin/orgs/" + zeroID + "/policies", []string{"superadmin"}},

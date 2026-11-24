@@ -179,3 +179,34 @@ ORDER BY r.created_at;
 UPDATE approval_requests SET status = 'needs_manual', finalized_at = now()
 WHERE id = $1 AND status = 'pending'
 RETURNING id;
+
+-- name: ListNeedsManualAdminApprovals :many
+-- G12: admin requests parked by ADR-0013 (the approved effect could not be applied).
+-- parked_at is finalized_at (set by MarkApprovalNeedsManual); park_reason is the
+-- audit reason written in the same transaction (resource ends with the request id).
+SELECT r.id, r.subject_type, r.subject_id, r.current_level,
+       r.created_by, r.expires_at, r.created_at,
+       COALESCE(r.finalized_at, r.created_at)::timestamptz AS parked_at,
+       COALESCE(t.ref_code, '') AS ref_code,
+       COALESCE(t.amount, 0)::bigint AS amount,
+       COALESCE(t.fee, 0)::bigint AS fee,
+       COALESCE((
+         SELECT a.reason FROM audit_logs a
+         WHERE a.resource LIKE '%(approval_request ' || r.id::text || ')'
+         ORDER BY a.id DESC LIMIT 1
+       ), COALESCE(r.reason, ''))::text AS reason
+FROM approval_requests r
+LEFT JOIN transactions t ON t.id = r.subject_id AND r.subject_type = 'reversal'
+WHERE r.status = 'needs_manual'
+  AND r.subject_type <> 'org_transaction'
+  AND (sqlc.narg('ref_code')::text IS NULL OR t.ref_code ILIKE '%' || sqlc.narg('ref_code')::text || '%')
+ORDER BY COALESCE(r.finalized_at, r.created_at)
+LIMIT sqlc.arg('lim')::int OFFSET sqlc.arg('off')::int;
+
+-- name: CountNeedsManualAdminApprovals :one
+SELECT COUNT(*)::bigint
+FROM approval_requests r
+LEFT JOIN transactions t ON t.id = r.subject_id AND r.subject_type = 'reversal'
+WHERE r.status = 'needs_manual'
+  AND r.subject_type <> 'org_transaction'
+  AND (sqlc.narg('ref_code')::text IS NULL OR t.ref_code ILIKE '%' || sqlc.narg('ref_code')::text || '%');

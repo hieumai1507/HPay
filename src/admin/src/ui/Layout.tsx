@@ -10,6 +10,7 @@ const TITLES: Record<string, string> = {
   '/fraud': 'Fraud Monitor',
   '/workflows': 'Workflow Monitor',
   '/tasks': 'My Tasks',
+  '/attention': 'Needs attention',
   '/recon': 'Đối soát',
   '/orgs': 'Tổ chức & Policy',
   '/ai-settings': 'AI Settings',

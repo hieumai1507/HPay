@@ -20,7 +20,7 @@ export interface WorkflowInstance {
   amount?: number;
   currentStep: string;
   age: string;
-  status: 'running' | 'waiting' | 'failed' | 'completed' | 'compensated';
+  status: 'running' | 'waiting' | 'failed' | 'completed' | 'compensated' | 'compensation_failed';
   isStuck?: boolean;
   createdAt: string;
   steps?: WorkflowStep[];

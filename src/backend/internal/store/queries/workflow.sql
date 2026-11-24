@@ -127,3 +127,12 @@ WHERE w.id IN (
     FOR UPDATE SKIP LOCKED
 )
 RETURNING w.id, w.definition_id, w.current_step;
+
+-- name: CountAttentionItems :one
+-- G12: cheap counts for the admin alert badge. Both statuses are parked money cases
+-- that only a person can resolve (ADR-0013, ADR-0009).
+SELECT
+  (SELECT COUNT(*) FROM approval_requests
+    WHERE status = 'needs_manual' AND subject_type <> 'org_transaction')::bigint AS needs_manual_approvals,
+  (SELECT COUNT(*) FROM workflow_instances
+    WHERE status = 'compensation_failed')::bigint AS compensation_failed_workflows;
