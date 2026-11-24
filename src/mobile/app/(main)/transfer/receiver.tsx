@@ -14,7 +14,7 @@ export default function TransferReceiverScreen() {
   const [phone, setPhone] = useState('');
   const [maskedName, setMaskedName] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const lookup = useLookupReceiver();
+  const { mutate: lookupReceiver, isPending: lookupPending } = useLookupReceiver();
   const recents = useRecentContacts((s) => s.contacts);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -24,7 +24,7 @@ export default function TransferReceiverScreen() {
     if (debounce.current) clearTimeout(debounce.current);
     if (!PHONE_RE.test(phone)) return;
     debounce.current = setTimeout(() => {
-      lookup.mutate(phone, {
+      lookupReceiver(phone, {
         onSuccess: (res) => setMaskedName(res.masked_name),
         onError: (err) => {
           if (isApiError(err) && err.code === 'ERR_USER_NOT_FOUND') {
@@ -38,7 +38,7 @@ export default function TransferReceiverScreen() {
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
     };
-  }, [phone]);
+  }, [phone, lookupReceiver]);
 
   const proceed = (p: string, name: string) =>
     router.push({
@@ -69,7 +69,7 @@ export default function TransferReceiverScreen() {
           accessibilityLabel="Số điện thoại người nhận"
         />
 
-        {lookup.isPending && <Text className="text-xs text-slate-400">Đang tìm…</Text>}
+        {lookupPending && <Text className="text-xs text-slate-400">Đang tìm…</Text>}
         {maskedName && (
           <View className="bg-cyan-50 dark:bg-slate-800 rounded-xl p-3 gap-0.5 border border-cyan-100 dark:border-slate-700">
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{maskedName}</Text>

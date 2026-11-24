@@ -42,7 +42,7 @@ export default function KYCPage() {
     limit: queryParams.limit,
     name: search || undefined,
   });
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data]);
   const total = data?.total ?? 0;
 
   const openDetail = useCallback(

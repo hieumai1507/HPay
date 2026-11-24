@@ -21,7 +21,7 @@ export default function OfferFactoryPage() {
     limit: queryParams.limit,
     name: globalFilter || undefined,
   });
-  const offers = data?.rows ?? [];
+  const offers = useMemo(() => data?.rows ?? [], [data]);
   const total = data?.total ?? 0;
 
   const filtered = useMemo(() => {

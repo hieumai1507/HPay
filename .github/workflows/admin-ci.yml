@@ -9,6 +9,23 @@ on:
     paths: ['src/admin/**', 'src/backend/**', '.github/workflows/admin-ci.yml']
 
 jobs:
+  lint-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: src/admin/package-lock.json
+      - name: lint, typecheck, unit tests
+        working-directory: src/admin
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+
   # Full-stack Playwright E2E suite (e2e/), per
   # docs/plans/admin/e2e-playwright-suite/implementation-plan.html §7.
   #

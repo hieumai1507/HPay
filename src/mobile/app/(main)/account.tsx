@@ -17,7 +17,6 @@ import { formatAmountVND } from '@/src/lib/money';
 import { useSecurityStore } from '@/src/stores/security';
 import { clearStoredRefreshToken, useSessionStore } from '@/src/stores/session';
 import { useOrgStore, type OrgItem } from '@/src/stores/org';
-import { color } from '@/src/ui/tokens';
 
 const orgKeys = { list: ['orgs', 'list'] as const };
 

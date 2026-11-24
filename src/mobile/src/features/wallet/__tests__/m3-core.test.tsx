@@ -5,7 +5,6 @@ import { getErrorMessage } from '@/src/lib/errors';
 import { pollUntilSettled } from '@/src/lib/polling';
 import { useSettingsStore } from '@/src/stores/settings';
 import { AmountInput, BalanceCard, Button, FilterChips, TxnListItem } from '@/src/ui';
-import { color } from '@/src/ui/tokens';
 
 import {
   getNextTransactionsPageParam,

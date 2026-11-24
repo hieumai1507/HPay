@@ -31,7 +31,7 @@ export default function FraudPage() {
     limit: queryParams.limit,
     order: queryParams.order as 'asc' | 'desc',
   });
-  const flags = data?.rows ?? [];
+  const flags = useMemo(() => data?.rows ?? [], [data]);
   const total = data?.total ?? 0;
   const resolveMutation = useResolveFraudFlag();
   // UX only: the backend does not enforce admin roles yet (audit BE-H6).
