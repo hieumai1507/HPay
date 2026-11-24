@@ -17,7 +17,7 @@ describe('polling backoff (M02/M03 groundwork)', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('never reports "failed" on timeout — reports "timeout" so the UI shows "đang xử lý"', async () => {
+  it('never reports "failed" on timeout — reports "timeout" so the UI shows "Processing"', async () => {
     jest.useFakeTimers();
     const fetcher = jest.fn().mockResolvedValue({ status: 'pending' });
 

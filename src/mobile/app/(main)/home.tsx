@@ -40,11 +40,11 @@ function usePendingApprovalCount() {
 }
 
 const PERSONAL_ACTIONS = [
-  { icon: 'wallet-outline' as const,  label: 'Nạp tiền',   route: '/(main)/topup/amount' },
-  { icon: 'send-outline' as const,    label: 'Chuyển tiền', route: '/(main)/transfer/receiver' },
+  { icon: 'wallet-outline' as const,  label: 'Top up',   route: '/(main)/topup/amount' },
+  { icon: 'send-outline' as const,    label: 'Transfer', route: '/(main)/transfer/receiver' },
   { icon: 'qr-code-outline' as const, label: 'QR',          route: '/(main)/qr' },
-  { icon: 'receipt-outline' as const, label: 'Yêu cầu',    route: '/(main)/requests' },
-  { icon: 'flower-outline' as const,  label: 'Hũ',          route: '/(main)/vaults' },
+  { icon: 'receipt-outline' as const, label: 'Request',    route: '/(main)/requests' },
+  { icon: 'flower-outline' as const,  label: 'Vaults',          route: '/(main)/vaults' },
 ];
 
 function QuickActionButton({
@@ -100,11 +100,11 @@ function BusinessBanner({ orgName, role }: { orgName: string; role: string }) {
     <View className="flex-row items-center justify-between bg-white dark:bg-slate-800 rounded-xl p-4 border-l-4 border-brand border border-slate-200 dark:border-slate-700 shadow-xs">
       <View className="flex-1">
         <Text className="text-base font-bold text-slate-900 dark:text-white">{orgName}</Text>
-        <Text className="text-xs text-slate-500 mt-0.5">Vai trò: {role}</Text>
+        <Text className="text-xs text-slate-500 mt-0.5">Role: {role}</Text>
       </View>
       <Pressable onPress={exitOrg} className="flex-row items-center gap-1 bg-cyan-50 px-2.5 py-1.5 rounded-full">
         <Ionicons name="person-outline" size={14} color={color.brand[600]} />
-        <Text className="text-xs font-semibold text-brand">Ví cá nhân</Text>
+        <Text className="text-xs font-semibold text-brand">Personal Wallet</Text>
       </Pressable>
     </View>
   );
@@ -155,7 +155,7 @@ export default function HomeScreen() {
         ) : (
           <View className="flex-row justify-between items-center">
             <View>
-              <Text className="text-xs text-slate-500">Xin chào 👋</Text>
+              <Text className="text-xs text-slate-500">Hello 👋</Text>
               <Text className="text-2xl font-bold text-slate-900 dark:text-white">{user?.full_name ?? ''}</Text>
             </View>
           </View>
@@ -180,9 +180,9 @@ export default function HomeScreen() {
         </View>
 
         <View className="flex-row justify-between items-center">
-          <Text className="text-lg font-bold text-slate-900 dark:text-white">Giao dịch gần đây</Text>
+          <Text className="text-lg font-bold text-slate-900 dark:text-white">Recent transactions</Text>
           <Pressable onPress={() => router.push('/(main)/history')} accessibilityRole="button">
-            <Text className="text-xs font-semibold text-brand">Xem tất cả</Text>
+            <Text className="text-xs font-semibold text-brand">See all</Text>
           </Pressable>
         </View>
 
@@ -191,7 +191,7 @@ export default function HomeScreen() {
         ) : txnsQ.isError ? (
           <ErrorState message={describeError(txnsQ.error)} onRetry={() => txnsQ.refetch()} />
         ) : recent.length === 0 ? (
-          <Text className="text-center text-slate-500 py-6">Chưa có giao dịch nào. Nạp tiền để bắt đầu!</Text>
+          <Text className="text-center text-slate-500 py-6">Nothing here yet. Top up to get started.</Text>
         ) : (
           <View className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-xs">
             {recent.map((t, i) => (
@@ -219,23 +219,23 @@ function roleLabel(role: string, checkerLevel: number): string {
 
 function buildBizActions(role: string, pendingCount: number) {
   const base = { badge: undefined as number | undefined };
-  const history = { ...base, icon: 'time-outline' as const, label: 'Lịch sử', route: '/(main)/history' };
+  const history = { ...base, icon: 'time-outline' as const, label: 'History', route: '/(main)/history' };
 
   if (role === 'maker') {
     return [
-      { ...base, icon: 'send-outline' as const, label: 'Tạo lệnh chi', route: '/(main)/org/disburse' },
+      { ...base, icon: 'send-outline' as const, label: 'Create disbursement', route: '/(main)/org/disburse' },
       history,
     ];
   }
   if (role === 'checker') {
     return [
-      { ...base, icon: 'checkmark-circle-outline' as const, label: `Duyệt (${pendingCount})`, route: '/(main)/org/approvals', badge: pendingCount || undefined },
+      { ...base, icon: 'checkmark-circle-outline' as const, label: `Approve (${pendingCount})`, route: '/(main)/org/approvals', badge: pendingCount || undefined },
       history,
     ];
   }
   return [
-    { ...base, icon: 'wallet-outline' as const, label: 'Nạp tiền', route: '/(main)/org/topup' },
-    { ...base, icon: 'settings-outline' as const, label: 'Quản trị', route: '/(main)/org/admin' },
+    { ...base, icon: 'wallet-outline' as const, label: 'Top up', route: '/(main)/org/topup' },
+    { ...base, icon: 'settings-outline' as const, label: 'Admin', route: '/(main)/org/admin' },
     history,
   ];
 }

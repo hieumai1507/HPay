@@ -19,11 +19,11 @@ import { formatAmountVND } from '@/src/lib/money';
 import { describeError, isApiError } from '@/src/lib/errors';
 
 const STATUS_LABEL: Record<string, { text: string; className: string }> = {
-  pending: { text: 'Chờ duyệt', className: 'bg-amber-50 color-amber-700' },
-  approved: { text: 'Đã duyệt', className: 'bg-emerald-50 color-emerald-700' },
-  rejected: { text: 'Đã từ chối', className: 'bg-rose-50 color-rose-700' },
-  expired: { text: 'Đã hết hạn', className: 'bg-slate-100 color-slate-500' },
-  cancelled: { text: 'Đã hủy', className: 'bg-slate-100 color-slate-500' },
+  pending: { text: 'Pending', className: 'bg-amber-50 color-amber-700' },
+  approved: { text: 'Approved', className: 'bg-emerald-50 color-emerald-700' },
+  rejected: { text: 'Rejected', className: 'bg-rose-50 color-rose-700' },
+  expired: { text: 'Expired', className: 'bg-slate-100 color-slate-500' },
+  cancelled: { text: 'Cancelled', className: 'bg-slate-100 color-slate-500' },
 };
 
 // Mockup 03-business.html frame 22 (success) / frame 23 (conflict) — a
@@ -42,18 +42,18 @@ function DecideResultView({ outcome, inboxCount }: { outcome: DecideOutcome; inb
           <Text className="text-4xl">🤝</Text>
         </View>
         <View className="items-center gap-1.5">
-          <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">Lệnh này vừa được xử lý xong</Text>
+          <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">This order was just processed</Text>
           <Text className="text-sm text-slate-500 text-center leading-relaxed">{outcome.message}</Text>
         </View>
         <View className="px-3 py-1 rounded-full bg-emerald-50">
-          <Text className="text-xs font-bold color-emerald-700">Đã xử lý xong · đang thực hiện</Text>
+          <Text className="text-xs font-bold color-emerald-700">Processed · in progress</Text>
         </View>
         <Pressable
           onPress={() => router.back()}
           className="w-full h-13 mt-3 border border-slate-200 dark:border-slate-700 rounded-xl items-center justify-center active:bg-slate-50"
         >
           <Text className="text-sm font-bold text-slate-700 dark:text-slate-200">
-            Về hàng chờ{inboxCount > 0 ? ` (còn ${inboxCount} lệnh)` : ''}
+            Back to queue{inboxCount > 0 ? ` (${inboxCount} left)` : ''}
           </Text>
         </Pressable>
       </View>
@@ -66,10 +66,10 @@ function DecideResultView({ outcome, inboxCount }: { outcome: DecideOutcome; inb
         <View className="w-14 h-14 rounded-full bg-rose-600 items-center justify-center">
           <Ionicons name="close" size={26} color="#fff" />
         </View>
-        <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">Đã từ chối lệnh</Text>
-        <Text className="text-sm text-slate-500 text-center">Lệnh đã bị từ chối và sẽ không được thực hiện.</Text>
+        <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">Order rejected</Text>
+        <Text className="text-sm text-slate-500 text-center">This order was rejected and will not be carried out.</Text>
         <Pressable onPress={() => router.back()} className="w-full h-13 mt-2 bg-brand rounded-xl items-center justify-center">
-          <Text className="text-base font-bold text-white">Về hàng chờ</Text>
+          <Text className="text-base font-bold text-white">Back to queue</Text>
         </Pressable>
       </View>
     );
@@ -82,20 +82,20 @@ function DecideResultView({ outcome, inboxCount }: { outcome: DecideOutcome; inb
         <Ionicons name="checkmark" size={26} color="#fff" />
       </View>
       <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">
-        {isLastSignature ? 'Đã duyệt — lệnh đang thực hiện' : 'Đã ghi nhận chữ ký'}
+        {isLastSignature ? 'Approved — order in progress' : 'Signature recorded'}
       </Text>
       <Text className="text-sm text-slate-500 text-center leading-relaxed">
         {isLastSignature
-          ? `Bạn là chữ ký cuối. Hệ thống đang chuyển ${formatAmountVND(BigInt(outcome.amount))}, maker và bạn sẽ nhận thông báo khi hoàn tất.`
-          : `Còn chờ ${outcome.remaining} người duyệt nữa.`}
+          ? `You are the final signature. We are transferring ${formatAmountVND(BigInt(outcome.amount))}; you and the maker will be notified when it completes.`
+          : `Waiting for ${outcome.remaining} more approver(s).`}
       </Text>
       <View className={`px-3 py-1 rounded-full ${isLastSignature ? 'bg-cyan-50' : 'bg-amber-50'}`}>
         <Text className={`text-xs font-bold ${isLastSignature ? 'color-cyan-700' : 'color-amber-700'}`}>
-          {isLastSignature ? 'Đang xử lý' : 'Chờ duyệt'}
+          {isLastSignature ? 'Processing' : 'Pending'}
         </Text>
       </View>
       <Pressable onPress={() => router.back()} className="w-full h-13 mt-2 bg-brand rounded-xl items-center justify-center">
-        <Text className="text-base font-bold text-white">Về hàng chờ</Text>
+        <Text className="text-base font-bold text-white">Back to queue</Text>
       </Pressable>
     </View>
   );
@@ -117,7 +117,7 @@ function SignatureRow({ sig }: { sig: ApprovalSignature }) {
             {sig.checker_name} <Text className="font-normal text-slate-400">· L{sig.level}</Text>
           </Text>
           <Text className="text-xs text-slate-500">
-            {sig.action === 'approve' ? 'Đã duyệt' : 'Đã từ chối'} lúc {new Date(sig.acted_at).toLocaleString('vi-VN')}
+            {sig.action === 'approve' ? 'Approved' : 'Rejected'} at {new Date(sig.acted_at).toLocaleString('en-GB')}
           </Text>
         </View>
       </View>
@@ -141,9 +141,9 @@ function OtpModal({
   return (
     <View className="absolute inset-0 bg-black/50 justify-end z-50">
       <View className="bg-white dark:bg-slate-800 rounded-t-3xl p-7 pb-10 gap-4">
-        <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">Nhập OTP để ký duyệt</Text>
+        <Text className="text-lg font-extrabold text-slate-900 dark:text-white text-center">Enter OTP code to sign</Text>
         <Text className="text-xs text-slate-500 text-center leading-relaxed">
-          Mã đã gửi tới số điện thoại của bạn. Chữ ký này có giá trị pháp lý trong tổ chức.
+          We sent a code to your phone number. This signature is legally binding within the organization.
         </Text>
         <View className="flex-row justify-center gap-2.5 my-2">
           {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -169,12 +169,12 @@ function OtpModal({
             <ActivityIndicator color="#fff" />
           ) : (
             <Text className="text-base font-bold text-white">
-              {action === 'approve' ? 'Xác nhận duyệt' : 'Xác nhận từ chối'}
+              {action === 'approve' ? 'Confirm approval' : 'Confirm rejection'}
             </Text>
           )}
         </Pressable>
         <Pressable onPress={onCancel} className="items-center py-2">
-          <Text className="text-sm text-slate-500">Huỷ</Text>
+          <Text className="text-sm text-slate-500">Cancel</Text>
         </Pressable>
       </View>
     </View>
@@ -204,10 +204,10 @@ export default function ApprovalDetailScreen() {
       setPendingAction(action);
       setOtpVisible(true);
       if (challengeRes.otp_dev) {
-        Alert.alert('DEV OTP', `Mã OTP (chỉ hiển thị trong môi trường dev): ${challengeRes.otp_dev}`);
+        Alert.alert('DEV OTP', `OTP code (shown in dev environment only): ${challengeRes.otp_dev}`);
       }
     } catch (e: unknown) {
-      Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+      Alert.alert('Error', (e instanceof Error ? e.message : String(e)));
     } finally {
       setSubmitting(false);
     }
@@ -240,7 +240,7 @@ export default function ApprovalDetailScreen() {
         setOutcome({ kind: 'conflict', message: describeError(e) });
         return;
       }
-      Alert.alert('Lỗi', describeError(e));
+      Alert.alert('Error', describeError(e));
     } finally {
       setSubmitting(false);
     }
@@ -253,7 +253,7 @@ export default function ApprovalDetailScreen() {
           <Ionicons name="arrow-back" size={22} color="#0f172a" />
         </Pressable>
         <Text className="text-base font-bold text-slate-900 dark:text-white flex-1 text-center mx-2" numberOfLines={1}>
-          Duyệt lệnh{data ? ` #${data.ref_code}` : ''}
+          Approve order{data ? ` #${data.ref_code}` : ''}
         </Text>
         <View className="w-5" />
       </View>
@@ -264,7 +264,7 @@ export default function ApprovalDetailScreen() {
         <View className="flex-1 items-center justify-center"><ActivityIndicator size="large" color="#0E90A3" /></View>
       ) : isError || !data ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-sm color-rose-600 font-semibold">Không thể tải thông tin lệnh.</Text>
+          <Text className="text-sm color-rose-600 font-semibold">Could not load order details.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
@@ -274,35 +274,35 @@ export default function ApprovalDetailScreen() {
             <View className={`px-3 py-1 rounded-full ${STATUS_LABEL[data.status]?.className ?? 'bg-slate-100'}`}>
               <Text className={`text-xs font-bold ${STATUS_LABEL[data.status]?.className ?? ''}`}>
                 {STATUS_LABEL[data.status]?.text ?? data.status}
-                {data.status === 'pending' ? ` · ${data.signatures.length}/${data.signatures_required} chữ ký` : ''}
+                {data.status === 'pending' ? ` · ${data.signatures.length}/${data.signatures_required} signatures` : ''}
               </Text>
             </View>
           </View>
 
           <View className="bg-white dark:bg-slate-800 rounded-xl px-4 border border-slate-100 dark:border-slate-700 shadow-xs">
             <View className="flex-row justify-between items-center py-3.5">
-              <Text className="text-xs font-semibold text-slate-500">Người tạo</Text>
+              <Text className="text-xs font-semibold text-slate-500">Created by</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">{data.maker_name} (Maker)</Text>
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
-              <Text className="text-xs font-semibold text-slate-500">Phí</Text>
+              <Text className="text-xs font-semibold text-slate-500">Fee</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.fee))}</Text>
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
-              <Text className="text-xs font-semibold text-slate-500">Cấp phê duyệt hiện tại</Text>
+              <Text className="text-xs font-semibold text-slate-500">Current approval level</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">Level {data.current_level}</Text>
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
-              <Text className="text-xs font-semibold text-slate-500">Hết hạn</Text>
+              <Text className="text-xs font-semibold text-slate-500">Expires</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">
-                {new Date(data.expires_at).toLocaleString('vi-VN')}
+                {new Date(data.expires_at).toLocaleString('en-GB')}
               </Text>
             </View>
           </View>
 
           {data.signatures.length > 0 && (
             <View className="bg-white dark:bg-slate-800 rounded-xl px-4 border border-slate-100 dark:border-slate-700 shadow-xs">
-              <Text className="text-xs font-bold text-slate-500 pt-3.5 tracking-wide">CHỮ KÝ</Text>
+              <Text className="text-xs font-bold text-slate-500 pt-3.5 tracking-wide">SIGNATURES</Text>
               {data.signatures.map((sig, i) => (
                 <SignatureRow key={`${sig.checker_id}-${i}`} sig={sig} />
               ))}
@@ -319,7 +319,7 @@ export default function ApprovalDetailScreen() {
                 {submitting ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-base font-bold text-white">Duyệt lệnh · nhận OTP</Text>
+                  <Text className="text-base font-bold text-white">Approve order · get OTP code</Text>
                 )}
               </Pressable>
               <Pressable
@@ -327,7 +327,7 @@ export default function ApprovalDetailScreen() {
                 disabled={submitting}
                 className={`h-13 border-1.5 border-rose-100 dark:border-slate-700 rounded-xl items-center justify-center active:bg-rose-50 ${submitting ? 'opacity-70' : ''}`}
               >
-                <Text className="text-sm font-bold color-rose-600">Từ chối (nêu lý do)</Text>
+                <Text className="text-sm font-bold color-rose-600">Reject (give a reason)</Text>
               </Pressable>
             </>
           )}

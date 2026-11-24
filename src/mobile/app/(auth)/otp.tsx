@@ -56,7 +56,7 @@ export default function OTPScreen() {
   const handleResend = () => {
     setCountdown(120);
     setOtp('');
-    Alert.alert('Thông báo', 'Mã xác thực mới đã được gửi.');
+    Alert.alert('Notice', 'A new verification code has been sent.');
   };
 
   const handleVerify = async () => {
@@ -89,14 +89,14 @@ export default function OTPScreen() {
             router.replace('/(main)/home');
           }
         } else {
-          Alert.alert('Lỗi', 'Không nhận được mã xác thực hoặc mã phiên hoạt động từ server.');
+          Alert.alert('Error', 'Could not get a verification code or session from the server.');
         }
       } else {
-        Alert.alert('Thành công', 'Mã OTP chính xác.');
+        Alert.alert('Success', 'OTP code verified.');
         router.back();
       }
     } catch (err: any) {
-      Alert.alert('Đăng ký thất bại', describeError(err));
+      Alert.alert('Sign up failed', describeError(err));
     } finally {
       setLoading(false);
     }
@@ -110,9 +110,9 @@ export default function OTPScreen() {
         </Pressable>
 
         <View className="mb-8">
-          <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Nhập mã xác thực</Text>
+          <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Enter verification code</Text>
           <Text className="text-sm text-slate-500">
-            Mã 6 số đã gửi tới <Text className="font-semibold text-slate-900 dark:text-white">{maskPhoneNumber(phone)}</Text>
+            We sent a 6-digit code to <Text className="font-semibold text-slate-900 dark:text-white">{maskPhoneNumber(phone)}</Text>
           </Text>
         </View>
 
@@ -123,11 +123,11 @@ export default function OTPScreen() {
         <View className="items-center my-3">
           {countdown > 0 ? (
             <Text className="text-xs text-slate-500">
-              Gửi lại mã sau <Text className="font-bold text-slate-900 dark:text-white">{formatTime(countdown)}</Text>
+              Resend code in <Text className="font-bold text-slate-900 dark:text-white">{formatTime(countdown)}</Text>
             </Text>
           ) : (
             <Pressable onPress={handleResend} className="py-1.5 px-3">
-              <Text className="text-sm font-semibold text-brand">Gửi lại mã xác thực</Text>
+              <Text className="text-sm font-semibold text-brand">Resend verification code</Text>
             </Pressable>
           )}
         </View>
@@ -135,14 +135,14 @@ export default function OTPScreen() {
         <View className="flex-row bg-cyan-50 dark:bg-slate-800 rounded-xl p-4 items-center gap-3 my-5 border border-cyan-100 dark:border-slate-700">
           <Text className="text-xl">🛡️</Text>
           <Text className="flex-1 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-            HPay không bao giờ gọi điện hỏi mã OTP. Tuyệt đối không chia sẻ mã với bất kỳ ai.
+            HPay will never call to ask for your OTP code. Never share your code with anyone.
           </Text>
         </View>
       </View>
 
       <View className="mt-auto">
         <Button
-          label="Xác nhận"
+          label="Confirm"
           disabled={otp.length < 6}
           loading={loading}
           onPress={handleVerify}

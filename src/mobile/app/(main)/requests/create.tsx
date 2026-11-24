@@ -31,10 +31,10 @@ export default function CreateRequestScreen() {
 
     const phoneClean = phone.trim();
     if (!phoneClean) {
-      setPhoneError('Vui lòng nhập số điện thoại');
+      setPhoneError('Enter a phone number');
       hasErr = true;
     } else if (!/^0\d{9}$/.test(phoneClean)) {
-      setPhoneError('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)');
+      setPhoneError('Invalid phone number (10 digits, starting with 0)');
       hasErr = true;
     } else {
       setPhoneError('');
@@ -42,7 +42,7 @@ export default function CreateRequestScreen() {
 
     const amountVal = parseAmountToBigInt(amountStr);
     if (!amountVal || amountVal <= 0n) {
-      setAmountError('Vui lòng nhập số tiền hợp lệ');
+      setAmountError('Enter a valid amount');
       hasErr = true;
     } else {
       setAmountError('');
@@ -59,12 +59,12 @@ export default function CreateRequestScreen() {
       });
 
       Alert.alert(
-        'Thành công',
-        `Đã gửi yêu cầu thanh toán ${formatAmountVND(amountVal!)} tới ${phoneClean}`,
+        'Success',
+        `Money request for ${formatAmountVND(amountVal!)} sent to ${phoneClean}`,
         [{ text: 'OK', onPress: () => router.replace('/(main)/requests') }]
       );
     } catch (err: any) {
-      Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra khi gửi yêu cầu.');
+      Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
     }
   };
 
@@ -74,7 +74,7 @@ export default function CreateRequestScreen() {
         <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="close" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Yêu cầu xin tiền</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Request money</Text>
         <View className="w-8" />
       </View>
 
@@ -85,11 +85,11 @@ export default function CreateRequestScreen() {
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 gap-4 shadow-xs">
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Người nhận yêu cầu (Payer)</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Recipient</Text>
               <View className={`flex-row items-center bg-slate-50 dark:bg-slate-900 border ${phoneError ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl h-12 px-3`}>
                 <Ionicons name="call-outline" size={20} color="#94a3b8" className="mr-2" />
                 <TextInput
-                  placeholder="Nhập số điện thoại"
+                  placeholder="Enter phone number"
                   placeholderTextColor="#94a3b8"
                   keyboardType="phone-pad"
                   maxLength={10}
@@ -105,9 +105,9 @@ export default function CreateRequestScreen() {
             </View>
 
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Số tiền yêu cầu (VND)</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Amount (VND)</Text>
               <View className={`flex-row items-center bg-slate-50 dark:bg-slate-900 border ${amountError ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl h-12 px-3`}>
-                <Text className="text-lg font-bold text-slate-400 mr-2">đ</Text>
+                <Text className="text-lg font-bold text-slate-400 mr-2">₫</Text>
                 <TextInput
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
@@ -121,11 +121,11 @@ export default function CreateRequestScreen() {
             </View>
 
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Nội dung lời nhắn</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Note</Text>
               <View className="flex-row items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-3">
                 <Ionicons name="chatbubble-ellipses-outline" size={20} color="#94a3b8" className="mr-2" />
                 <TextInput
-                  placeholder="Ví dụ: Tiền ăn trưa hôm nay..."
+                  placeholder="e.g. Lunch today..."
                   placeholderTextColor="#94a3b8"
                   maxLength={255}
                   value={note}
@@ -146,7 +146,7 @@ export default function CreateRequestScreen() {
             {createMutation.isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text className="text-white text-base font-bold">Gửi yêu cầu</Text>
+              <Text className="text-white text-base font-bold">Send request</Text>
             )}
           </Pressable>
         </View>

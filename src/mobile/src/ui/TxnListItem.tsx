@@ -7,10 +7,10 @@ import { StatusBadge, type Status } from './StatusBadge';
 import { color } from './tokens';
 
 const TYPE_LABEL: Record<string, string> = {
-  topup: 'Nạp tiền',
-  p2p: 'Chuyển tiền',
-  org_disbursement: 'Chi doanh nghiệp',
-  reversal: 'Hoàn tiền',
+  topup: 'Top up',
+  p2p: 'Transfer',
+  org_disbursement: 'Business disbursement',
+  reversal: 'Refund',
 };
 
 export interface TxnListItemProps {
@@ -50,7 +50,7 @@ export function TxnListItem({ txn, onPress }: TxnListItemProps) {
       className="flex-row items-center gap-3 py-3 px-4 active:bg-slate-100 dark:active:bg-slate-800"
       onPress={() => onPress?.(txn.ref_code)}
       accessibilityRole="button"
-      accessibilityLabel={`Giao dịch ${title}`}
+      accessibilityLabel={`Transaction ${title}`}
     >
       <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: iconBg }}>
         <Ionicons name={iconName} size={18} color={iconColor} />

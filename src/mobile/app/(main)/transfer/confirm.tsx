@@ -81,23 +81,23 @@ export default function TransferConfirmScreen() {
         >
           <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
         </Pressable>
-        <Text className="text-base font-semibold text-slate-900 dark:text-white">Xác nhận chuyển tiền</Text>
+        <Text className="text-base font-semibold text-slate-900 dark:text-white">Confirm transfer</Text>
         <View className="w-8" />
       </View>
 
       <View className="flex-1 p-4 gap-3">
         <View className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 gap-3">
-          <Row label="Người nhận" value={params.maskedName ?? ''} />
-          <Row label="Số điện thoại" value={params.phone ?? ''} />
-          <Row label="Số tiền" value={formatAmountVND(amount)} />
+          <Row label="Recipient" value={params.maskedName ?? ''} />
+          <Row label="Phone number" value={params.phone ?? ''} />
+          <Row label="Amount" value={formatAmountVND(amount)} />
           <Row
-            label="Phí giao dịch"
-            value={fee !== null ? formatAmountVND(fee) : 'Đang tính…'}
+            label="Fee"
+            value={fee !== null ? formatAmountVND(fee) : 'Calculating…'}
           />
-          {params.note ? <Row label="Ghi chú" value={params.note} /> : null}
+          {params.note ? <Row label="Note" value={params.note} /> : null}
           <View className="h-px bg-slate-200 dark:bg-slate-700" />
           <Row
-            label="Tổng trừ"
+            label="Total"
             value={total !== null ? formatAmountVND(total) : '—'}
             bold
           />
@@ -106,7 +106,7 @@ export default function TransferConfirmScreen() {
         {isFirstTime && (
           <View className="bg-amber-50 rounded-xl p-3">
             <Text className="text-xs text-amber-700">
-              ⚠️ Đây là lần đầu bạn chuyển cho người nhận này. Kiểm tra kỹ tên và số điện thoại.
+              ⚠️ This is your first transfer to this recipient. Check the name and phone number carefully.
             </Text>
           </View>
         )}
@@ -115,7 +115,7 @@ export default function TransferConfirmScreen() {
 
       <View className="p-4">
         <Button
-          label="Chuyển tiền"
+          label="Transfer"
           loading={guard.isPending}
           disabled={!parsed.ok || fee === null || guard.isPending}
           onPress={submit}

@@ -71,14 +71,14 @@ export default function SplitBillScreen() {
     const newErrors: typeof errors = {};
 
     if (totalAmountVal <= 0n) {
-      newErrors.total = 'Vui lòng nhập tổng số tiền hợp lệ';
+      newErrors.total = 'Enter a valid total amount';
       hasErr = true;
     }
 
     const phoneErrors = phones.map((p) => {
       const trimmed = p.trim();
-      if (!trimmed) return 'Yêu cầu điền SĐT';
-      if (!/^0\d{9}$/.test(trimmed)) return 'SĐT không hợp lệ';
+      if (!trimmed) return 'Enter a phone number';
+      if (!/^0\d{9}$/.test(trimmed)) return 'Invalid phone number';
       return '';
     });
     if (phoneErrors.some((e) => e !== '')) {
@@ -89,7 +89,7 @@ export default function SplitBillScreen() {
     if (splitMode === 'custom') {
       const isCustomValid = validateCustomSplit(totalAmountVal, customAmountsBigInts);
       if (!isCustomValid) {
-        newErrors.customSum = `Tổng tiền chia lẻ (${formatAmountVND(customSum)}) phải khớp tuyệt đối tổng hóa đơn (${formatAmountVND(totalAmountVal)})`;
+        newErrors.customSum = `The custom amounts (${formatAmountVND(customSum)}) must exactly match the bill total (${formatAmountVND(totalAmountVal)})`;
         hasErr = true;
       }
     }
@@ -109,12 +109,12 @@ export default function SplitBillScreen() {
       });
 
       Alert.alert(
-        'Thành công',
-        `Đã tạo nhóm chia hóa đơn tổng tiền ${formatAmountVND(totalAmountVal)}`,
+        'Success',
+        `Split bill created for a total of ${formatAmountVND(totalAmountVal)}`,
         [{ text: 'OK', onPress: () => router.replace('/(main)/requests') }]
       );
     } catch (err: any) {
-      Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra khi tạo nhóm chia.');
+      Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
     }
   };
 
@@ -124,7 +124,7 @@ export default function SplitBillScreen() {
         <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="close" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Chia hóa đơn (Split)</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Split bill</Text>
         <View className="w-8" />
       </View>
 
@@ -135,9 +135,9 @@ export default function SplitBillScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
           <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 gap-4 shadow-xs">
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Tổng số tiền hóa đơn</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Bill total</Text>
               <View className={`flex-row items-center bg-slate-50 dark:bg-slate-900 border ${errors.total ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl h-12 px-3`}>
-                <Text className="text-lg font-bold text-slate-400 mr-2">đ</Text>
+                <Text className="text-lg font-bold text-slate-400 mr-2">₫</Text>
                 <TextInput
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
@@ -154,11 +154,11 @@ export default function SplitBillScreen() {
             </View>
 
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Nội dung / Dịp chia tiền</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Note / Occasion</Text>
               <View className="flex-row items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl h-12 px-3">
                 <Ionicons name="receipt-outline" size={20} color="#94a3b8" className="mr-2" />
                 <TextInput
-                  placeholder="Ví dụ: Ăn lẩu cuối tuần, tiền taxi..."
+                  placeholder="e.g. Weekend hotpot, taxi fare..."
                   placeholderTextColor="#94a3b8"
                   maxLength={255}
                   value={note}
@@ -176,7 +176,7 @@ export default function SplitBillScreen() {
               className={`flex-1 py-2 items-center rounded-lg ${splitMode === 'even' ? 'bg-cyan-50' : ''}`}
             >
               <Text className={`text-sm font-semibold ${splitMode === 'even' ? 'text-brand' : 'text-slate-500'}`}>
-                Chia đều
+                Split evenly
               </Text>
             </Pressable>
             <Pressable
@@ -184,7 +184,7 @@ export default function SplitBillScreen() {
               className={`flex-1 py-2 items-center rounded-lg ${splitMode === 'custom' ? 'bg-cyan-50' : ''}`}
             >
               <Text className={`text-sm font-semibold ${splitMode === 'custom' ? 'text-brand' : 'text-slate-500'}`}>
-                Tùy chỉnh
+                Custom
               </Text>
             </Pressable>
           </View>
@@ -192,10 +192,10 @@ export default function SplitBillScreen() {
           {/* Participants */}
           <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 gap-4 shadow-xs">
             <View className="flex-row justify-between items-center w-full">
-              <Text className="text-sm font-bold text-slate-900 dark:text-white">Thành viên đóng góp</Text>
+              <Text className="text-sm font-bold text-slate-900 dark:text-white">Participants</Text>
               <Pressable onPress={handleAddParticipant} className="flex-row items-center gap-1 p-1">
                 <Ionicons name="person-add" size={16} color="#0E90A3" />
-                <Text className="text-xs font-bold text-brand">Thêm người</Text>
+                <Text className="text-xs font-bold text-brand">Add person</Text>
               </Pressable>
             </View>
 
@@ -208,7 +208,7 @@ export default function SplitBillScreen() {
                   <View className="flex-row items-start w-full gap-2">
                     <View className="flex-[3]">
                       <TextInput
-                        placeholder={`SĐT người thứ ${index + 1}`}
+                        placeholder={`Phone number of person ${index + 1}`}
                         placeholderTextColor="#94a3b8"
                         keyboardType="phone-pad"
                         maxLength={10}
@@ -228,7 +228,7 @@ export default function SplitBillScreen() {
                     ) : (
                       <View className="flex-[2]">
                         <TextInput
-                          placeholder="Số tiền"
+                          placeholder="Amount"
                           placeholderTextColor="#94a3b8"
                           keyboardType="number-pad"
                           value={customAmounts[index]}
@@ -268,7 +268,7 @@ export default function SplitBillScreen() {
             {splitMutation.isPending ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text className="text-white text-base font-bold">Tạo nhóm chia hóa đơn</Text>
+              <Text className="text-white text-base font-bold">Create split bill</Text>
             )}
           </Pressable>
         </View>
