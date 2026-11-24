@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
 import { ApiError } from '@/api/errors';
-import { MOCKS_ENABLED } from '@/lib/env';
 import { idempotencyHeaders } from '@/lib/idempotency';
 import { toMinorUnits } from '@/lib/money';
 import { type AdminQueryParams, buildQueryString } from './common';
@@ -95,11 +94,6 @@ export function useReconRun(date: string, params?: AdminQueryParams) {
       } catch (err) {
         // "No run for this date yet" is a legitimate empty state, not a failure.
         if (err instanceof ApiError && err.code === 'ERR_RECON_NOT_FOUND') return { run: null, items: [] };
-        // Mock data: only in a Vite dev server with VITE_USE_MOCKS=true.
-        if (import.meta.env.DEV && MOCKS_ENABLED) {
-          const { MOCK_RECON_RUN, MOCK_RECON_ITEMS } = await import('@/mocks/recon');
-          return { run: { ...MOCK_RECON_RUN, date }, items: MOCK_RECON_ITEMS };
-        }
         throw err;
       }
     },

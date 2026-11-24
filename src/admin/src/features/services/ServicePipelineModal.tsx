@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Modal, Badge } from '@/ui';
 import type { ServiceItem } from '@/queries';
 
@@ -37,63 +38,25 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
   const [activeTab, setActiveTab] = useState<'overview' | 'definition' | 'validation' | 'pipeline' | 'offer'>('overview');
   const [selectedActionIndex, setSelectedActionIndex] = useState(0);
 
+  // The modal component stays mounted while the list page keeps it, so its local state would carry
+  // over from one service to the next. Start every service on the first tab and the first step.
+  const serviceId = service?.id;
+  useEffect(() => {
+    setActiveTab('overview');
+    setSelectedActionIndex(0);
+  }, [serviceId]);
+
   if (!service) return null;
 
-  const actions: ActionStepConfig[] = service.actions && service.actions.length > 0
-    ? service.actions
-    : [
-        {
-          code: 'gl_posting',
-          name: 'Double-entry ledger posting (GL Posting)',
-          type: 'GL Posting',
-          entry_point: 'model:transdefinition',
-          method: 'performAction',
-          entry_conditions: 'errorCode == 0',
-          required: true,
-          params: [
-            { name: 'ServiceId', source: 'transaction', field: 'SERVICEID' },
-            { name: 'TransRefId', source: 'transaction', field: 'TRANSREFID' },
-            { name: 'TransAmount', source: 'transaction', field: 'TOTALAMOUNT' },
-          ],
-          output: [
-            { name: 'data', source: 'metadata', field: 'data', need_secured: false, map_to_txn: 'outputMessage.ACTION' },
-          ],
-        },
-        {
-          code: 'bank_gateway_notify',
-          name: 'Call bank integration gateway (Directional Integration)',
-          type: 'Directional Integration',
-          entry_point: 'https://api.bankpartner.vn/v1/p2p-notify',
-          method: 'POST',
-          entry_conditions: 'transaction.amount >= 1000000',
-          required: false,
-          params: [
-            { name: 'citizenId', source: 'transaction', field: 'TRANSBODY.CITIZENID' },
-          ],
-          output: [
-            { name: 'partnerRef', source: 'response', field: 'partnerRefId', need_secured: true, map_to_txn: 'partnerRefId' },
-          ],
-          error_mapping: [
-            { code: 'err', value: '0', mapping: '0', message: 'Success' },
-            { code: 'err', value: '400', mapping: '400', message: 'Bad request partner' },
-          ],
-        },
-      ];
-
-  const inputFields: InputFieldRule[] = service.inputFields && service.inputFields.length > 0
-    ? service.inputFields
-    : [
-        { order: 1, name: 'SERVICEID', rule: 'mapping', type: 'string', required: true },
-        { order: 2, name: 'AMOUNT', rule: 'mapping', type: 'float', min_length: 1, max_length: 20, required: true },
-        { order: 3, name: 'CURRENCY', rule: 'fixed', type: 'string', regex: '^(VND)$', required: true },
-        { order: 4, name: 'SENDERPHONE', rule: 'mapping', type: 'string', min_length: 9, max_length: 11, required: true },
-      ];
-
-  const currentAction = actions[selectedActionIndex] || actions[0]!;
+  // Only what the API returned: no invented defaults. A service without actions or input fields
+  // shows an empty state instead of another service's (or made-up) pipeline.
+  const actions: ActionStepConfig[] = Array.isArray(service.actions) ? service.actions : [];
+  const inputFields: InputFieldRule[] = Array.isArray(service.inputFields) ? service.inputFields : [];
+  const currentAction: ActionStepConfig | undefined = actions[selectedActionIndex] ?? actions[0];
 
   return (
     <Modal open={open} onClose={onClose} size="lg" title={`Transaction Design Manager · ${service.code}`}>
-      <div className="flex flex-col w-full min-w-0">
+      <div key={service.id} className="flex flex-col w-full min-w-0">
         {/* Tab Bar */}
         <div className="flex gap-2 border-b border-slate-200 mb-3.5 overflow-x-auto">
           <button
@@ -188,41 +151,14 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
 
         {/* Tab 1: Trans Definition (GL Posting) */}
         {activeTab === 'definition' && (
-          <div className="flex flex-col gap-3 min-h-[300px]">
-            <div className="text-[11px] font-bold text-slate-500 tracking-wider uppercase">DOUBLE-ENTRY LEDGER RULES (DEBIT / CREDIT)</div>
-            <table className="w-full border-collapse text-xs bg-white rounded-lg overflow-hidden border border-slate-200">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <th className="p-2.5 text-left font-bold">Posting side</th>
-                  <th className="p-2.5 text-left font-bold">Owner type</th>
-                  <th className="p-2.5 text-left font-bold">Account type</th>
-                  <th className="p-2.5 text-left font-bold">Amount formula</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr>
-                  <td className="p-2.5"><Badge tone="danger">DEBIT</Badge></td>
-                  <td className="p-2.5 font-mono">USER_MAIN_WALLET</td>
-                  <td className="p-2.5 text-slate-700">Asset / Primary Pocket</td>
-                  <td className="p-2.5 font-mono">AMOUNT + FEE</td>
-                </tr>
-                <tr>
-                  <td className="p-2.5"><Badge tone="success">CREDIT</Badge></td>
-                  <td className="p-2.5 font-mono">RECEIVER_MAIN_WALLET</td>
-                  <td className="p-2.5 text-slate-700">Liability / Primary Pocket</td>
-                  <td className="p-2.5 font-mono">AMOUNT</td>
-                </tr>
-                <tr>
-                  <td className="p-2.5"><Badge tone="info">CREDIT (Fee)</Badge></td>
-                  <td className="p-2.5 font-mono">SYS_FEE_ACCOUNT</td>
-                  <td className="p-2.5 text-slate-700">Income / Fee Pool</td>
-                  <td className="p-2.5 font-mono">FEE</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="flex flex-col items-center justify-center gap-1 min-h-[300px] text-center text-slate-500">
+            <div className="text-sm font-bold text-slate-700">Ledger rules are not shown here yet</div>
+            <div className="text-xs max-w-md">
+              The debit and credit rules are defined in code, not stored per service, so there is nothing real to display.
+              Every posting is double-entry and is checked against the ledger.
+            </div>
           </div>
         )}
-
         {/* Tab 2: Validations */}
         {activeTab === 'validation' && (
           <div className="flex flex-col gap-3 min-h-[300px]">
@@ -240,6 +176,11 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {inputFields.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-slate-500">No input fields configured for this service.</td>
+                  </tr>
+                )}
                 {inputFields.map((f) => (
                   <tr key={f.name}>
                     <td className="p-2.5 font-bold text-slate-700">#{f.order}</td>
@@ -257,7 +198,13 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
         )}
 
         {/* Tab 3: Action Pipeline */}
-        {activeTab === 'pipeline' && (
+        {activeTab === 'pipeline' && actions.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-1 min-h-[300px] text-center text-slate-500">
+            <div className="text-sm font-bold text-slate-700">No actions configured</div>
+            <div className="text-xs">This service has no third-party or ledger actions in its pipeline.</div>
+          </div>
+        )}
+        {activeTab === 'pipeline' && currentAction && (
           <div className="flex flex-col md:flex-row gap-4 min-h-[300px]">
             <div className="w-full md:w-64 flex flex-col gap-2.5 shrink-0">
               <div className="text-[11px] font-bold text-slate-500 tracking-wider uppercase">ACTION STEPS</div>
@@ -285,11 +232,11 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 mb-1 block">Entry Point (Endpoint)</label>
-                  <input type="text" defaultValue={currentAction.entry_point} className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white" />
+                  <input type="text" key={`${service.id}-${selectedActionIndex}-ep`} defaultValue={currentAction.entry_point} className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white" />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 mb-1 block">Method</label>
-                  <input type="text" defaultValue={currentAction.method} className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white" />
+                  <input type="text" key={`${service.id}-${selectedActionIndex}-m`} defaultValue={currentAction.method} className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white" />
                 </div>
               </div>
             </div>
@@ -298,37 +245,15 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
 
         {/* Tab 4: Offer Auth Matrix */}
         {activeTab === 'offer' && (
-          <div className="flex flex-col gap-3 min-h-[300px]">
-            <div className="text-[11px] font-bold text-slate-500 tracking-wider uppercase">LIMIT &amp; AUTHENTICATION MATRIX (AUTH MATRIX)</div>
-            <table className="w-full border-collapse text-xs bg-white rounded-lg overflow-hidden border border-slate-200">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <th className="p-2.5 text-left font-bold">From amount (₫)</th>
-                  <th className="p-2.5 text-left font-bold">To amount (₫)</th>
-                  <th className="p-2.5 text-left font-bold">Required auth method</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr>
-                  <td className="p-2.5 font-medium text-slate-900">0 ₫</td>
-                  <td className="p-2.5 font-medium text-slate-900">2,000,000 ₫</td>
-                  <td className="p-2.5"><Badge tone="info">PIN (Wallet PIN)</Badge></td>
-                </tr>
-                <tr>
-                  <td className="p-2.5 font-medium text-slate-900">2,000,000 ₫</td>
-                  <td className="p-2.5 font-medium text-slate-900">50,000,000 ₫</td>
-                  <td className="p-2.5"><Badge tone="warning">OTP code (SMS/Smart OTP)</Badge></td>
-                </tr>
-                <tr>
-                  <td className="p-2.5 font-medium text-slate-900">50,000,000 ₫</td>
-                  <td className="p-2.5 font-medium text-slate-900">No limit</td>
-                  <td className="p-2.5"><Badge tone="danger">2FA (Biometric / FIDO2)</Badge></td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="flex flex-col items-center justify-center gap-2 min-h-[300px] text-center text-slate-500">
+            <div className="text-sm font-bold text-slate-700">The authentication matrix is set per plan</div>
+            <div className="text-xs max-w-md">
+              Which authentication a payment needs (PIN, OTP code or two-step) depends on the customer's plan and the
+              amount, so it is shown on each plan, not on the service.
+            </div>
+            <Link to="/offers" className="text-xs font-semibold text-brand hover:underline">Open Offer Factory →</Link>
           </div>
         )}
-
         {/* Footer */}
         <div className="flex justify-end gap-2.5 mt-4 pt-3 border-t border-slate-200">
           <button type="button" onClick={onClose} className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50">Close</button>

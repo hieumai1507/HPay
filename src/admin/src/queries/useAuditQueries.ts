@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
-import { MOCKS_ENABLED } from '@/lib/env';
 import { type AdminQueryParams, type Paged, buildQueryString } from './common';
 
 export interface AuditLogItem {
@@ -32,36 +31,26 @@ export function useAuditQueries(params?: AdminQueryParams) {
     // Server-side paginated: `total` drives pageCount, so it must be the full
     // server count for the current filter, not the rows on this page.
     queryFn: async (): Promise<Paged<AuditLogItem>> => {
-      try {
-        const res = await apiRequest<{ logs: BackendAuditRow[] | null; total?: number }>(
-          `/v1/admin/audit${buildQueryString(params)}`
-        );
-        const rows = (res?.logs ?? []).map((row) => ({
-          id: `aud-${row.id}`,
-          timestamp: new Date(row.created_at).toLocaleTimeString('en-GB'),
-          actor: row.actor_id ? `${row.actor_type}.${row.actor_id.slice(0, 6)}` : 'system',
-          actorRole: row.actor_type,
-          action: row.action,
-          actionType: getActionTone(row.action),
-          resource: row.resource,
-          details: row.reason || 'System event',
-          ip: row.ip || '—',
-        }));
-        // Older builds of the endpoint omit `total`; fall back so pageCount
-        // degrades to a single page instead of breaking the table.
-        return { rows, total: res?.total ?? rows.length };
-      } catch (err) {
-        // Mock data: only in a Vite dev server with VITE_USE_MOCKS=true.
-        if (import.meta.env.DEV && MOCKS_ENABLED) {
-          const { MOCK_AUDIT } = await import('@/mocks/audit');
-          return { rows: MOCK_AUDIT, total: MOCK_AUDIT.length };
-        }
-        throw err;
-      }
+      const res = await apiRequest<{ logs: BackendAuditRow[] | null; total?: number }>(
+        `/v1/admin/audit${buildQueryString(params)}`
+      );
+      const rows = (res?.logs ?? []).map((row) => ({
+        id: `aud-${row.id}`,
+        timestamp: new Date(row.created_at).toLocaleTimeString('en-GB'),
+        actor: row.actor_id ? `${row.actor_type}.${row.actor_id.slice(0, 6)}` : 'system',
+        actorRole: row.actor_type,
+        action: row.action,
+        actionType: getActionTone(row.action),
+        resource: row.resource,
+        details: row.reason || 'System event',
+        ip: row.ip || '—',
+      }));
+      // Older builds of the endpoint omit `total`; fall back so pageCount degrades to a single
+      // page instead of breaking the table.
+      return { rows, total: res?.total ?? rows.length };
     },
   });
 }
-
 function getActionTone(action: string): 'success' | 'danger' | 'warning' | 'info' {
   if (action.includes('REJECT') || action.includes('FLAG') || action.includes('FAIL')) return 'danger';
   if (action.includes('UPDATE') || action.includes('WARN')) return 'warning';

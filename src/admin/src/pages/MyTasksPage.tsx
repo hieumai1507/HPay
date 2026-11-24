@@ -194,7 +194,7 @@ export default function MyTasksPage() {
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder={`At least ${MIN_REASON} characters — recorded in the audit log`}
-                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand/40"
+                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
               />
               <span className="text-xs text-slate-400">{reason.trim().length}/{MIN_REASON}</span>
             </label>

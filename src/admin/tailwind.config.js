@@ -49,6 +49,29 @@ export default {
       borderRadius: {
         card: '12px',
         sm: '8px',
+        xs: '2px', // rounded-t-xs (charts)
+      },
+      // The pages were written with Tailwind v4 class names; this project builds with v3, which
+      // silently emits no CSS for names it does not know (it broke the Offer Factory layout:
+      // md:w-70 gave the left column no width). Define the names the code uses so they render.
+      spacing: {
+        '4.5': '1.125rem', // p-4.5
+        '5.5': '1.375rem', // w-5.5, h-5.5
+        '9.5': '2.375rem', // h-9.5
+        '10.5': '2.625rem', // h-10.5
+        '70': '17.5rem', // md:w-70 (offer services column)
+      },
+      borderWidth: {
+        '1.5': '1.5px', // border-1.5
+      },
+      boxShadow: {
+        xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)', // shadow-xs
+      },
+      backdropBlur: {
+        xs: '2px', // backdrop-blur-xs
+      },
+      fontSize: {
+        '2.5xl': ['1.75rem', { lineHeight: '2.125rem' }], // text-2.5xl (dashboard KPI)
       },
     },
   },

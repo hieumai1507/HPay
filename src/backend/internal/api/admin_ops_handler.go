@@ -340,6 +340,22 @@ func (h *AdminHandler) ListOrgs(c *gin.Context) {
 	})
 }
 
+// ListOrgPolicies lists every approval policy version of one organization, so the admin page shows
+// the real policies instead of text baked into the UI. Same read permission as the org list.
+func (h *AdminHandler) ListOrgPolicies(c *gin.Context) {
+	orgID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		respondValidation(c, "invalid org id")
+		return
+	}
+	rows, err := h.productSvc.ListOrgPolicies(c.Request.Context(), orgID)
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"policies": rows})
+}
+
 type adminUpdatePolicyReq struct {
 	Name      string          `json:"name" binding:"required,max=100"`
 	MinAmount int64           `json:"min_amount"`

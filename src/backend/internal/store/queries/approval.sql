@@ -210,3 +210,11 @@ LEFT JOIN transactions t ON t.id = r.subject_id AND r.subject_type = 'reversal'
 WHERE r.status = 'needs_manual'
   AND r.subject_type <> 'org_transaction'
   AND (sqlc.narg('ref_code')::text IS NULL OR t.ref_code ILIKE '%' || sqlc.narg('ref_code')::text || '%');
+
+-- name: ListOrgPolicies :many
+-- Every policy version of one organization, active first, newest version first. Read-only (admin
+-- Organizations & Policy page).
+SELECT id, org_id, name, min_amount, max_amount, tiers, version, is_active, created_at
+FROM approval_policies
+WHERE org_id = $1
+ORDER BY is_active DESC, name, version DESC;

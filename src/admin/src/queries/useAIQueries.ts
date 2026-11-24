@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
-import { MOCKS_ENABLED } from '@/lib/env';
 import { idempotencyHeaders } from '@/lib/idempotency';
 
 export interface AIKey {
@@ -19,19 +18,13 @@ export interface AISetting {
   key_id?: string;
 }
 
-// Reads: an empty list is a valid answer and is returned as-is. Mock data is
-// only reachable in a Vite dev server with VITE_USE_MOCKS=true; every other
-// failure propagates so the page can show the real error.
+// Reads: an empty list is a valid answer and is returned as-is; every failure propagates so
+// the page can show the real error.
 export function useAIKeys() {
   return useQuery({
     queryKey: ['admin', 'ai-keys'],
     queryFn: async (): Promise<AIKey[]> => {
-      try {
-        return (await apiRequest<AIKey[] | null>('/v1/admin/ai/keys')) ?? [];
-      } catch (err) {
-        if (import.meta.env.DEV && MOCKS_ENABLED) return (await import('@/mocks/ai')).MOCK_AI_KEYS;
-        throw err;
-      }
+      return (await apiRequest<AIKey[] | null>('/v1/admin/ai/keys')) ?? [];
     },
   });
 }
@@ -40,12 +33,7 @@ export function useAISettings() {
   return useQuery({
     queryKey: ['admin', 'ai-settings'],
     queryFn: async (): Promise<AISetting[]> => {
-      try {
-        return (await apiRequest<AISetting[] | null>('/v1/admin/ai/settings')) ?? [];
-      } catch (err) {
-        if (import.meta.env.DEV && MOCKS_ENABLED) return (await import('@/mocks/ai')).MOCK_AI_SETTINGS;
-        throw err;
-      }
+      return (await apiRequest<AISetting[] | null>('/v1/admin/ai/settings')) ?? [];
     },
   });
 }

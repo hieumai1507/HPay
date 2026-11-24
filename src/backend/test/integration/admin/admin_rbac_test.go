@@ -43,6 +43,7 @@ var adminRoutes = []route{
 	{"GET", "/v1/admin/workflows", []string{"risk_officer", "ops", "superadmin"}},
 	{"GET", "/v1/admin/workflows/" + zeroID, []string{"risk_officer", "ops", "superadmin"}},
 	{"GET", "/v1/admin/orgs", []string{"risk_officer", "ops", "superadmin"}},
+	{"GET", "/v1/admin/orgs/" + zeroID + "/policies", []string{"risk_officer", "ops", "superadmin"}},
 	{"PUT", "/v1/admin/orgs/" + zeroID + "/policies", []string{"superadmin"}},
 	{"GET", "/v1/admin/services", anyPerm},
 	{"GET", "/v1/admin/services/" + zeroID, anyPerm},

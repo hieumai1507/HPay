@@ -1,16 +1,11 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useFraudFlags, useKYCQueue } from '@/queries';
-import { BarChart } from '@/ui';
-import { MOCKS_ENABLED } from '@/lib/env';
 
-// There is no analytics API yet, so the KPI cards and the hourly chart have no
-// real data source. In a production build they show an em dash. Demo numbers
-// are loaded only in a Vite dev server with VITE_USE_MOCKS=true.
+// There is no analytics API yet, so the KPI cards and the hourly chart have no real data source
+// and show an em dash. No sample numbers are ever shown.
 const KPI_LABELS = ['New users (today)', 'Transactions (24h)', 'Volume (24h)', 'Failure rate'];
-const HOUR_LABELS = Array.from({ length: 24 }, (_, h) => `${h}h`);
 
 interface Kpi {
   label: string;
@@ -28,16 +23,7 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
 }
 
 export default function DashboardPage() {
-  const [kpis, setKpis] = useState<Kpi[]>(EMPTY_KPIS);
-  const [volume, setVolume] = useState<number[] | null>(null);
-  useEffect(() => {
-    if (!(import.meta.env.DEV && MOCKS_ENABLED)) return;
-    void import('@/mocks/dashboard').then((m) => {
-      setKpis(m.MOCK_KPIS);
-      setVolume(m.MOCK_VOLUME);
-    });
-  }, []);
-  const mocked = volume !== null;
+  const kpis = EMPTY_KPIS;
 
   const kycQueue = useKYCQueue('manual');
   const fraudFlags = useFraudFlags('open');
@@ -83,7 +69,7 @@ export default function DashboardPage() {
             <div className="text-xs text-emerald-600 font-semibold">
               {kpi.delta ?? ''}{' '}
               <span className="text-slate-400 font-normal">
-                {mocked ? '(sample data, no analytics API yet)' : '(no analytics API yet)'}
+                (no analytics API yet)
               </span>
             </div>
           </Card>
@@ -94,13 +80,9 @@ export default function DashboardPage() {
       <Card>
         <div className="flex justify-between items-center mb-3">
           <strong className="text-base font-bold text-slate-900">Volume by hour</strong>
-          <span className="text-xs text-slate-500">{mocked ? 'sample data' : 'no data yet'}</span>
+          <span className="text-xs text-slate-500">no data yet</span>
         </div>
-        {volume ? (
-          <BarChart values={volume} labels={HOUR_LABELS} />
-        ) : (
-          <div className="text-center text-slate-400 py-8 text-sm">—</div>
-        )}
+        <div className="text-center text-slate-400 py-8 text-sm">—</div>
       </Card>
 
       {/* attention panels — live counts */}

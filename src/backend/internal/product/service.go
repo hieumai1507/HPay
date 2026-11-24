@@ -309,3 +309,8 @@ func (s *Service) AttentionSummary(ctx context.Context) (AttentionSummary, error
 		Total:                       r.NeedsManualApprovals + r.CompensationFailedWorkflows,
 	}, nil
 }
+
+// ListOrgPolicies returns every policy version of one organization (read-only).
+func (s *Service) ListOrgPolicies(ctx context.Context, orgID uuid.UUID) ([]store.ListOrgPoliciesRow, error) {
+	return s.q.ListOrgPolicies(ctx, orgID)
+}

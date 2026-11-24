@@ -242,6 +242,7 @@ func NewRouter(d Deps) *gin.Engine {
 		adg.GET("/workflows/:id", workflowP, adminH.GetWorkflow)
 		adg.GET("/audit", anyP, adminH.ListAuditLogs)
 		adg.GET("/orgs", orgsReadP, adminH.ListOrgs)
+		adg.GET("/orgs/:id/policies", orgsReadP, adminH.ListOrgPolicies)
 		adg.PUT("/orgs/:id/policies", orgsEditP, adminH.UpdateOrgPolicy)
 		adg.GET("/ai/keys", aiP, adminH.ListAIKeys)
 		adg.POST("/ai/keys", aiP, adminH.CreateAIKey)
