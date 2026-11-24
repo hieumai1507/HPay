@@ -49,3 +49,4 @@ A user could move more than the daily or monthly limit of their offer. At L0 the
 - A request that needs no confirmation (auth matrix says none) is only checked at request time, without the lock.
 - The limit counts transactions by `created_at`, so a request created before midnight and confirmed after counts in the earlier day.
 - Weekly rolling limits and the balance ceiling are separate gaps (G9).
+- Money-request pay outside the lock: fixed in BUG-0021.
