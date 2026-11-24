@@ -44,7 +44,7 @@ export default function CaptureIdScreen() {
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
         await processCapturedPhoto(photo.uri);
       } catch {
-        Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.');
+        Alert.alert('Error', 'Could not take the photo. Please try again.');
       }
     } else {
       // Mock photo for simulator/web/tests
@@ -58,12 +58,12 @@ export default function CaptureIdScreen() {
     try {
       const result = await validateKycPhoto(uri);
       if (!result.isValid) {
-        setValidationError(result.error ?? 'Ảnh không hợp lệ.');
+        setValidationError(result.error ?? 'Invalid photo.');
       } else {
         setPhotoUri(uri);
       }
     } catch {
-      setValidationError('Đã xảy ra lỗi khi kiểm tra ảnh.');
+      setValidationError('Something went wrong while checking the photo.');
     } finally {
       setValidating(false);
     }
@@ -91,7 +91,7 @@ export default function CaptureIdScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={color.brand[600]} />
-        <Text style={styles.loadingText}>Đang yêu cầu quyền camera...</Text>
+        <Text style={styles.loadingText}>Requesting camera permission...</Text>
       </View>
     );
   }
@@ -103,7 +103,7 @@ export default function CaptureIdScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityLabel="Close">
           <Text style={styles.closeIcon}>✕</Text>
         </Pressable>
-        <Text style={styles.navTitle}>Mặt trước CCCD</Text>
+        <Text style={styles.navTitle}>Front of ID card</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -119,16 +119,16 @@ export default function CaptureIdScreen() {
             />
           ) : (
             <View style={styles.cameraMock}>
-              <Text style={styles.cameraMockText}>[ MÔ PHỎNG CAMERA ]</Text>
-              <Text style={styles.cameraMockSub}>Không có quyền camera hoặc thiết bị giả lập</Text>
+              <Text style={styles.cameraMockText}>[ CAMERA SIMULATION ]</Text>
+              <Text style={styles.cameraMockSub}>No camera permission, or running on an emulator</Text>
               
               {/* Dev tools to test M10 heuristics */}
               <View style={styles.devButtons}>
                 <Pressable onPress={() => triggerMockError('blurry')} style={styles.devButton}>
-                  <Text style={styles.devButtonText}>Test Mờ ⚠️</Text>
+                  <Text style={styles.devButtonText}>Test blurry ⚠️</Text>
                 </Pressable>
                 <Pressable onPress={() => triggerMockError('dark')} style={styles.devButton}>
-                  <Text style={styles.devButtonText}>Test Tối ⚠️</Text>
+                  <Text style={styles.devButtonText}>Test dark ⚠️</Text>
                 </Pressable>
               </View>
             </View>
@@ -140,7 +140,7 @@ export default function CaptureIdScreen() {
           {/* Bottom Controls */}
           <View style={styles.controlsContainer}>
             <Pressable onPress={() => triggerMockError('blurry')} style={styles.toolButton}>
-              <Text style={styles.toolButtonText}>Thư viện</Text>
+              <Text style={styles.toolButtonText}>Library</Text>
             </Pressable>
 
             <Pressable onPress={handleCapture} style={styles.shutterButton} accessibilityLabel="Shutter">
@@ -151,7 +151,7 @@ export default function CaptureIdScreen() {
               onPress={() => setFlashlight(flashlight === 'off' ? 'on' : 'off')}
               style={styles.toolButton}
             >
-              <Text style={styles.toolButtonText}>Đèn {flashlight === 'on' ? '⚡' : '✕'}</Text>
+              <Text style={styles.toolButtonText}>Light {flashlight === 'on' ? '⚡' : '✕'}</Text>
             </Pressable>
           </View>
         </View>
@@ -162,11 +162,11 @@ export default function CaptureIdScreen() {
           
           <View style={styles.previewFooter}>
             <Text style={styles.previewGuideText}>
-              Hãy đảm bảo thông tin trên CCCD hiển thị rõ nét, không bị lóa sáng hay che mất.
+              Make sure the details on the ID card are sharp, with no glare or anything covering them.
             </Text>
             <View style={styles.previewButtons}>
-              <Button label="Chụp lại" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
-              <Button label="Sử dụng ảnh này" onPress={handleUsePhoto} style={styles.previewBtn} />
+              <Button label="Retake" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
+              <Button label="Use this photo" onPress={handleUsePhoto} style={styles.previewBtn} />
             </View>
           </View>
         </View>
@@ -175,7 +175,7 @@ export default function CaptureIdScreen() {
       {validating && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingOverlayText}>Đang kiểm tra chất lượng ảnh...</Text>
+          <Text style={styles.loadingOverlayText}>Checking photo quality...</Text>
         </View>
       )}
     </View>

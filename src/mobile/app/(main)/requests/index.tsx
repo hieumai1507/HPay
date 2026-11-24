@@ -32,11 +32,11 @@ export default function RequestsIndexScreen() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pending': return { text: 'Chờ thanh toán', color: color.warning[600], bg: 'bg-amber-50' };
-      case 'paid': return { text: 'Đã thanh toán', color: color.success[600], bg: 'bg-emerald-50' };
-      case 'declined': return { text: 'Đã từ chối', color: color.danger[600], bg: 'bg-rose-50' };
-      case 'canceled': return { text: 'Đã hủy', color: color.neutral[500], bg: 'bg-slate-100' };
-      case 'expired': return { text: 'Hết hạn', color: color.neutral[400], bg: 'bg-slate-100' };
+      case 'pending': return { text: 'Pending', color: color.warning[600], bg: 'bg-amber-50' };
+      case 'paid': return { text: 'Paid', color: color.success[600], bg: 'bg-emerald-50' };
+      case 'declined': return { text: 'Rejected', color: color.danger[600], bg: 'bg-rose-50' };
+      case 'canceled': return { text: 'Canceled', color: color.neutral[500], bg: 'bg-slate-100' };
+      case 'expired': return { text: 'Expired', color: color.neutral[400], bg: 'bg-slate-100' };
       default: return { text: status, color: color.neutral[500], bg: 'bg-slate-100' };
     }
   };
@@ -48,7 +48,7 @@ export default function RequestsIndexScreen() {
         <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Yêu cầu chuyển tiền</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Money requests</Text>
         <View className="min-w-[32px] items-end">
           <Pressable onPress={() => router.push('/(main)/requests/create')} className="p-1">
             <Ionicons name="add" size={24} color="#0E90A3" />
@@ -63,7 +63,7 @@ export default function RequestsIndexScreen() {
           className={`flex-1 py-4 items-center border-b-2 ${activeTab === 'inbox' ? 'border-brand' : 'border-transparent'}`}
         >
           <Text className={`text-sm font-semibold ${activeTab === 'inbox' ? 'text-brand' : 'text-slate-400'}`}>
-            Cần tôi trả
+            To pay
           </Text>
         </Pressable>
         <Pressable
@@ -71,7 +71,7 @@ export default function RequestsIndexScreen() {
           className={`flex-1 py-4 items-center border-b-2 ${activeTab === 'sent' ? 'border-brand' : 'border-transparent'}`}
         >
           <Text className={`text-sm font-semibold ${activeTab === 'sent' ? 'text-brand' : 'text-slate-400'}`}>
-            Tôi đã gửi
+            Sent by me
           </Text>
         </Pressable>
       </View>
@@ -80,12 +80,12 @@ export default function RequestsIndexScreen() {
       <View className="flex-row bg-white dark:bg-slate-800 py-3 my-3 mx-4 rounded-xl border border-slate-100 dark:border-slate-700">
         <Pressable onPress={() => router.push('/(main)/requests/create')} className="flex-1 flex-row items-center justify-center gap-2">
           <Ionicons name="send-outline" size={20} color="#0E90A3" />
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Xin tiền lẻ</Text>
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Request money</Text>
         </Pressable>
         <View className="w-px bg-slate-100 dark:bg-slate-700" />
         <Pressable onPress={() => router.push('/(main)/requests/split')} className="flex-1 flex-row items-center justify-center gap-2">
           <Ionicons name="people-outline" size={20} color="#0E90A3" />
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Chia hóa đơn</Text>
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Split bill</Text>
         </Pressable>
       </View>
 
@@ -103,8 +103,8 @@ export default function RequestsIndexScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}
           ListEmptyComponent={
             <EmptyState
-              title="Trống trải quá"
-              subtitle={activeTab === 'inbox' ? 'Hiện không có yêu cầu nào cần bạn trả.' : 'Bạn chưa gửi yêu cầu xin tiền nào.'}
+              title="Nothing here yet"
+              subtitle={activeTab === 'inbox' ? 'You have no money requests to pay.' : 'You have not sent any money requests.'}
             />
           }
           renderItem={({ item }: { item: any }) => {
@@ -125,7 +125,7 @@ export default function RequestsIndexScreen() {
                   <View className="flex-1 mr-2">
                     <Text className="text-sm font-semibold text-slate-900 dark:text-white mb-0.5" numberOfLines={1}>{name}</Text>
                     <Text className="text-xs text-slate-400" numberOfLines={1}>
-                      {item.note || 'Không có nội dung'}
+                      {item.note || 'No note'}
                     </Text>
                   </View>
                   <View className="items-end gap-1">

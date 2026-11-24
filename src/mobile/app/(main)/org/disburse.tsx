@@ -33,9 +33,9 @@ export default function DisburseScreen() {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
         <View className="flex-1 items-center justify-center gap-4">
-          <Text className="text-base color-rose-600 font-semibold text-center">Chỉ Maker mới có thể tạo lệnh chi.</Text>
+          <Text className="text-base color-rose-600 font-semibold text-center">Only a Maker can create a disbursement order.</Text>
           <Pressable onPress={() => router.back()} className="px-5 py-2.5 bg-brand rounded-xl">
-            <Text className="text-white font-bold">Quay lại</Text>
+            <Text className="text-white font-bold">Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -47,7 +47,7 @@ export default function DisburseScreen() {
   const handleSend = () =>
     guard.run(async () => {
       if (!phone.trim() || !parsed.ok) {
-        Alert.alert('Thiếu thông tin', 'Vui lòng nhập đầy đủ SĐT và số tiền hợp lệ.');
+        Alert.alert('Missing information', 'Please enter a phone number and a valid amount.');
         return;
       }
       const orgId = activeOrg.orgId;
@@ -68,7 +68,7 @@ export default function DisburseScreen() {
         );
         router.replace({ pathname: '/(main)/org/order-status', params: { refCode: res.ref_code } });
       } catch (e: unknown) {
-        Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+        Alert.alert('Error', (e instanceof Error ? e.message : String(e)));
       }
     });
 
@@ -87,7 +87,7 @@ export default function DisburseScreen() {
             <Ionicons name="arrow-back" size={22} color="#0f172a" />
           </Pressable>
           <Text className="text-base font-bold text-slate-900 dark:text-white flex-1 text-center mx-2" numberOfLines={1}>
-            Tạo lệnh chi · {activeOrg.name}
+            Create disbursement order · {activeOrg.name}
           </Text>
           <View className="w-5" />
         </View>
@@ -95,7 +95,7 @@ export default function DisburseScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <View className="bg-brand rounded-2xl p-5 flex-row items-center justify-between shadow-xs">
             <View>
-              <Text className="text-xs font-semibold text-white/80 mb-1">Ví doanh nghiệp</Text>
+              <Text className="text-xs font-semibold text-white/80 mb-1">Business wallet</Text>
               <Text className="text-2xl font-bold text-white">{formatAmountVND(BigInt(activeOrg.balance))}</Text>
             </View>
             <View className="bg-white/20 px-2.5 py-1 rounded-full">
@@ -107,7 +107,7 @@ export default function DisburseScreen() {
             <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Chi cho</Text>
             <TextInput
               className="h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-base text-slate-900 dark:text-white"
-              placeholder="SĐT hoặc tên đối tác…"
+              placeholder="Phone number or partner name…"
               placeholderTextColor="#94a3b8"
               value={phone}
               onChangeText={setPhone}
@@ -117,7 +117,7 @@ export default function DisburseScreen() {
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Số tiền</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Amount</Text>
             <View className="h-16 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 flex-row items-center">
               <TextInput
                 className="flex-1 text-2xl font-bold text-slate-900 dark:text-white h-full"
@@ -132,10 +132,10 @@ export default function DisburseScreen() {
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Nội dung chi</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Payment note</Text>
             <TextInput
               className="h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-base text-slate-900 dark:text-white"
-              placeholder="Vd: Thanh toán hợp đồng #HD-001"
+              placeholder="E.g. Payment for contract #HD-001"
               placeholderTextColor="#94a3b8"
               value={note}
               onChangeText={setNote}
@@ -145,7 +145,7 @@ export default function DisburseScreen() {
           <View className="bg-cyan-50 dark:bg-slate-800 rounded-xl p-4 flex-row items-start gap-2.5">
             <Text className="text-lg">🛃</Text>
             <Text className="flex-1 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-              Lệnh chi sẽ được phê duyệt theo chính sách của {activeOrg.name} trước khi thực hiện.
+              The order will go through approval under the policy of {activeOrg.name} before it is executed.
             </Text>
           </View>
 
@@ -157,7 +157,7 @@ export default function DisburseScreen() {
             {guard.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-base font-bold text-white">Gửi lệnh chờ duyệt</Text>
+              <Text className="text-base font-bold text-white">Submit for approval</Text>
             )}
           </Pressable>
         </ScrollView>

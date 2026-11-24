@@ -14,12 +14,12 @@ export default function TopupResultScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.body}>
         <Text style={styles.check}>✓</Text>
-        <Text style={styles.title}>Nạp tiền thành công</Text>
+        <Text style={styles.title}>Top up successful</Text>
         <AmountDisplay valueMinorUnits={value} sign="in" size="display" />
-        <Text style={styles.ref}>Mã giao dịch: {refCode}</Text>
+        <Text style={styles.ref}>Transaction ID: {refCode}</Text>
       </View>
       <View style={styles.footer}>
-        <Button label="Về trang chủ" onPress={() => router.dismissTo('/(main)/home')} />
+        <Button label="Back to home" onPress={() => router.dismissTo('/(main)/home')} />
       </View>
     </SafeAreaView>
   );

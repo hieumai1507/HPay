@@ -13,16 +13,16 @@ beforeEach(() => {
 });
 
 describe('TestEdge_M10_KYCImageHeuristic_Validation', () => {
-  it('identifies blurry images and rejects with appropriate Vietnameses error message', async () => {
+  it('identifies blurry images and rejects with appropriate English error message', async () => {
     const result = await validateKycPhoto('file:///mock-id-card-blurry.jpg');
     expect(result.isValid).toBe(false);
-    expect(result.error).toContain('mờ');
+    expect(result.error).toContain('blurry');
   });
 
-  it('identifies dark/poorly-lit images and rejects with appropriate Vietnameses error message', async () => {
+  it('identifies dark/poorly-lit images and rejects with appropriate English error message', async () => {
     const result = await validateKycPhoto('file:///mock-id-card-dark.jpg');
     expect(result.isValid).toBe(false);
-    expect(result.error).toContain('tối');
+    expect(result.error).toContain('dark');
   });
 
   it('accepts compliant images', async () => {

@@ -18,10 +18,10 @@ import {
 } from '@/src/ui';
 
 const STEP_LABEL: Record<string, string> = {
-  VALIDATE: 'Kiểm tra thông tin',
-  FRAUD_CHECK: 'Kiểm tra an toàn',
-  MOVE_FUNDS: 'Chuyển tiền',
-  CONFIRM: 'Hoàn tất',
+  VALIDATE: 'Checking details',
+  FRAUD_CHECK: 'Security check',
+  MOVE_FUNDS: 'Moving funds',
+  CONFIRM: 'Completed',
 };
 
 function stepState(status: string): TimelineStepState {
@@ -56,7 +56,7 @@ export default function TxnDetailScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
           <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
         </Pressable>
-        <Text className="text-base font-semibold text-slate-900 dark:text-white">Chi tiết giao dịch</Text>
+        <Text className="text-base font-semibold text-slate-900 dark:text-white">Transaction details</Text>
         <View className="w-8" />
       </View>
 
@@ -77,17 +77,17 @@ export default function TxnDetailScreen() {
 
           <View className="bg-white dark:bg-slate-800 rounded-xl p-4 gap-3 shadow-xs">
             {q.data.counterparty_name && (
-              <Row label={q.data.direction === 'in' ? 'Từ' : 'Đến'} value={q.data.counterparty_name} />
+              <Row label={q.data.direction === 'in' ? 'From' : 'To'} value={q.data.counterparty_name} />
             )}
-            {q.data.counterparty_phone && <Row label="Số điện thoại" value={q.data.counterparty_phone} />}
+            {q.data.counterparty_phone && <Row label="Phone number" value={q.data.counterparty_phone} />}
             {q.data.fee > 0 && (
-              <Row label="Phí giao dịch" value={`${new Intl.NumberFormat('vi-VN').format(q.data.fee)} ₫`} />
+              <Row label="Fee" value={`${new Intl.NumberFormat('en-US').format(q.data.fee)} ₫`} />
             )}
-            {q.data.note ? <Row label="Ghi chú" value={q.data.note} /> : null}
-            <Row label="Thời gian" value={new Date(q.data.created_at).toLocaleString('vi-VN')} />
-            <Pressable onPress={copyRef} accessibilityRole="button" accessibilityLabel="Sao chép mã giao dịch">
+            {q.data.note ? <Row label="Note" value={q.data.note} /> : null}
+            <Row label="Time" value={new Date(q.data.created_at).toLocaleString('en-GB')} />
+            <Pressable onPress={copyRef} accessibilityRole="button" accessibilityLabel="Copy transaction ID">
               <View className="flex-row justify-between gap-3">
-                <Text className="text-sm text-slate-500">Mã giao dịch</Text>
+                <Text className="text-sm text-slate-500">Transaction ID</Text>
                 <Text className="text-sm font-mono text-brand">
                   {refCode} {copied ? '✓' : '⧉'}
                 </Text>
@@ -97,14 +97,14 @@ export default function TxnDetailScreen() {
 
           {tlQ.data && tlQ.data.timeline.instance_status !== 'none' && (
             <View className="bg-white dark:bg-slate-800 rounded-xl p-4 gap-3 shadow-xs">
-              <Text className="text-sm font-semibold text-slate-900 dark:text-white">Tiến trình</Text>
+              <Text className="text-sm font-semibold text-slate-900 dark:text-white">Progress</Text>
               {tlQ.data.timeline.steps.map((s, i) => (
                 <TimelineStep
                   key={`${s.step}-${i}`}
                   label={STEP_LABEL[s.step] ?? s.step}
                   state={stepState(s.status)}
                   isLast={i === tlQ.data.timeline.steps.length - 1}
-                  meta={s.finished_at ? new Date(s.finished_at).toLocaleTimeString('vi-VN') : undefined}
+                  meta={s.finished_at ? new Date(s.finished_at).toLocaleTimeString('en-GB') : undefined}
                 />
               ))}
             </View>

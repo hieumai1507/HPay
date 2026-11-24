@@ -22,10 +22,10 @@ const base: ApprovalDetail = {
 describe('buildTimeline (mockup 03-business.html frame 19)', () => {
   it('shows created step + waiting step when no one has signed yet', () => {
     const steps = buildTimeline(base);
-    expect(steps[0]).toMatchObject({ title: 'Bạn đã tạo lệnh', dot: 'done' });
+    expect(steps[0]).toMatchObject({ title: 'You created the order', dot: 'done' });
     expect(steps[1]).toMatchObject({ dot: 'active' });
-    expect(steps[1].title).toContain('chờ 2 chữ ký');
-    expect(steps[2]).toMatchObject({ title: 'Thực hiện chuyển tiền', dot: 'wait' });
+    expect(steps[1].title).toContain('awaiting 2 signatures');
+    expect(steps[2]).toMatchObject({ title: 'Execute transfer', dot: 'wait' });
   });
 
   it('marks a recorded approval as done and shows remaining signatures on the active step', () => {
@@ -37,8 +37,8 @@ describe('buildTimeline (mockup 03-business.html frame 19)', () => {
       ],
     };
     const steps = buildTimeline(d);
-    expect(steps[1]).toMatchObject({ title: 'Level 1 — Trần Quang đã duyệt', dot: 'done' });
-    expect(steps[2].title).toBe('Level 2 — chờ 1 chữ ký');
+    expect(steps[1]).toMatchObject({ title: 'Level 1 — Trần Quang approved', dot: 'done' });
+    expect(steps[2].title).toBe('Level 2 — awaiting 1 signature');
     expect(steps[2].dot).toBe('active');
   });
 
@@ -52,7 +52,7 @@ describe('buildTimeline (mockup 03-business.html frame 19)', () => {
     };
     const steps = buildTimeline(d);
     expect(steps).toHaveLength(2);
-    expect(steps[1]).toMatchObject({ title: 'Level 1 — Trần Quang đã từ chối', dot: 'rejected' });
+    expect(steps[1]).toMatchObject({ title: 'Level 1 — Trần Quang rejected', dot: 'rejected' });
   });
 
   it('shows a final done step when approved', () => {
@@ -64,7 +64,7 @@ describe('buildTimeline (mockup 03-business.html frame 19)', () => {
       ],
     };
     const steps = buildTimeline(d);
-    expect(steps[steps.length - 1]).toMatchObject({ title: 'Đã thực hiện chuyển tiền', dot: 'done' });
+    expect(steps[steps.length - 1]).toMatchObject({ title: 'Transfer executed', dot: 'done' });
   });
 
   it('shows an expired terminal step', () => {
@@ -76,6 +76,6 @@ describe('buildTimeline (mockup 03-business.html frame 19)', () => {
   it('shows a cancelled terminal step', () => {
     const d: ApprovalDetail = { ...base, status: 'cancelled' };
     const steps = buildTimeline(d);
-    expect(steps[steps.length - 1]).toMatchObject({ title: 'Bạn đã hủy lệnh', dot: 'rejected' });
+    expect(steps[steps.length - 1]).toMatchObject({ title: 'You canceled the order', dot: 'rejected' });
   });
 });
