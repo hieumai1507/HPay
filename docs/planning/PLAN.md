@@ -368,3 +368,5 @@ Status 2026-11-24 (later): the SYSTEM_CASH_IN funding deadlock was reproduced an
 
 G25 follow-up (2026-11-24): ADR-0018 (PIN pepper plus lighter argon2 cost) is written. ADR proposed, awaiting owner decision. Nothing is implemented and no hashing parameter has changed.
 G6 status 2026-11-24: mobile Set PIN (security/set-pin) and Forgot PIN (security/reset-pin) screens, PIN prompt link and account rows are built with jest tests (plan steps 2 and 3); on-device run still pending (HUMAN cases TC-MSEC-029/030 Blocked). Step-up at confirm and TOTP are a separate worktree.
+
+G25 decision (2026-11-24): the owner accepted ADR-0018 (PIN pepper plus the lighter argon2 cost). Next step is an hpay-feature run to build it (config PIN_PEPPER, hash format with a key id, rehash on verify, rotation and loss runbook, load test before and after). Until then nothing about PIN hashing has changed.

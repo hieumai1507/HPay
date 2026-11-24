@@ -1,7 +1,7 @@
 ---
 id: ADR-0018
 title: Protect the PIN hash with a server-side pepper and a lighter argon2 cost
-status: proposed          # awaiting owner decision; nothing in this ADR is implemented
+status: accepted          # approved by the owner 2026-11-24; the decision is accepted, the implementation is not built yet
 date: 2026-11-24
 supersedes: []
 superseded_by: []
@@ -15,7 +15,7 @@ constitution: []
 
 # ADR-0018: Protect the PIN hash with a server-side pepper and a lighter argon2 cost
 
-An accepted ADR is immutable. This one is **proposed**: no code, no parameter and no migration changes until the owner decides. Related: ADR-0008 (server-side PIN), ADR-0014 (PIN gate), ADR-0016 (PIN reset), ADR-0017 (TOTP key handling).
+An accepted ADR is immutable. **Accepted by the owner on 2026-11-24.** The decision below is approved; the implementation is a separate `hpay-feature` run and has not started, so no code, parameter or migration has changed yet. Related: ADR-0008 (server-side PIN), ADR-0014 (PIN gate), ADR-0016 (PIN reset), ADR-0017 (TOTP key handling).
 
 Legend used below: **[measured]** came from a run recorded in `quality/performance/2026-11-24-load-test-baseline.md`; **[estimate]** is arithmetic or an expectation that has not been measured; **[code]** is read from the source.
 
