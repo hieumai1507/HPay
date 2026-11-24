@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
 import { idempotencyHeaders } from '@/lib/idempotency';
-import { type AdminQueryParams, type Paged, buildQueryString } from './common';
+import { type AdminQueryParams, type Paged, buildQueryString, decodeJsonColumn } from './common';
 
 export interface WorkflowStep {
   name: string;
@@ -11,6 +11,8 @@ export interface WorkflowStep {
   maxAttempts?: number;
   output?: Record<string, unknown> | string | null;
   error?: string | null;
+  /** The unedited error text, for the tooltip. */
+  rawError?: string | null;
 }
 
 export interface WorkflowInstance {
@@ -38,7 +40,7 @@ interface BackendWorkflowRow {
   status: string;
   created_at: string;
   updated_at?: string;
-  context?: Record<string, unknown>;
+  context?: Record<string, unknown> | string;
 }
 
 export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: boolean; status?: string; definition?: string }, enabled = true) {
@@ -75,7 +77,7 @@ export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: 
           status: (w.status as WorkflowInstance['status']) || 'running',
           isStuck: w.status === 'running' && ageMin > 5,
           createdAt: w.created_at,
-          context: w.context,
+          context: decodeJsonColumn<Record<string, unknown>>(w.context, {}),
         };
       });
       return { rows: items, total: res?.total ?? items.length };
@@ -84,35 +86,62 @@ export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: 
   });
 }
 
+interface BackendStepRow {
+  step_name: string;
+  attempt?: number;
+  status: string;
+  output?: unknown;
+  error?: string | null;
+  started_at: string;
+  finished_at?: string | null;
+}
+
+/** Operators read these, so turn raw database wording into a plain sentence. The raw text stays in `title`. */
+export function friendlyStepError(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (/no rows in result set/i.test(raw)) return 'The record this step needed was not found.';
+  if (/context (canceled|deadline exceeded)/i.test(raw)) return 'The step took too long and was stopped.';
+  if (/connection (refused|reset)/i.test(raw)) return 'A service this step calls was not reachable.';
+  return raw;
+}
+
 export function useWorkflowDetail(id: string) {
   return useQuery({
     queryKey: ['admin', 'workflow', id],
     queryFn: async () => {
-      const res = await apiRequest<{ instance: BackendWorkflowRow; steps: { step_name: string; status: string; output?: unknown; error?: string; started_at: string; finished_at?: string }[] }>(`/v1/admin/workflows/${id}`);
+      const res = await apiRequest<{ instance: BackendWorkflowRow; steps: BackendStepRow[] | null }>(`/v1/admin/workflows/${id}`);
       const inst = res.instance;
-      const steps: WorkflowStep[] = (res.steps || []).map((s) => ({
-        name: s.step_name,
-        status: s.status === 'completed' ? 'done' : s.status === 'failed' ? 'fail' : 'running',
-        output: s.output as Record<string, unknown>,
-        error: s.error,
-      }));
+      const steps: WorkflowStep[] = (res.steps ?? []).map((s) => {
+        const started = Date.parse(s.started_at);
+        const finished = s.finished_at ? Date.parse(s.finished_at) : NaN;
+        return {
+          name: s.step_name,
+          status: s.status === 'completed' ? 'done' : s.status === 'failed' ? 'fail' : 'running',
+          attempt: s.attempt,
+          durationMs: Number.isFinite(started) && Number.isFinite(finished) ? Math.max(0, finished - started) : undefined,
+          output: decodeJsonColumn<Record<string, unknown> | null>(s.output, null),
+          error: friendlyStepError(s.error),
+          rawError: s.error ?? null,
+        };
+      });
+      const createdMs = Date.parse(inst.created_at);
+      const ageMin = Number.isFinite(createdMs) ? Math.floor((Date.now() - createdMs) / 60000) : 0;
       return {
         id: inst.id,
         definitionId: inst.definition_name ? `${inst.definition_name} v${inst.definition_version}` : 'workflow',
         txnRef: inst.txn_ref || '—',
         amount: inst.txn_amount,
         currentStep: inst.current_step,
-        age: 'just now',
+        age: ageMin > 0 ? `${ageMin}m` : 'just now',
         status: (inst.status as WorkflowInstance['status']) || 'running',
         createdAt: inst.created_at,
         steps,
-        context: inst.context,
+        context: decodeJsonColumn<Record<string, unknown>>(inst.context, {}),
       };
     },
     enabled: !!id,
   });
 }
-
 export function useDecideWorkflow() {
   const qc = useQueryClient();
   return useMutation({

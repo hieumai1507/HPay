@@ -136,3 +136,17 @@ SELECT
     WHERE status = 'needs_manual' AND subject_type <> 'org_transaction')::bigint AS needs_manual_approvals,
   (SELECT COUNT(*) FROM workflow_instances
     WHERE status = 'compensation_failed')::bigint AS compensation_failed_workflows;
+
+-- name: GetWorkflowInstanceAdmin :one
+-- Admin workflow detail: the instance with its definition name and version and the transaction code and
+-- amount the list already shows, so the detail page does not have to guess them. Separate from
+-- GetInstance, which the engine uses on the hot path.
+SELECT i.id, i.definition_id,
+       COALESCE(i.transaction_id, '00000000-0000-0000-0000-000000000000'::uuid)::uuid AS transaction_id,
+       i.status, i.current_step, i.context, i.created_at, i.updated_at,
+       d.name AS definition_name, d.version AS definition_version,
+       t.ref_code AS txn_ref, t.amount AS txn_amount
+FROM workflow_instances i
+JOIN workflow_definitions d ON d.id = i.definition_id
+LEFT JOIN transactions t ON t.id = i.transaction_id
+WHERE i.id = $1;

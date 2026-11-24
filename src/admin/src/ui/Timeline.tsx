@@ -7,6 +7,8 @@ export interface TimelineStepItem {
   maxAttempts?: number;
   output?: Record<string, unknown> | string | null;
   error?: string | null;
+  /** Unedited error text, shown as a tooltip. */
+  rawError?: string | null;
   timestamp?: string;
 }
 
@@ -48,15 +50,15 @@ export function Timeline({ steps }: TimelineProps) {
                 {step.timestamp && <span className="text-xs text-slate-500">{step.timestamp}</span>}
               </div>
 
-              {step.output && (
+              {step.output && (typeof step.output === 'string' || Object.keys(step.output).length > 0) && (
                 <div className="font-mono text-xs text-slate-500 mt-1 break-all">
-                  out: {typeof step.output === 'string' ? step.output : JSON.stringify(step.output)}
+                  Result: {typeof step.output === 'string' ? step.output : JSON.stringify(step.output)}
                 </div>
               )}
 
               {step.error && (
-                <div className="font-mono text-xs text-rose-600 font-semibold mt-1 break-all">
-                  err: {step.error}
+                <div className="text-xs text-rose-600 font-semibold mt-1 break-words" title={step.rawError ?? undefined}>
+                  {step.error}
                 </div>
               )}
             </div>

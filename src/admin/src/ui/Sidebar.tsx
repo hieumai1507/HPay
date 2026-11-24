@@ -38,7 +38,7 @@ const NAV_ITEMS: { to: string; label: string; icon: typeof LayoutDashboard }[] =
   { to: '/audit', label: 'Audit Log', icon: ScrollText },
 ];
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen = false, onNavigate }: { mobileOpen?: boolean; onNavigate?: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const can = useAdminStore((s) => s.can);
   // UX only: hides links the role cannot use; the backend does not enforce roles yet (BE-H6).
@@ -49,13 +49,16 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`bg-[#0b1220] text-slate-400 flex flex-col transition-all duration-200 border-r border-slate-800 ${
-        collapsed ? 'w-16 min-w-16' : 'w-58 min-w-58'
-      }`}
+      aria-label="Main menu"
+      // Below 768 px the menu is a drawer over the page (closed until the menu button is pressed); from
+      // 768 px up it sits beside the page and can be collapsed to icons.
+      className={`bg-[#0b1220] text-slate-400 flex flex-col transition-all duration-200 border-r border-slate-800 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:w-64 max-md:shadow-xl ${
+        mobileOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full'
+      } ${collapsed ? 'md:w-16 md:min-w-16' : 'md:w-58 md:min-w-58'}`}
     >
       <div className="h-14 flex items-center px-4 gap-2.5 border-b border-slate-800/60">
         <LogoMark size={24} />
-        {!collapsed && (
+        {(!collapsed || mobileOpen) && (
           <strong className="text-white font-bold text-base tracking-tight">HPay Admin</strong>
         )}
       </div>
@@ -66,16 +69,17 @@ export function Sidebar() {
             key={to}
             to={to}
             title={label}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                 isActive
                   ? 'text-cyan-400 bg-slate-800'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              } ${collapsed ? 'justify-center' : 'justify-start'}`
+              } ${collapsed ? 'md:justify-center' : 'justify-start'}`
             }
           >
             <Icon size={17} />
-            {!collapsed && label}
+            <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
             {to === '/attention' && attentionCount > 0 && (
               <span aria-label={`${attentionCount} cases need attention`} className="ml-auto rounded-full bg-rose-600 px-2 text-xs font-bold text-white">
                 {attentionCount}
@@ -88,7 +92,7 @@ export function Sidebar() {
       <button
         onClick={() => setCollapsed((c) => !c)}
         aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
-        className={`p-3.5 border-t border-slate-800/60 text-slate-400 hover:text-white transition-colors cursor-pointer flex ${
+        className={`max-md:hidden p-3.5 border-t border-slate-800/60 text-slate-400 hover:text-white transition-colors cursor-pointer flex ${
           collapsed ? 'justify-center' : 'justify-end'
         }`}
       >

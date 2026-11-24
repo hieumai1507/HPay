@@ -240,14 +240,14 @@ func (s *Service) ListWorkflowInstances(ctx context.Context, f listing.Filter, w
 	return rows, total, nil
 }
 
-func (s *Service) GetWorkflowInstanceDetail(ctx context.Context, id uuid.UUID) (store.GetInstanceRow, []store.ListStepExecutionsRow, error) {
-	inst, err := s.q.GetInstance(ctx, id)
+func (s *Service) GetWorkflowInstanceDetail(ctx context.Context, id uuid.UUID) (store.GetWorkflowInstanceAdminRow, []store.ListStepExecutionsRow, error) {
+	inst, err := s.q.GetWorkflowInstanceAdmin(ctx, id)
 	if err != nil {
-		return store.GetInstanceRow{}, nil, err
+		return store.GetWorkflowInstanceAdminRow{}, nil, err
 	}
 	steps, err := s.q.ListStepExecutions(ctx, id)
 	if err != nil {
-		return store.GetInstanceRow{}, nil, err
+		return store.GetWorkflowInstanceAdminRow{}, nil, err
 	}
 	return inst, steps, nil
 }

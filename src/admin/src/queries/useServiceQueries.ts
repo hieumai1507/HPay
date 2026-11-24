@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/api/client';
 import { idempotencyHeaders } from '@/lib/idempotency';
 import type { ActionStepConfig, InputFieldRule } from '@/features/services/ServicePipelineModal';
-import { type AdminQueryParams, type Paged, buildQueryString } from './common';
+import { type AdminQueryParams, type Paged, buildQueryString, decodeJsonColumn } from './common';
 
 export type { ActionStepConfig, InputFieldRule };
+export { decodeJsonColumn };
 
 export interface ServiceItem {
   id: string;
@@ -42,27 +43,6 @@ export interface ServiceRow {
   amount_formula?: string | Record<string, unknown> | null;
   actions?: string | ActionStepConfig[] | null;
   input_fields?: string | InputFieldRule[] | null;
-}
-
-/**
- * The backend serialises Postgres jsonb columns as []byte, which Go's JSON encoder writes as a
- * base64 string ("W10=" is "[]"). Decode that, accept an already-parsed value too, and fall back
- * to the supplied default for null, bad base64 or bad JSON, so one odd row cannot crash a page.
- */
-export function decodeJsonColumn<T>(value: unknown, fallback: T): T {
-  if (value === null || value === undefined || value === '') return fallback;
-  if (typeof value !== 'string') return value as T;
-  try {
-    const bin = atob(value);
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as T;
-  } catch {
-    try {
-      return JSON.parse(value) as T; // plain JSON text, in case the API ever stops base64-encoding
-    } catch {
-      return fallback;
-    }
-  }
 }
 
 export function mapServiceRow(r: ServiceRow): ServiceItem {

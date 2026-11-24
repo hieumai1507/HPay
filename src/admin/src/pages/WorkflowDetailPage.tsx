@@ -54,9 +54,11 @@ export default function WorkflowDetailPage() {
           >
             ← Monitor
           </button>
-          <h2 className="text-base font-bold text-slate-900">{instance.id} · {instance.definitionId}</h2>
+          <h2 className="text-base font-bold text-slate-900">
+            {instance.txnRef !== '—' ? instance.txnRef : 'Workflow'} · {instance.definitionId}
+          </h2>
           <span className="bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {instance.status.toUpperCase()} {failedStep ? `at ${failedStep.name}` : ''}
+            {instance.status.replace(/_/g, ' ').toUpperCase()} {failedStep ? `at ${failedStep.name}` : ''}
           </span>
         </div>
 
@@ -106,7 +108,7 @@ export default function WorkflowDetailPage() {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Workflow type</div>
+                <div className="text-xs text-slate-500">Process</div>
                 <div className="font-semibold text-xs text-slate-800">{instance.definitionId}</div>
               </div>
               <div>
@@ -115,7 +117,7 @@ export default function WorkflowDetailPage() {
               </div>
               <div>
                 <div className="text-xs text-slate-500">Context</div>
-                <div className="font-mono text-slate-700">{Object.keys(instance.context || {}).length} keys</div>
+                <div className="font-mono text-slate-700">{Object.keys(instance.context ?? {}).length} {Object.keys(instance.context ?? {}).length === 1 ? 'item' : 'items'}</div>
               </div>
             </div>
           </div>
@@ -131,11 +133,11 @@ export default function WorkflowDetailPage() {
         <div className="flex flex-col gap-4">
           {/* Input / Output Code Viewer Card */}
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
-            <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-3 uppercase">INPUT / OUTPUT — {failedStep?.name || 'CONTEXT'}</div>
+            <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-3 uppercase">DATA — {failedStep?.name || 'WORKFLOW'}</div>
             <div className="bg-slate-900 rounded-lg p-3.5 overflow-x-auto">
               <pre className="m-0 text-cyan-300 font-mono text-xs leading-relaxed">
                 <code>
-                  {JSON.stringify(instance.context || { error: failedStep?.error }, null, 2)}
+                  {JSON.stringify(failedStep?.output ?? instance.context ?? {}, null, 2)}
                 </code>
               </pre>
             </div>
@@ -145,7 +147,7 @@ export default function WorkflowDetailPage() {
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
             <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-1 uppercase">AVAILABLE ACTIONS</div>
             <div className="text-xs text-slate-500 mb-3">
-              By the state machine, instance <b>{instance.status}</b> is at a step with <b>on_failure: compensate</b>:
+              This payment is <b>{instance.status.replace(/_/g, ' ')}</b>. You can try the failed step again, or reverse the money that already moved:
             </div>
 
             <div className="flex flex-col gap-2.5">
