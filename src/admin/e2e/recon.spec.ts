@@ -21,7 +21,7 @@ test.describe('Reconciliation', () => {
   });
 
   test('running recon for an already-processed date does not crash the page', async ({ asMaker }) => {
-    asMaker.once('dialog', (d) => d.accept());
+    asMaker.once('dialog', (d) => d.accept().catch(() => undefined)); // the page may already be closed when the alert fires
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
     await asMaker.getByRole('button', { name: /Run Reconciliation/ }).click();
@@ -31,7 +31,7 @@ test.describe('Reconciliation', () => {
   });
 
   test('A06 — export stays non-blocking: the date picker remains interactive right after clicking export', async ({ asMaker }) => {
-    asMaker.once('dialog', (d) => d.accept());
+    asMaker.once('dialog', (d) => d.accept().catch(() => undefined)); // the page may already be closed when the alert fires
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
     await asMaker.getByRole('button', { name: /Export Excel/ }).click();

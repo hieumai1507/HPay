@@ -19,13 +19,13 @@ test.describe('KYC queue', () => {
     // kyc.review is a superadmin permission and the backend enforces it (ADR-0015), so the
     // maker (role ops) gets 403 here and the checker is the right identity.
     await asChecker.goto('/kyc?tab=manual');
-    await expect(asChecker.getByText('Trần Văn Ba')).toBeVisible();
+    await expect(asChecker.getByText('Tran Van Ba')).toBeVisible();
     await expect(asChecker.getByText('0900000003')).toBeVisible();
   });
 
   test('opening a row shows AI score, verdict and reasons', async ({ asChecker }) => {
     await asChecker.goto('/kyc?tab=manual');
-    await asChecker.getByText('Trần Văn Ba').click();
+    await asChecker.getByText('Tran Van Ba').click();
     await expect(asChecker).toHaveURL(/\/kyc\/.+\?tab=manual/);
     await expect(asChecker.getByText('64/100')).toBeVisible();
     await expect(asChecker.getByText('AI analysis')).toBeVisible();
@@ -34,7 +34,7 @@ test.describe('KYC queue', () => {
 
   test('reject dialog enforces a 10-char minimum reason before it can be confirmed', async ({ asChecker }) => {
     await asChecker.goto('/kyc?tab=manual');
-    await asChecker.getByText('Trần Văn Ba').click();
+    await asChecker.getByText('Tran Van Ba').click();
     await asChecker.getByRole('button', { name: /Reject/ }).first().click();
 
     const dialog = asChecker.getByRole('dialog', { name: 'Reject KYC application' });
@@ -73,7 +73,7 @@ test.describe('KYC queue', () => {
 
     await asChecker.goto('/kyc?tab=manual');
     const before = kycListHits;
-    await asChecker.getByText('Trần Văn Ba').click();
+    await asChecker.getByText('Tran Van Ba').click();
 
     // SignedImage.onError -> refetch() fires exactly once (retried ref guards
     // against loops) — assert the KYC list query re-runs after the 403.
@@ -97,8 +97,8 @@ test.describe('KYC queue', () => {
 
     await page1.goto('/kyc?tab=manual');
     await page2.goto('/kyc?tab=manual');
-    await page1.getByText('Trần Văn Ba').click();
-    await page2.getByText('Trần Văn Ba').click();
+    await page1.getByText('Tran Van Ba').click();
+    await page2.getByText('Tran Van Ba').click();
 
     const approve1 = page1.getByRole('button', { name: /Approve/ });
     const approve2 = page2.getByRole('button', { name: /Approve/ });

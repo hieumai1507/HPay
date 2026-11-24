@@ -38,9 +38,9 @@ test.describe('Fraud monitor', () => {
     await asChecker.goto('/fraud');
     // The one open flag is auto-selected as activeDetailFlag by default
     // (FraudPage.tsx: selectedFlag || filteredFlags.find(f => f.status === 'open')).
-    await expect(asChecker.getByText('5 giao dịch trong 5 phút')).toBeVisible();
+    await expect(asChecker.getByText('5 transactions in 5 minutes')).toBeVisible();
     await expect(asChecker.getByText(/AI assessment:/)).toBeVisible();
-    await expect(asChecker.getByText(/tần suất bất thường/)).toBeVisible();
+    await expect(asChecker.getByText(/unusual frequency/)).toBeVisible();
   });
 
   test('rule filter narrows the table (status=all, rule=AMOUNT_SPIKE isolates the cleared flag)', async ({ asChecker }) => {
