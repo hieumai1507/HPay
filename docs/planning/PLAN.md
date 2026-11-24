@@ -365,3 +365,5 @@ Correctness held (600 of 600 transfers, 0 ledger mismatches) but throughput was 
 Status 2026-11-24: G20, G21, G22 (PumpLocal part), G23, G24, G25 (semaphore) are done; results in docs/quality/performance/2026-11-24-load-test-baseline.md. Open: lighter PIN hashing parameters (needs an ADR) and the SYSTEM_CASH_IN funding lock-order check.
 
 Status 2026-11-24 (later): the SYSTEM_CASH_IN funding deadlock was reproduced and fixed (FOR NO KEY UPDATE in GetWalletsForUpdate). Only open item from the load-test findings: lighter PIN hashing parameters, which need an owner decision and an ADR.
+
+Status 2026-11-24 (G6/M3/M4, mobile step-up and TOTP): the shared useTransactionAuth hook (none/pin/otp/2fa), the confirm wiring for transfer and vault moves, the TOTP enrolment and status screens and the new error handling are built and tested in jest. Requests to pay and top-up are gated off in availability.ts (backend routes not mounted) and keep their current flow. Device checks stay HUMAN/Blocked. Set PIN and Forgot PIN are on a separate branch.

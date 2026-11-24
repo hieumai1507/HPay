@@ -4,6 +4,9 @@ import { apiRequest } from '../api/client';
 import { queryClient } from '../api/query-client';
 import type { components } from '../api/schema';
 
+import { confirmWithAuth } from '../features/security/confirmWithAuth';
+import type { Collect } from '../features/security/useTransactionAuth';
+
 import { useTransactionEngine } from './useTransactionQueries';
 import { walletKeys } from './useWalletQueries';
 
@@ -64,8 +67,8 @@ export function useSetRoundUpTarget() {
 export interface VaultMoveOptions {
   /** One key per user intent (see src/lib/intentKey.ts). */
   idempotencyKey: string;
-  /** Collected from the user via usePin(). */
-  pin: string;
+  /** From useTransactionAuth(): collects the factors of the band the server asks for. */
+  collect: Collect;
 }
 
 export function useVaultMove() {
@@ -83,9 +86,10 @@ export function useVaultMove() {
       idempotencyKey: opts.idempotencyKey,
       extraParams: { vault_id: vaultId, direction },
     });
-    const res = await engine.confirmTransaction({
-      transactionId: req.transaction_id,
-      pin: opts.pin,
+    const res = await confirmWithAuth({
+      request: req,
+      collect: opts.collect,
+      confirm: engine.confirmTransaction,
     });
     // Both the vault list and the main wallet balance changed.
     void queryClient.invalidateQueries({ queryKey: vaultKeys.all });

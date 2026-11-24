@@ -5,3 +5,4 @@ export * from './useMoneyRequestQueries';
 export * from './useKYCQueries';
 export * from './useOrgQueries';
 export * from './useVaultQueries';
+export * from './useTotpQueries';

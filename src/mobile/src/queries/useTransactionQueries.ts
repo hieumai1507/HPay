@@ -102,6 +102,8 @@ export interface EngineConfirmPayload {
   /** Collected from the user via usePin() (src/features/security). Never a literal. */
   pin?: string;
   otp?: string;
+  /** 2fa band: authenticator code or recovery code (ADR-0017). */
+  totp?: string;
 }
 
 export interface EngineConfirmResponse {
@@ -136,10 +138,12 @@ export function useTransactionEngine() {
     mutationFn: async (payload: EngineConfirmPayload): Promise<EngineConfirmResponse> => {
       return await apiRequest<EngineConfirmResponse>('/v1/transactions/confirm', {
         method: 'POST',
+        // Only the factors that were collected go on the wire.
         body: {
           transaction_id: payload.transactionId,
-          pin: payload.pin,
-          otp: payload.otp,
+          ...(payload.pin !== undefined ? { pin: payload.pin } : {}),
+          ...(payload.otp !== undefined ? { otp: payload.otp } : {}),
+          ...(payload.totp !== undefined ? { totp: payload.totp } : {}),
         },
       });
     },
@@ -246,4 +250,29 @@ export function useInfinitePaginatedList<T>({ endpoint, initialPageSize = 15 }: 
     refetch: query.refetch,
     error: query.error,
   };
+}
+
+/* --- Step-up challenge (otp band) --- */
+export interface ChallengeResponse {
+  status: string;
+  /** Present only when the backend runs with APP_ENV=dev. */
+  otp_dev?: string;
+}
+
+/** Thrown when the user dismisses a step-up prompt after the request was created. Nothing moved. */
+export class AuthCancelledError extends Error {
+  constructor() {
+    super('Authentication cancelled');
+    this.name = 'AuthCancelledError';
+  }
+}
+
+export function useTransactionChallenge() {
+  return useMutation({
+    mutationFn: (transactionId: string) =>
+      apiRequest<ChallengeResponse>('/v1/transactions/challenge', {
+        method: 'POST',
+        body: { transaction_id: transactionId },
+      }),
+  });
 }

@@ -82,7 +82,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   ERR_TOTP_LOCKED: 'Authenticator codes are locked for 15 minutes after too many incorrect attempts.',
   ERR_TOTP_ALREADY_ENABLED: 'An authenticator app is already turned on for this account.',
   // confirming a held transaction (ADR-0014)
-  ERR_AUTH_EXPIRED: 'This transaction expired after 10 minutes without confirmation. Please start again.',
+  ERR_AUTH_EXPIRED: 'This payment expired. Start again.',
   ERR_AUTH_METHOD_UNAVAILABLE: 'The verification method for this transaction is not available yet.',
   ERR_CREDENTIAL_REQUIRED: 'Enter your verification code to continue.',
   ERR_ALREADY_CONFIRMED: 'This transaction has already been confirmed.',

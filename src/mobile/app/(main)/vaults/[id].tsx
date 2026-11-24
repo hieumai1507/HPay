@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSecureScreen } from '@/src/features/security/useSecureScreen';
 import { describeError } from '@/src/lib/errors';
-import { usePin } from '@/src/features/security/usePin';
+import { classifyConfirmError } from '@/src/features/security/confirmErrors';
+import { useTransactionAuth } from '@/src/features/security/useTransactionAuth';
 import { withIntentKey } from '@/src/lib/intentKey';
 import { formatAmountVND, parseAmountStrict, percentOf } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
@@ -29,7 +30,7 @@ export default function VaultDetailScreen() {
   const [mode, setMode] = useState<Mode>('deposit');
   const [raw, setRaw] = useState('');
   const guard = useSubmitGuard();
-  const { requestPin, pinPrompt } = usePin();
+  const { collect, prompt } = useTransactionAuth();
 
   const vault = useMemo(() => (vaults ?? []).find((v) => String(v.id) === String(id)), [vaults, id]);
 
@@ -57,13 +58,11 @@ export default function VaultDetailScreen() {
         );
         return;
       }
-      const pin = await requestPin();
-      if (pin === null) return;
       try {
         const run = mode === 'deposit' ? deposit : withdraw;
         const vaultId = String(vault.id);
         await withIntentKey(`vault:${vaultId}:${mode}:${amount}`, (idempotencyKey) =>
-          run(vaultId, amount, { idempotencyKey, pin }),
+          run(vaultId, amount, { idempotencyKey, collect }),
         );
         setRaw('');
         Alert.alert(
@@ -71,7 +70,19 @@ export default function VaultDetailScreen() {
           mode === 'deposit' ? 'Money added to the Vault.' : 'Money withdrawn to your main Wallet.',
         );
       } catch (e) {
-        Alert.alert('Could not complete', describeError(e));
+        const f = classifyConfirmError(e);
+        if (f.kind === 'cancelled') return; // nothing moved
+        if (f.actionLabel && f.actionRoute) {
+          Alert.alert('Could not complete', f.message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: f.actionLabel, onPress: () => router.push(f.actionRoute as never) },
+          ]);
+        } else if (f.kind === 'restart') {
+          Alert.alert('Payment expired', f.message);
+          setRaw('');
+        } else {
+          Alert.alert('Could not complete', f.message);
+        }
       }
     });
 
@@ -196,7 +207,7 @@ export default function VaultDetailScreen() {
           Every deposit or withdrawal is a Transaction recorded in the ledger.
         </Text>
       </ScrollView>
-      {pinPrompt}
+      {prompt}
     </SafeAreaView>
   );
 }
