@@ -39,5 +39,6 @@ Then state one of: **exact match** (an earlier record describes this; read its r
 2. Add the row to the INDEX table and any new tag to the vocabulary.
 3. If an audit finding was involved, set its status in `docs/audit/AUDIT-REPORT.md` (fixed + BUG id, or refuted/cannot-reproduce + evidence).
 4. Correct the knowledge base where the bug showed it was wrong or incomplete: `docs/architecture/` pages if a flow or dependency was described wrongly, `docs/domain/<area>.md` (rules, invariants, "Known gaps": remove the gap only if fixed and tested), `docs/reference/*` (error codes, data model, API) if they changed.
+4b. If the fix changes something a person sees or does in the admin or mobile UI (a label, a button, a message, a flow), run skill `hpay-user-guide` for the affected chapter and screenshots; write "guide: not affected" in the bug record otherwise.
 5. Verification command output for the fix goes in the record or the handoff note, not just in chat; list the `TC-` ids that were added or re-run and their recorded results.
 Commit message: `fix(<area>): <what> [BUG-NNNN]`.

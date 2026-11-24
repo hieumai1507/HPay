@@ -20,7 +20,7 @@ Slug = `<phase-or-area>-<short-name>`, e.g. `w2-ledger-idempotent-post`. All out
 | 6 | Implement | code | Failing tests now pass; no unrelated test breaks | medium (high for money/auth) | implementer agent, one per task |
 | 7 | Verify + fix loop | `docs/handoff/<slug>-verify.md` + results recorded in the workbook | Run EVERY case of the feature: automated via commands, HUMAN ones executed or marked Blocked with a reason. Record Status/Actual Result/Evidence/Executed By/Date per case. Any Fail goes through the fix loop below until all Pass or the cap is hit; no case left "Not Run" without a reason | low (fix loop: medium/high) | verifier agent (run) + implementer agent (fix) |
 | 8 | Review | review report | No unresolved blocker/high from `hpay-review` | high | reviewer agents (parallel) |
-| 9 | Update knowledge base and architecture | edits under `docs/` (architecture pages, ADR -> accepted) | Domain/reference/product/architecture docs describe the feature as shipped; every proposed ADR is now `accepted` (or `rejected`/`superseded` with the reason); spec marked done; test-case results consistent with the workbook | low | main |
+| 9 | Update knowledge base and architecture | edits under `docs/` (architecture pages, ADR -> accepted) | Domain/reference/product/architecture docs describe the feature as shipped; **for a UI change the user guide is updated (skill `hpay-user-guide`) or the spec says "guide: not affected" with the reason**; every proposed ADR is now `accepted` (or `rejected`/`superseded` with the reason); spec marked done; test-case results consistent with the workbook | low | main |
 
 ## Stage details
 
@@ -30,7 +30,7 @@ Invoke skill `interview-me`: one question at a time, each with your guess attach
 
 ### 2. Spec
 Read first: `docs/README.md`, `docs/constitution.md`, `docs/domain/<context>.md` for every context touched (current rules and known gaps), `docs/architecture/` for the app, `docs/bugs/INDEX.md` for earlier bugs in the same area (do not reintroduce them), `docs/audit/AUDIT-REPORT.md` entries for the same module, and the app `CLAUDE.md`.
-Write `spec.md` with: Problem, Goals, Non-goals, Acceptance criteria (Given/When/Then, each with an ID `AC-n`), Invariants touched (use the C-xx ids from `docs/constitution.md`), API/schema delta, Edge-case IDs (E/M/A) covered, and an **Architecture impact** section.
+Write `spec.md` with: Problem, Goals, Non-goals, Acceptance criteria (Given/When/Then, each with an ID `AC-n`), Invariants touched (use the C-xx ids from `docs/constitution.md`), API/schema delta, Edge-case IDs (E/M/A) covered, an **Architecture impact** section, and a **User guide impact** line.
 
 **Architecture impact** (mandatory, one of three levels; when unsure choose the higher one):
 - `none`: the change fits inside existing building blocks, runtime flows and cross-cutting concepts. State which `architecture/` pages you read to conclude this.
@@ -40,9 +40,11 @@ Triggers that force at least `amend`: a new package under `internal/`, a new tab
 If the spec contradicts `docs/domain/*` or `docs/architecture/*`: STOP and propose the docs change first (docs-first rule).
 **Pages with `status: verified-against-code` are trusted; anything under `docs/history/` is history, not truth. When docs and code disagree, code is the fact: record the mismatch in the spec and fix the doc in stage 9.**
 
+**User guide impact** (mandatory one line): `updated` when a person sees or does something different in the admin or mobile UI (a page, tab, label, button, flow, role or permission, a message they can read), naming the chapters; `not affected` with the reason otherwise (backend only, invisible change). A UI change with `not affected` is rejected in review.
+
 ### 3. Plan
 Write `plan.md`: task table (id, files, depends-on, size S/M/L, test that proves it, effort), schema changes (recipe `hpay-backend-recipes` -> `references/migration.md`), API changes (`src/backend/api/openapi.yaml` must stay in sync: `python scripts/check-openapi-sync.py`), rollout/rollback, risk.
-Mark tasks that touch **money, auth, or migrations** as `HIGH-RISK`: effort `high`, a `doubt-driven-development` pass on the plan, a second reviewer.
+For a change with User guide impact `updated`, add a last task "update the user guide" (skill `hpay-user-guide`: chapter edits, retaken screenshots, HTML copy, `check-guide.mjs`); it depends on the implementation tasks because the screenshots need the finished UI.: effort `high`, a `doubt-driven-development` pass on the plan, a second reviewer.
 
 **Constitution check (mandatory).** Add the table from the end of `docs/constitution.md` to the plan and answer it for every principle the change touches. A plan that touches money, auth, workflow or migrations must answer C-01 to C-08 and C-13 explicitly. A deviation needs a justification and an ADR; an unjustified deviation blocks the plan.
 
@@ -85,7 +87,7 @@ Run skill `hpay-review`. Blockers and highs go back to stage 6 and then re-run s
 The knowledge base (`docs/`) describes the system as it is, so a feature is not done until it is there. In the same change:
 - `docs/domain/<context>.md`: add or change business rules (new `BR-` IDs with Enforced-by and Test columns; the Test column now names the cases from stage 4), state machines, flows, invariants, edge cases; set `last_verified`; remove a "Known gaps" entry only when the fix is shipped and tested. New bounded context: copy `docs/_templates/domain-doc.md`.
 - `docs/reference/`: `data-model.md` (new tables/columns/constraints), `api.md` (must match `openapi.yaml`), `error-codes.md`, `configuration.md`, `glossary.md`.
-- `docs/product/feature-catalog.md` (status implemented/partial), and `roles-and-permissions.md` / `kyc-tiers-and-limits.md` if they changed.
+- **User guide** (when the spec said `updated`): run skill `hpay-user-guide` for the admin guide `docs/guides/admin-user-guide.md` (and the mobile guide once it exists): edit the chapters, retake the screenshots that show a changed screen and look at them, add a line to "What changed in this version", regenerate the HTML copy, run `node docs/guides/admin/check-guide.mjs` and paste its output. Problems you notice in the product while doing this go to `docs/guides/admin/OPEN-ISSUES.md` and to the user., and `roles-and-permissions.md` / `kyc-tiers-and-limits.md` if they changed.
 - `docs/architecture/` (follow the Architecture impact decided in stage 2, and correct it if reality differs):
   - `amend`: edit the existing page in place; update its building blocks table, mermaid diagrams, code map and risks; bump `last_verified`; keep its front matter; add the ADR to its `adr:` list. Do not leave a changed flow described the old way.
   - `new`: create the page from `docs/_templates/architecture-doc.md`, fill every section from the code as built (not from the plan), and link it from `architecture/README.md` and from every page that depends on it. A new component also gets its glossary terms in `reference/glossary.md` and its endpoints, tables and config in `reference/`.
@@ -99,4 +101,4 @@ This stage also runs when a feature is changed (not only created). If a doc cann
 Irreversible or destructive action; secret/credential handling; anything outside this repo (push, publish, deploy); a business decision not in the spec (limits, fees, reversal policy); **an architecture decision awaiting approval (stage 3 design gate)**; 3 failed fix attempts.
 
 ## Definition of done
-Every `AC-n` has at least one case; every case is Pass or Blocked-with-reason and recorded in the workbook; stage 7 evidence attached; review clean; architecture and knowledge base updated and no ADR left `proposed` (stage 9); no secrets in the diff. If the feature also fixed a bug, follow `hpay-bugfix` stage 7 for that bug.
+Every `AC-n` has at least one case; every case is Pass or Blocked-with-reason and recorded in the workbook; stage 7 evidence attached; review clean; architecture and knowledge base updated and no ADR left `proposed` (stage 9); the user guide updated and its checker passing, or "guide: not affected" with the reason (UI changes only); no secrets in the diff. If the feature also fixed a bug, follow `hpay-bugfix` stage 7 for that bug.

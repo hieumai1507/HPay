@@ -14,6 +14,9 @@ Run skill `fintech-review` against the diff. Any FAIL blocks.
 2. Compare the change with its spec's **Architecture impact**: a new package, table owner, background job, external call, endpoint family, dependency, or change to auth / idempotency / locking / outbox / error handling that the spec classified as `none` is a blocker (the classification was wrong; stop and reclassify).
 3. For `amend` / `new`: the referenced ADR exists and is `accepted` (or `proposed` only while the review is part of the design gate), and the architecture pages named in the spec were actually updated in this change. Pages that still describe the old flow are a high finding.
 4. Look for decisions made during implementation that have no ADR.
+5. **User guide.** If the diff touches src/admin/src or src/mobile/app in a way a person can see (a page, tab, label, button, flow, role or permission, a message), the spec must say User guide impact: updated and the diff must contain the matching change to docs/guides/admin-user-guide.md (or the mobile guide) plus retaken screenshots, and 
+ode docs/guides/admin/check-guide.mjs must pass. A UI change with a stale guide, or marked 
+ot affected without a reason, is a **high** finding.
 
 ## Step 2 - three independent reviewers (parallel, high effort)
 Spawn all three in ONE assistant turn so they run concurrently. Give each only the diff, the spec/plan path, and its brief. Reviewers are read-only (no edits).

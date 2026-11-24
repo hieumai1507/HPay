@@ -53,6 +53,7 @@ Layout: code in `src/{backend,admin,mobile}`, knowledge-base in `docs/` (start a
 | Bug, failing test, audit finding | skill `hpay-bugfix` (searches `docs/bugs` first; records the bug and fix there when done) |
 | Before commit / PR | skill hpay-review |
 | QA test-case workbooks | skill hpay-qa-testcases |
+| A change that alters what a person sees or does in the admin or mobile UI, or a request to write or refresh a user guide | skill `hpay-user-guide` (chapters, retaken screenshots, HTML copy, `check-guide.mjs`); `hpay-feature` stage 2 and 9 require it for UI changes |
 | Building blocks (module, migration, step, endpoint test, page, hook, screen) | `hpay-backend-recipes`, `hpay-admin-recipes`, `hpay-mobile-recipes` |
 
 Knowledge base (`docs/`): `domain/` business rules per bounded context, `architecture/`, `reference/` (data model, API, errors, config, glossary), `product/`, `guides/`, `adr/`, `bugs/` (ledger of every bug fixed), `quality/`, `history/` (old plans, not truth). Read the relevant `docs/domain/*.md` before changing a module; update it when you change behavior.`n`nRules: docs-first (change docs before code); code is the fact when docs disagree (see `docs/audit/AUDIT-REPORT.md`); never report a command as passing unless it ran in this session; 3 failed fix attempts means stop and report; never commit secrets, `.env`, `data/`; do not push or publish without the user's explicit go-ahead for that push.
