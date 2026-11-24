@@ -6,7 +6,7 @@ test.describe('Dashboard', () => {
     await asMaker.goto('/dashboard');
     await expect(asMaker.getByText('New users (today)')).toBeVisible();
     await expect(asMaker.getByText('Volume by hour')).toBeVisible();
-    await expect(asMaker.getByText('Needs attention')).toBeVisible();
+    await expect(asMaker.getByRole('main').getByText('Needs attention', { exact: true })).toBeVisible();
   });
 
   test('clicking the KYC attention card navigates to /kyc', async ({ asChecker }) => {
