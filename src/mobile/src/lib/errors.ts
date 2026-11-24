@@ -60,10 +60,51 @@ const ERROR_MESSAGES: Record<string, string> = {
   ERR_OTP_INVALID: 'Mã OTP không đúng.',
   ERR_OTP_EXPIRED: 'Mã OTP đã hết hạn.',
   ERR_OTP_MAX_ATTEMPTS: 'Bạn đã nhập sai OTP quá số lần cho phép.',
+  // limits by offer (BUG-0017, BUG-0018)
+  ERR_LIMIT_PER_TXN: 'Số tiền vượt hạn mức cho một giao dịch.',
+  ERR_LIMIT_DAILY: 'Bạn đã vượt hạn mức giao dịch trong ngày.',
+  ERR_LIMIT_MONTHLY: 'Bạn đã vượt hạn mức giao dịch trong tháng.',
+  ERR_TOO_FREQUENT: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.',
+  ERR_AMOUNT_BELOW_MIN: 'Số tiền thấp hơn mức tối thiểu của dịch vụ.',
+  ERR_SERVICE_NOT_IN_OFFER: 'Dịch vụ này không có trong gói của bạn.',
+  ERR_SERVICE_DISABLED: 'Dịch vụ này đang tắt trong gói của bạn.',
+  ERR_OFFER_INACTIVE: 'Gói dịch vụ của bạn đang tạm ngưng.',
+  // transaction PIN (ADR-0016)
+  ERR_PIN_WEAK: 'Mã PIN quá dễ đoán. Dùng 6 số không lặp lại và không liên tiếp.',
+  ERR_PIN_NOT_SET: 'Bạn chưa đặt mã PIN. Hãy đặt mã PIN trước.',
+  ERR_PIN_INCORRECT: 'Mã PIN không đúng.',
+  ERR_PIN_LOCKED: 'Mã PIN bị khóa 15 phút do nhập sai nhiều lần.',
+  ERR_PIN_COOLING: 'Vừa đặt lại mã PIN: trong 24 giờ chỉ giao dịch được tối đa 2.500.000 ₫ bằng PIN.',
+  ERR_PIN_RESET_RATE_LIMITED: 'Bạn đã yêu cầu mã đặt lại PIN quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+  // second factor (ADR-0017)
+  ERR_TOTP_NOT_ENROLLED: 'Giao dịch này cần ứng dụng xác thực. Hãy bật xác thực hai lớp trước.',
+  ERR_TOTP_INVALID: 'Mã xác thực không đúng hoặc đã được dùng.',
+  ERR_TOTP_LOCKED: 'Mã xác thực bị khóa 15 phút do nhập sai nhiều lần.',
+  ERR_TOTP_ALREADY_ENABLED: 'Ứng dụng xác thực đã được bật cho tài khoản này.',
+  // confirming a held transaction (ADR-0014)
+  ERR_AUTH_EXPIRED: 'Giao dịch đã hết hạn sau 10 phút chưa xác nhận. Vui lòng tạo lại.',
+  ERR_AUTH_METHOD_UNAVAILABLE: 'Phương thức xác thực cho giao dịch này chưa khả dụng.',
+  ERR_CREDENTIAL_REQUIRED: 'Cần nhập mã xác nhận để tiếp tục.',
+  ERR_ALREADY_CONFIRMED: 'Giao dịch này đã được xác nhận trước đó.',
+  ERR_IDEMPOTENCY_KEY_REUSED: 'Yêu cầu không hợp lệ, vui lòng thử lại.',
+  // login lockout (BUG-0016)
+  ERR_LOGIN_LOCKED: 'Đăng nhập sai quá nhiều lần. Tài khoản bị khóa 15 phút.',
+  // wallets, vaults, QR, requests
+  ERR_WALLET_NOT_FOUND: 'Không tìm thấy ví.',
+  ERR_VAULT_NOT_FOUND: 'Không tìm thấy két.',
+  ERR_VAULT_LABEL_TAKEN: 'Tên két này đã được dùng.',
+  ERR_VAULT_DIRECTION_INVALID: 'Thao tác với két không hợp lệ.',
+  ERR_QR_INVALID: 'Mã QR không hợp lệ.',
+  ERR_QR_EXPIRED: 'Mã QR đã hết hạn.',
+  ERR_REMIND_TOO_SOON: 'Bạn vừa nhắc xong. Vui lòng thử lại sau.',
+  ERR_PAYLOAD_TOO_LARGE: 'Tệp quá lớn. Vui lòng chọn ảnh nhỏ hơn.',
   // generic
   ERR_VALIDATION: 'Dữ liệu không hợp lệ.',
   ERR_FORBIDDEN: 'Bạn không có quyền thực hiện thao tác này.',
 };
+
+/** Every code that has user-facing copy; the contract test compares it with docs/reference/error-codes.md. */
+export const ERROR_CODES_WITH_COPY: readonly string[] = Object.keys(ERROR_MESSAGES);
 
 export function getErrorMessage(code: string | undefined | null): string {
   if (!code) return DEFAULT_ERROR_MESSAGE;

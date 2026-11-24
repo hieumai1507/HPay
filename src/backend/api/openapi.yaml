@@ -151,7 +151,6 @@ paths:
         "401": { description: ERR_INVALID_CREDENTIALS }
         "429": { description: "ERR_RATE_LIMITED (per IP) or ERR_LOGIN_LOCKED (5 failed logins lock the account for 15 minutes, even for the correct password)" }
         "403": { description: ERR_ACCOUNT_LOCKED }
-        "429": { description: "ERR_RATE_LIMITED or ERR_LOGIN_LOCKED (5 failed logins lock the admin for 15 minutes)" }
 
   /v1/auth/refresh:
     post:

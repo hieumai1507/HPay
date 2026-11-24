@@ -12,9 +12,9 @@ import { PinPrompt } from './components/PinPrompt';
  *   ... render {pinPrompt} once in the screen ...
  *
  * The hook only COLLECTS the digits and hands them to the caller; it never validates or
- * stores them. The server-side PIN does not exist yet (ADR-0008), so the backend currently
- * ignores the `pin` field (audit BE-C2). When ADR-0008 lands, this is the only place that
- * needs to learn about set-up, hashing hints or lockout copy.
+ * stores them. The server verifies the PIN (argon2id hash, attempt counter, 15 minute lockout,
+ * ADR-0008/0012/0016); screens show the server's error through describeError. Set-up and the
+ * forgotten-PIN flow are separate screens (docs/specs/w5-mobile-security/plan.md).
  */
 export function usePin(): { requestPin: () => Promise<string | null>; pinPrompt: ReactElement } {
   const [visible, setVisible] = useState(false);

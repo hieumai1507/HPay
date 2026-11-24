@@ -7,13 +7,13 @@ import { writeFile } from 'node:fs/promises';
 // Contract-first: this is the ONLY place API types are produced. Never hand-write
 // request/response shapes — if the backend contract is missing something, the fix
 // is to change src/backend/api/openapi.yaml first, then regenerate here.
-const SPEC_PATH = path.resolve(__dirname, '../../hpay-backend/api/openapi.yaml');
+const SPEC_PATH = path.resolve(__dirname, '../../backend/api/openapi.yaml');
 const OUT_PATH = path.resolve(__dirname, '../src/api/schema.d.ts');
 
 async function main() {
   if (!existsSync(SPEC_PATH)) {
     console.error(`openapi.yaml not found at ${SPEC_PATH}`);
-    console.error('Expected hpay-backend to be a sibling directory of hpay-mobile.');
+    console.error('Expected the backend at src/backend (a sibling of src/mobile) in the HPay monorepo.');
     process.exit(1);
   }
 
