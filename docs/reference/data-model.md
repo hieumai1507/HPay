@@ -258,7 +258,7 @@ Verified present (not missing): non-negative balance for non-system wallets, one
 
 | Object | Definition |
 |--------|------------|
-| enum posting_kind | forward, compensate, ound_up |
+| enum posting_kind | forward, compensate, round_up |
 | table ledger_postings | transaction_id UUID NOT NULL REFERENCES transactions(id), kind posting_kind NOT NULL, total_amount BIGINT NOT NULL CHECK (total_amount > 0) (sum of the debit legs), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (transaction_id, kind). One row per posting; claimed by ledger.Post inside the posting transaction. Back-filled with a forward row for every transaction that already had ledger entries. |
 
 In the 'Constraints that are missing' list: the row about nothing preventing a second posting of a transaction is now closed by this table.
