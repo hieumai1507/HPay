@@ -29,6 +29,11 @@ INSERT INTO fraud_flags (transaction_id, rule_code, score, reasons)
 VALUES ($1, $2, sqlc.arg(score)::int, $3)
 RETURNING id;
 
+-- name: GetFraudFlagIDByTransaction :one
+-- G19: the FRAUD_CHECK step may run twice for one transaction (redelivery); the second run
+-- reuses the first run's flag instead of writing a duplicate.
+SELECT id FROM fraud_flags WHERE transaction_id = $1 ORDER BY created_at, id LIMIT 1;
+
 -- name: AppendFraudFlagReasons :exec
 -- Advisory LLM text arrives after the decision (fire-and-forget) — merge it in.
 UPDATE fraud_flags SET reasons = $2 WHERE id = $1;

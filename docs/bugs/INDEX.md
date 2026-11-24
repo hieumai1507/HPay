@@ -3,7 +3,7 @@
 Every bug fixed in this repository gets one file `BUG-NNNN-<slug>.md` here (template: `../_templates/bug-record.md`), created in the same change that fixes it. `hpay-bugfix` searches this ledger before debugging and writes to it after fixing.
 
 Rules
-- Numbers are sequential and never reused. Next free number: **BUG-0004** (BUG-0010 and BUG-0011 were taken by parallel work; check the folder before using it).
+- Numbers are sequential and never reused. Next free number: **BUG-0021** (BUG-0010 and BUG-0011 were taken by parallel work; check the folder before using it).
 - Never delete a record. If a fix was wrong, add a new record and link it in `related`.
 - Reuse tags. Tag vocabulary so far: `idempotency`, `race`, `replay`, `authz`, `idor`, `config`, `env-guard`, `migration`, `constraint`, `money-math`, `state-machine`, `outbox`, `workflow`, `frontend-money`, `session`, `upload`, `ssrf`, `docs-drift`, `test-infra`.
 - Audit findings (`../audit/AUDIT-REPORT.md`) become bug records when they are reproduced and fixed. A finding that cannot be reproduced gets a record with status `cannot-reproduce` and the evidence.
@@ -24,3 +24,5 @@ Rules
 | [BUG-0016](BUG-0016-login-has-no-per-account-lockout-and-leaks-account-existence.md) | fixed (uncommitted) | high | backend/auth | authn, brute-force, enumeration, timing | Login has no per-account lockout; response time reveals which accounts exist | BE-H8 |
 | [BUG-0017](BUG-0017-offer-limit-window-race.md) | fixed (uncommitted) | high | backend/offerguard | race, money-math, state-machine | Daily and monthly limits can be exceeded by parallel confirms; limit windows follow the server time zone | BE-H2 |
 | [BUG-0018](BUG-0018-limits-measure-request-time-not-start-time.md) | fixed (uncommitted) | medium | backend/offerguard | race, state-machine, money-math | The interval throttle and the quota windows measure when a request was made, not when money started to move | BE-H2 |
+| [BUG-0019](BUG-0019-fraud-check-redelivery-duplicates-the-flag.md) | fixed (uncommitted) | medium | backend/fraud | idempotency, replay, outbox | A redelivered FRAUD_CHECK step writes a second fraud flag and a second advisory call | BE-C1 |
+| [BUG-0020](BUG-0020-confirm-step-fails-on-redelivery.md) | fixed (uncommitted) | high | backend/workflow | idempotency, replay, state-machine | A redelivered CONFIRM step fails because the transaction is already completed | BE-C1 |
