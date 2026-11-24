@@ -13,8 +13,8 @@ Fixed since the first revision and verified gone: policy list loading (old item 
 5. **Service Catalog: four of five services show "(0 steps)"** and "Trans Validations (0)". The Overview tab has boxes that look editable but nothing can be saved.
 6. **Developer wording still on screen:** "Service catalog (Low-Code Configurator)", the amber banner "no POST /v1/admin/services", the plan banner "only GET /v1/admin/offers ...", the AI Settings subtitle "Dynamic LLM Provider & Secret Management", the Fraud confirm window ("saga", "risk_officer role"), the AI model name "mock", and the tooltips on the grey buttons. The guide describes these without repeating the technical parts.
 7. **Offer detail keeps the limit boxes as raw numbers** (for example 100000000) with the formatted amount underneath. Save Plan settings looks active (teal, not greyed) but is disabled.
-8. **"+ New plan" opens /offers/new, which shows "Loading..." forever.** It should be disabled like Add service, or open a form.
-9. **Workflow detail: a payment that is only "waiting approval" shows "Retry step" and "Compensate now" buttons** and the text "You can try the failed step again" although nothing failed. Pressing them is not tested here.
-10. **Organizations: the yellow note has a missing space** ("when it wascreated") in the page text. In the browser the words run together at a line break.
+8. *(fixed 2026-11-24)* "+ New plan" is now greyed out with an explanation instead of opening a page that never loads.
+9. *(fixed 2026-11-24)* Workflow detail shows Retry and Compensate only for a payment that failed.
+10. *(fixed 2026-11-24)* The yellow note on Organizations now has its missing spaces.
 11. **Ops can open Organizations & Policy** but sees the note "(orgs.edit)", a technical permission name.
-12. **Workflow list status filter and header:** the menu entry is "Workflow", the page title and the top bar say "Workflow Monitor". The list shows the status "waiting_approval" with an underscore (the detail page shows "WAITING APPROVAL").
+12. The menu entry is "Workflow" while the page title and the top bar say "Workflow Monitor". (The status now reads "Waiting approval" in the list.)

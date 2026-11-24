@@ -117,8 +117,9 @@ export default function OfferFactoryPage() {
           />
           <button
             type="button"
-            onClick={() => navigate('/offers/new')}
-            className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 transition-colors shadow-xs"
+            disabled
+            title="Not available yet: plans cannot be created from the console. They are set up by the engineering team."
+            className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs shadow-xs opacity-60 cursor-not-allowed"
           >
             + New plan
           </button>

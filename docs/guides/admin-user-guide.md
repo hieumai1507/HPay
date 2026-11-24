@@ -360,7 +360,7 @@ Other controls: the **Status: Open** filter, the **Rule: All** filter and **⟳ 
 3. Read the **Transaction** and **Amount** at the top. Then read the **TIMELINE STEP EXECUTIONS**.
 4. Find the step with a red cross. *You should see: a plain sentence under it, for example "The record this step needed was not found."*
 
-**Task C: Retry a failed step**
+**Task C: Retry a failed step** (only on a payment whose status is Failed or Compensation failed)
 
 1. Open the payment (Task B).
 2. Click the box under **Reason for this action (required):** and type why (badge 2 in Figure 15).
@@ -392,7 +392,7 @@ The button **Force fail + compensate** at the top right does the same as **Compe
 | Status | Meaning |
 |---|---|
 | **Running** | In progress. |
-| **Waiting** | Waiting for something outside, such as an approval. The list shows it as **waiting_approval**. |
+| **Waiting approval** | Waiting for something outside, such as an approval. |
 | **Completed** | Finished correctly. |
 | **Failed** | A step failed. Needs a person. |
 | **Compensated** | Failed, and the money was given back. |
@@ -400,7 +400,7 @@ The button **Force fail + compensate** at the top right does the same as **Compe
 
 The list refreshes by itself every 10 seconds.
 
-**If something looks wrong.** If **Retry** and **Compensate now** are grey, your role cannot act (Viewer). If the failure repeats, do not retry again and again. Tell your contact (section 8) with the Transaction code. On a payment that is only waiting for approval, the buttons are shown too. Do not press them. Process the approval in **My Tasks** instead.
+**If something looks wrong.** If **Retry** and **Compensate now** are grey, your role cannot act (Viewer). If the failure repeats, do not retry again and again. Tell your contact (section 8) with the Transaction code. On a payment that is only waiting for approval, or that already finished, these buttons are not shown and the page says "There is nothing to retry or reverse here." Process an approval in **My Tasks** instead.
 
 ---
 
@@ -655,7 +655,7 @@ The **Authentication matrix** says what proof a customer must give, by payment s
 *Figure 31: The authentication matrix. Badge 1 is the heading. Badge 2 is the Small Amount band, here "Requires PIN". Badge 3 is the Large Amount band, here "Requires 2FA".*
 
 > **Not available yet**
-> You cannot save changes to a plan yet. **Save Plan settings** looks active but does nothing. **+ New plan** opens an empty page that stays on "Loading..." (see the open issues list). An amber banner on the plan page says changes cannot be saved. The numbers on the plan page are for reading only.
+> You cannot save changes to a plan yet. **Save Plan settings** looks active but does nothing. **+ New plan** is greyed out: plans cannot be created from the console yet. An amber banner on the plan page says changes cannot be saved. The numbers on the plan page are for reading only.
 
 **If something looks wrong.** The page opens only for a Superadmin. Others see "No access".
 

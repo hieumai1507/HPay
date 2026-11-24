@@ -137,7 +137,7 @@ export default function WorkflowPage() {
             <option value="all">Status: All</option>
             <option value="failed">Failed</option>
             <option value="running">Running</option>
-            <option value="waiting">Waiting</option>
+            <option value="waiting">Waiting approval</option>
             <option value="completed">Completed</option>
             <option value="compensated">Compensated</option>
           </select>
@@ -190,7 +190,14 @@ function renderStatusBadge(status: WorkflowInstance['status']) {
     case 'running':
       return <Badge tone="info">Running</Badge>;
     case 'waiting':
-      return <Badge tone="warning">Waiting</Badge>;
+    case 'waiting_approval':
+      return <Badge tone="warning">Waiting approval</Badge>;
+    case 'recovering':
+      return <Badge tone="info">Recovering</Badge>;
+    case 'compensating':
+      return <Badge tone="warning">Compensating</Badge>;
+    case 'compensation_failed':
+      return <Badge tone="danger">Compensation failed</Badge>;
     case 'completed':
       return <Badge tone="success">Completed</Badge>;
     case 'compensated':

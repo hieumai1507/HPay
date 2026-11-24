@@ -12,6 +12,16 @@ import { test, expect } from './fixtures/auth';
  * forward and back is stable (no duplicate/missing rows) and a refetch while
  * on a non-first page does not silently reset the view to page 1.
  */
+/** Opens the first payment that has the given status. The list is paged, so filter first: the row may not be on page 1. */
+async function openFirstWith(page: import('@playwright/test').Page, filter: string) {
+  await page.goto('/workflows');
+  await page.locator('select').first().selectOption(filter);
+  const row = page.locator('table tbody tr').first();
+  await expect(row).toBeVisible();
+  await row.getByRole('button', { name: 'Open →' }).click();
+  await expect(page.getByText('TIMELINE STEP EXECUTIONS')).toBeVisible();
+}
+
 test.describe('Workflow Monitor', () => {
   test('instance list renders with status + definition filters', async ({ asMaker }) => {
     await asMaker.goto('/workflows');
@@ -31,13 +41,23 @@ test.describe('Workflow Monitor', () => {
   });
 
   test('opening an instance shows the step timeline and retry/compensate controls', async ({ asMaker }) => {
-    await asMaker.goto('/workflows?');
-    const openLink = asMaker.getByRole('button', { name: 'Open →' }).first();
-    await openLink.click();
+    // Retry and Compensate are only offered on a payment that stopped with an error, so open a failed one.
+    await openFirstWith(asMaker, 'failed');
     await expect(asMaker).toHaveURL(/\/workflows\/.+/);
-    await expect(asMaker.getByText('TIMELINE STEP EXECUTIONS')).toBeVisible();
     await expect(asMaker.getByRole('button', { name: /Retry/ }).first()).toBeVisible();
     await expect(asMaker.getByRole('button', { name: /Compensate|Force fail/ }).first()).toBeVisible();
+  });
+
+  // A payment that is waiting for approval or already finished must not offer Retry or Compensate: a wrong
+  // click there would try to repair a payment that is fine.
+  test('retry and compensate appear only on a payment that stopped with an error', async ({ asMaker }) => {
+    await openFirstWith(asMaker, 'waiting');
+    await expect(asMaker.getByText('There is nothing to retry or reverse here.')).toBeVisible();
+    await expect(asMaker.getByRole('button', { name: /Retry/ })).toHaveCount(0);
+    await expect(asMaker.getByRole('button', { name: /Compensate|Force fail/ })).toHaveCount(0);
+
+    await openFirstWith(asMaker, 'failed');
+    await expect(asMaker.getByRole('button', { name: /Retry/ }).first()).toBeVisible();
   });
 
   test('A02 (adapted) — paging forward/back is stable and a mid-page refetch keeps the current page', async ({ asMaker }) => {

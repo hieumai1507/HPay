@@ -41,6 +41,9 @@ export default function WorkflowDetailPage() {
 
   const steps = instance.steps || [];
   const failedStep = steps.find((s) => s.status === 'fail');
+  // Retry and compensate only make sense for a payment that stopped with an error. Offering them on one that
+  // is running, waiting for approval or finished invites a wrong click on a payment that is fine.
+  const canIntervene = instance.status === 'failed' || instance.status === 'compensation_failed';
 
   return (
     <div className="flex flex-col gap-4">
@@ -63,6 +66,8 @@ export default function WorkflowDetailPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          {canIntervene && (
+            <>
           <button
             type="button"
             onClick={() => handleAction('retry')}
@@ -81,6 +86,8 @@ export default function WorkflowDetailPage() {
           >
             Force fail + compensate
           </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -147,10 +154,13 @@ export default function WorkflowDetailPage() {
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
             <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-1 uppercase">AVAILABLE ACTIONS</div>
             <div className="text-xs text-slate-500 mb-3">
-              This payment is <b>{instance.status.replace(/_/g, ' ')}</b>. You can try the failed step again, or reverse the money that already moved:
+              This payment is <b>{instance.status.replace(/_/g, ' ')}</b>.{' '}
+              {canIntervene
+                ? 'You can try the failed step again, or reverse the money that already moved:'
+                : 'There is nothing to retry or reverse here.'}
             </div>
 
-            <div className="flex flex-col gap-2.5">
+            {canIntervene && (<div className="flex flex-col gap-2.5">
               <button
                 type="button"
                 onClick={() => handleAction('retry')}
@@ -169,9 +179,9 @@ export default function WorkflowDetailPage() {
               >
                 ↩ Compensate now (reverse entries)
               </button>
-            </div>
+            </div>)}
 
-            <div className="mt-3.5">
+            {canIntervene && (<div className="mt-3.5">
               <label htmlFor="reason-textarea" className="text-xs text-slate-500 block mb-1">Reason for this action (required):</label>
               <textarea
                 id="reason-textarea"
@@ -180,7 +190,7 @@ export default function WorkflowDetailPage() {
                 placeholder="e.g. Locked wallet resolved, retry allowed..."
                 className="w-full min-h-[70px] rounded-lg border border-slate-200 p-2.5 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
-            </div>
+            </div>)}
           </div>
         </div>
       </div>
