@@ -39,7 +39,7 @@ test.describe('Fraud monitor', () => {
     // The one open flag is auto-selected as activeDetailFlag by default
     // (FraudPage.tsx: selectedFlag || filteredFlags.find(f => f.status === 'open')).
     await expect(asChecker.getByText('5 giao dịch trong 5 phút')).toBeVisible();
-    await expect(asChecker.getByText(/AI nhận định:/)).toBeVisible();
+    await expect(asChecker.getByText(/AI assessment:/)).toBeVisible();
     await expect(asChecker.getByText(/tần suất bất thường/)).toBeVisible();
   });
 
@@ -55,21 +55,21 @@ test.describe('Fraud monitor', () => {
 
   test('confirm-fraud dialog enforces a 10-char minimum reason before it can be confirmed', async ({ asChecker }) => {
     await asChecker.goto('/fraud');
-    await asChecker.getByRole('button', { name: /Xác nhận gian lận/ }).click();
+    await asChecker.getByRole('button', { name: /Confirm fraud/ }).click();
 
     const dialog = asChecker.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    const confirm = dialog.getByRole('button', { name: /Xác nhận xử lý gian lận|Đánh dấu an toàn/ });
+    const confirm = dialog.getByRole('button', { name: /Confirm fraud resolution|Mark as safe/ });
     await expect(confirm).toBeDisabled();
 
-    await dialog.locator('textarea').fill('ngắn quá');
+    await dialog.locator('textarea').fill('too short');
     await expect(confirm).toBeDisabled();
 
-    await dialog.locator('textarea').fill('Mẫu hình smurfing rõ, nhiều giao dịch liên tiếp tới người nhận mới.');
+    await dialog.locator('textarea').fill('Clear smurfing pattern, many consecutive transfers to a new recipient.');
     await expect(confirm).toBeEnabled();
 
     // Close without submitting — the flag must stay open for A01 below.
-    await dialog.getByRole('button', { name: 'Hủy' }).click();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toBeHidden();
   });
 
@@ -86,18 +86,18 @@ test.describe('Fraud monitor', () => {
     await page1.goto('/fraud');
     await page2.goto('/fraud');
 
-    await page1.getByRole('button', { name: /Xác nhận gian lận/ }).click();
-    await page2.getByRole('button', { name: /Xác nhận gian lận/ }).click();
+    await page1.getByRole('button', { name: /Confirm fraud/ }).click();
+    await page2.getByRole('button', { name: /Confirm fraud/ }).click();
 
-    const reason = 'Đối chiếu 2 checker cùng xử lý một flag trong bài kiểm thử A01.';
+    const reason = 'Two checkers resolving the same flag in the A01 test.';
     await page1.getByRole('dialog').locator('textarea').fill(reason);
     await page2.getByRole('dialog').locator('textarea').fill(reason);
 
     const [resp1, resp2] = await Promise.all([
       page1.waitForResponse((r) => r.url().includes('/resolve') && r.request().method() === 'POST'),
       page2.waitForResponse((r) => r.url().includes('/resolve') && r.request().method() === 'POST'),
-      page1.getByRole('dialog').getByRole('button', { name: /Xác nhận xử lý gian lận/ }).click(),
-      page2.getByRole('dialog').getByRole('button', { name: /Xác nhận xử lý gian lận/ }).click(),
+      page1.getByRole('dialog').getByRole('button', { name: /Confirm fraud resolution/ }).click(),
+      page2.getByRole('dialog').getByRole('button', { name: /Confirm fraud resolution/ }).click(),
     ]);
 
     const statuses = [resp1.status(), resp2.status()].sort();

@@ -10,8 +10,8 @@ test.describe('Login', () => {
   test('correct credentials redirect to /dashboard', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('Email').fill(MAKER.email);
-    await page.getByLabel('Mật khẩu').fill(MAKER.password);
-    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await page.getByLabel('Password').fill(MAKER.password);
+    await page.getByRole('button', { name: 'Log in' }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(page.getByText('E2E Maker').or(page.getByText(MAKER.email))).toBeVisible();
@@ -20,10 +20,10 @@ test.describe('Login', () => {
   test('wrong password shows inline error and does not redirect', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('Email').fill(MAKER.email);
-    await page.getByLabel('Mật khẩu').fill('WrongPassword123!');
-    await page.getByRole('button', { name: 'Đăng nhập' }).click();
+    await page.getByLabel('Password').fill('WrongPassword123!');
+    await page.getByRole('button', { name: 'Log in' }).click();
 
-    await expect(page.getByText(/mật khẩu|tài khoản|thông tin/i)).toBeVisible();
+    await expect(page.getByText(/password|account|information/i)).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
   });
 });

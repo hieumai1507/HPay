@@ -16,25 +16,25 @@ test.describe('Reconciliation', () => {
   test('viewing the seeded recon date shows KPI cards and the AI summary', async ({ asMaker }) => {
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
-    await expect(asMaker.getByText('Tổng đối chiếu')).toBeVisible();
-    await expect(asMaker.getByText('AI TÓM TẮT NGUYÊN NHÂN')).toBeVisible();
+    await expect(asMaker.getByText('Total reconciled')).toBeVisible();
+    await expect(asMaker.getByText('AI ROOT CAUSE SUMMARY')).toBeVisible();
   });
 
   test('running recon for an already-processed date does not crash the page', async ({ asMaker }) => {
     asMaker.once('dialog', (d) => d.accept());
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
-    await asMaker.getByRole('button', { name: /Chạy đối soát/ }).click();
+    await asMaker.getByRole('button', { name: /Run reconciliation/ }).click();
     // The mutation swallows both success and ERR_RECON_ALREADY_RAN into an
     // alert() (useReconQueries.ts useRunRecon) — assert the page survives.
-    await expect(asMaker.getByText('Tổng đối chiếu')).toBeVisible();
+    await expect(asMaker.getByText('Total reconciled')).toBeVisible();
   });
 
   test('A06 — export stays non-blocking: the date picker remains interactive right after clicking export', async ({ asMaker }) => {
     asMaker.once('dialog', (d) => d.accept());
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
-    await asMaker.getByRole('button', { name: /Xuất Excel/ }).click();
+    await asMaker.getByRole('button', { name: /Export Excel/ }).click();
     // No full-page blocking overlay exists in this page at all — the date
     // input (and everything else) must stay clickable immediately after.
     const dateInput = asMaker.locator('input[type="date"]');
