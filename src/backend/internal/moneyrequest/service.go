@@ -284,12 +284,18 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 	}
 	// Read the offer limits and the fee on THIS transaction's connection: asking the pool for
 	// a second connection while this one is held can deadlock a small pool under load.
-	if err := offerguard.NewWithQueries(qtx).CheckAmount(ctx, payerID, "MONEY_REQUEST", req.Amount); err != nil {
-		return PayResult{}, err
-	}
-
 	feeAmt, err := fee.NewServiceWithQueries(qtx).For(ctx, store.TxnTypeP2p, payer.KycStatus, req.Amount)
 	if err != nil {
+		return PayResult{}, err
+	}
+	// BUG-0021: same rule as transfer.ExecuteEngineConfirm (BUG-0017). Serialize this payer's
+	// starts with a transaction lock (taken after the request row lock, released at commit, after
+	// the insert that makes this amount count), then check the per-transaction cap, the daily and
+	// monthly volume and the interval throttle. Everything runs on this transaction's connection.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('limit-window:' || $1::text, 0))`, payerID); err != nil {
+		return PayResult{}, err
+	}
+	if err := offerguard.NewWithQueries(qtx).CheckWindows(ctx, payerID, "MONEY_REQUEST", store.TxnTypeP2p, req.Amount, feeAmt); err != nil {
 		return PayResult{}, err
 	}
 

@@ -44,8 +44,9 @@ A user could move more than the daily or monthly limit of their offer. At L0 the
 ## Not done
 - The interval throttle bypass and the creation-time measurement were fixed in BUG-0018; the request-from-an-earlier-day refusal described above was replaced there by counting from `started_at`.
 - A one-time code (otp, 2fa) is consumed before the limit refusal, so a refused confirm needs a new challenge.
-- `OFFERGUARD_ENABLED=false` disables every limit in any environment (not gated on APP_ENV).
+- `OFFERGUARD_ENABLED=false` disables every limit in any environment (not gated on APP_ENV). Fixed: config refuses it outside dev and ci (BUG-0021 task 1, commit `fix(config)`).
 - Money-request pay (`moneyrequest`) starts its workflow with the per-transaction check only and is outside the lock.
 - A request that needs no confirmation (auth matrix says none) is only checked at request time, without the lock.
 - The limit counts transactions by `created_at`, so a request created before midnight and confirmed after counts in the earlier day.
 - Weekly rolling limits and the balance ceiling are separate gaps (G9).
+- Money-request pay outside the lock: fixed in BUG-0021.

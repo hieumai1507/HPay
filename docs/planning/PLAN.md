@@ -365,3 +365,5 @@ Correctness held (600 of 600 transfers, 0 ledger mismatches) but throughput was 
 Status 2026-11-24: G20, G21, G22 (PumpLocal part), G23, G24, G25 (semaphore) are done; results in docs/quality/performance/2026-11-24-load-test-baseline.md. Open: lighter PIN hashing parameters (needs an ADR) and the SYSTEM_CASH_IN funding lock-order check.
 
 Status 2026-11-24 (later): the SYSTEM_CASH_IN funding deadlock was reproduced and fixed (FOR NO KEY UPDATE in GetWalletsForUpdate). Only open item from the load-test findings: lighter PIN hashing parameters, which need an owner decision and an ADR.
+
+G25 follow-up (2026-11-24): ADR-0018 (PIN pepper plus lighter argon2 cost) is written. ADR proposed, awaiting owner decision. Nothing is implemented and no hashing parameter has changed.

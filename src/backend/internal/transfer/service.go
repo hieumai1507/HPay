@@ -52,10 +52,14 @@ func NewService(pool *pgxpool.Pool, engine *workflow.Engine, fees *fee.Service) 
 		pool: pool, q: store.New(pool), engine: engine, fees: fees, defName: "p2p_transfer",
 		dynamicDispatch: os.Getenv("ENGINE_DYNAMIC_DISPATCH") != "false",
 		guard:           offerguard.New(pool),
-		guardOn:         os.Getenv("OFFERGUARD_ENABLED") != "false",
+		guardOn:         true,
 		vaults:          vault.New(pool),
 	}
 }
+
+// SetOfferGuardEnabled turns OfferGuard on or off. The value comes from config
+// (Config.OfferGuardEnabled), which refuses "off" outside dev and ci. Default is on.
+func (s *Service) SetOfferGuardEnabled(on bool) { s.guardOn = on }
 
 // NewServiceWithDefinition lets tests run against a test definition.
 func NewServiceWithDefinition(pool *pgxpool.Pool, engine *workflow.Engine, fees *fee.Service, defName string) *Service {

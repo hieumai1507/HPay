@@ -82,6 +82,9 @@ type Config struct {
 	// TOTPKey is the 32-byte AES-256 key that protects TOTP secrets at rest (ADR-0017). Required
 	// (TOTP_ENCRYPTION_KEY, base64) outside dev and ci; dev and ci get a fixed test key.
 	TOTPKey []byte
+	// OfferGuardDisabled is true only when OFFERGUARD_ENABLED=false, which removes every offer limit.
+	// Load refuses that outside dev and ci.
+	OfferGuardDisabled bool
 	// Code delivery (ADR-0016, ADR-0017): SENDER_PROVIDER is "" (environment default) or "twilio".
 	SenderProvider   string
 	TwilioAccountSID string
@@ -175,6 +178,10 @@ func Load(role string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.TOTPKey = key
+	cfg.OfferGuardDisabled = os.Getenv("OFFERGUARD_ENABLED") == "false"
+	if cfg.OfferGuardDisabled && cfg.requiresStrongSecrets() {
+		return Config{}, fmt.Errorf("OFFERGUARD_ENABLED=false switches off every offer limit and is only allowed when APP_ENV is dev or ci (APP_ENV=%s)", cfg.Env)
+	}
 	switch cfg.SenderProvider {
 	case "":
 	case "twilio":
