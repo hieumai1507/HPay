@@ -46,7 +46,7 @@ export default function CaptureSelfieScreen() {
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
         await processCapturedPhoto(photo.uri);
       } catch {
-        Alert.alert('Lỗi', 'Không thể chụp ảnh. Vui lòng thử lại.');
+        Alert.alert('Error', 'Could not take the photo. Please try again.');
       }
     } else {
       // Mock photo for simulator/web/tests
@@ -60,12 +60,12 @@ export default function CaptureSelfieScreen() {
     try {
       const result = await validateKycPhoto(uri);
       if (!result.isValid) {
-        setValidationError(result.error ?? 'Ảnh không hợp lệ.');
+        setValidationError(result.error ?? 'Invalid photo.');
       } else {
         setPhotoUri(uri);
       }
     } catch {
-      setValidationError('Đã xảy ra lỗi khi kiểm tra ảnh.');
+      setValidationError('Something went wrong while checking the photo.');
     } finally {
       setValidating(false);
     }
@@ -140,7 +140,7 @@ export default function CaptureSelfieScreen() {
           await clearDraft();
           router.replace('/(kyc)/status');
         } else {
-          Alert.alert('Lỗi xác minh', 'Không thể gửi hồ sơ: ' + err.message);
+          Alert.alert('Verification error', 'Could not submit your application: ' + err.message);
         }
       } else {
         // Network error (M11)
@@ -159,8 +159,8 @@ export default function CaptureSelfieScreen() {
       // ID Card front must be available
       const cardUri = idCardUri || (useKycDraftStore.getState().idCardUri);
       if (!cardUri) {
-        Alert.alert('Lỗi', 'Không tìm thấy ảnh mặt trước CCCD. Vui lòng quay lại bước trước.', [
-          { text: 'Quay lại', onPress: () => router.back() }
+        Alert.alert('Error', 'Could not find the front photo of your ID card. Please go back to the previous step.', [
+          { text: 'Back', onPress: () => router.back() }
         ]);
         return;
       }
@@ -191,7 +191,7 @@ export default function CaptureSelfieScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={color.brand[600]} />
-        <Text style={styles.loadingText}>Đang yêu cầu quyền camera...</Text>
+        <Text style={styles.loadingText}>Requesting camera permission...</Text>
       </View>
     );
   }
@@ -203,7 +203,7 @@ export default function CaptureSelfieScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeButton} accessibilityLabel="Back">
           <Text style={styles.closeIcon}>←</Text>
         </Pressable>
-        <Text style={styles.navTitle}>Chụp chân dung</Text>
+        <Text style={styles.navTitle}>Take a selfie</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -218,16 +218,16 @@ export default function CaptureSelfieScreen() {
             />
           ) : (
             <View style={styles.cameraMock}>
-              <Text style={styles.cameraMockText}>[ MÔ PHỎNG SELFIE ]</Text>
-              <Text style={styles.cameraMockSub}>Không có quyền camera hoặc thiết bị giả lập</Text>
+              <Text style={styles.cameraMockText}>[ SELFIE MOCK ]</Text>
+              <Text style={styles.cameraMockSub}>No camera permission, or running on an emulator</Text>
 
               {/* Dev tools to test M10 heuristics */}
               <View style={styles.devButtons}>
                 <Pressable onPress={() => triggerMockError('blurry')} style={styles.devButton}>
-                  <Text style={styles.devButtonText}>Test Mờ ⚠️</Text>
+                  <Text style={styles.devButtonText}>Test blur ⚠️</Text>
                 </Pressable>
                 <Pressable onPress={() => triggerMockError('dark')} style={styles.devButton}>
-                  <Text style={styles.devButtonText}>Test Tối ⚠️</Text>
+                  <Text style={styles.devButtonText}>Test dark ⚠️</Text>
                 </Pressable>
               </View>
             </View>
@@ -256,21 +256,21 @@ export default function CaptureSelfieScreen() {
             {networkError ? (
               <View style={styles.errorBannerContainer}>
                 <Text style={styles.errorBannerText}>
-                  ⚠️ Không có kết nối mạng. Đã lưu bản nháp KYC cục bộ.
+                  ⚠️ No network connection. KYC draft saved locally.
                 </Text>
                 <View style={styles.previewButtons}>
-                  <Button label="Chụp lại" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
-                  <Button label="Tải lên lại (Thử lại)" onPress={handleRetryUpload} style={styles.previewBtn} />
+                  <Button label="Retake" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
+                  <Button label="Upload again (Retry)" onPress={handleRetryUpload} style={styles.previewBtn} />
                 </View>
               </View>
             ) : (
               <>
                 <Text style={styles.previewGuideText}>
-                  Đảm bảo khuôn mặt của bạn khớp trong khung oval, rõ nét và đủ ánh sáng.
+                  Make sure your face fits in the oval, is sharp and well lit.
                 </Text>
                 <View style={styles.previewButtons}>
-                  <Button label="Chụp lại" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
-                  <Button label="Sử dụng ảnh này" onPress={handleUsePhoto} style={styles.previewBtn} />
+                  <Button label="Retake" variant="secondary" onPress={handleRetake} style={styles.previewBtn} />
+                  <Button label="Use this photo" onPress={handleUsePhoto} style={styles.previewBtn} />
                 </View>
               </>
             )}
@@ -281,14 +281,14 @@ export default function CaptureSelfieScreen() {
       {validating && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingOverlayText}>Đang kiểm tra chất lượng ảnh...</Text>
+          <Text style={styles.loadingOverlayText}>Checking photo quality...</Text>
         </View>
       )}
 
       {uploading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingOverlayText}>Đang gửi hồ sơ xác minh KYC...</Text>
+          <Text style={styles.loadingOverlayText}>Submitting your KYC application...</Text>
         </View>
       )}
     </View>

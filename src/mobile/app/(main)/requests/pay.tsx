@@ -52,11 +52,11 @@ function PayRequestForm() {
           <Pressable onPress={() => router.back()} className="p-1">
             <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </Pressable>
-          <Text className="text-lg font-bold text-slate-900 dark:text-white">Thanh toán yêu cầu</Text>
+          <Text className="text-lg font-bold text-slate-900 dark:text-white">Pay money request</Text>
           <View className="w-8" />
         </View>
         <View className="flex-1 items-center justify-center">
-          <Text className="text-base color-rose-600 font-semibold">Không thể tải thông tin thanh toán.</Text>
+          <Text className="text-base color-rose-600 font-semibold">Could not load payment details.</Text>
         </View>
       </SafeAreaView>
     );
@@ -72,7 +72,7 @@ function PayRequestForm() {
   const handlePay = () =>
     guard.run(async () => {
       if (hasInsufficientFunds) {
-        Alert.alert('Không đủ số dư', 'Số dư ví của bạn không đủ để thanh toán yêu cầu này.');
+        Alert.alert('Insufficient balance', 'Your Wallet balance is not enough to pay this request.');
         return;
       }
 
@@ -86,7 +86,7 @@ function PayRequestForm() {
           params: { refCode: res.ref_code, amount: req.amount.toString() },
         });
       } catch (err: unknown) {
-        Alert.alert('Lỗi', err instanceof Error && err.message ? err.message : 'Có lỗi xảy ra khi thực hiện thanh toán.');
+        Alert.alert('Error', err instanceof Error && err.message ? err.message : 'Something went wrong while making the payment.');
       }
     });
 
@@ -97,55 +97,55 @@ function PayRequestForm() {
         <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Thanh toán yêu cầu</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Pay money request</Text>
         <View className="w-8" />
       </View>
 
       <View className="flex-1 p-4 gap-4">
         {/* Payee Info */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-xs">
-          <Text className="text-sm font-bold text-slate-900 dark:text-white mb-4">Thông tin người nhận</Text>
+          <Text className="text-sm font-bold text-slate-900 dark:text-white mb-4">Recipient details</Text>
           <View className="flex-row items-center gap-3">
             <View className="w-12 h-12 rounded-full bg-cyan-50 items-center justify-center">
               <Text className="text-xl font-bold text-brand">{req.requester_name?.charAt(0).toUpperCase()}</Text>
             </View>
             <View>
               <Text className="text-base font-bold text-slate-900 dark:text-white mb-0.5">{req.requester_name}</Text>
-              <Text className="text-xs text-slate-500">{req.note || 'Không có ghi chú'}</Text>
+              <Text className="text-xs text-slate-500">{req.note || 'No note'}</Text>
             </View>
           </View>
         </View>
 
         {/* Financial Breakdown */}
         <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-xs">
-          <Text className="text-sm font-bold text-slate-900 dark:text-white mb-4">Chi tiết giao dịch</Text>
+          <Text className="text-sm font-bold text-slate-900 dark:text-white mb-4">Transaction details</Text>
           
           <View className="flex-row justify-between items-center w-full">
-            <Text className="text-sm text-slate-600 dark:text-slate-400">Nguồn tiền</Text>
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white">Ví HPay VND</Text>
+            <Text className="text-sm text-slate-600 dark:text-slate-400">Source</Text>
+            <Text className="text-sm font-semibold text-slate-900 dark:text-white">HPay VND Wallet</Text>
           </View>
           <View className="flex-row justify-between items-center w-full">
-            <Text className="text-xs text-slate-400 mt-0.5">Số dư khả dụng: {formatAmountVND(walletBalanceBig)}</Text>
+            <Text className="text-xs text-slate-400 mt-0.5">Available balance: {formatAmountVND(walletBalanceBig)}</Text>
           </View>
 
           <View className="h-px bg-slate-100 dark:bg-slate-700 w-full my-3" />
 
           <View className="flex-row justify-between items-center w-full">
-            <Text className="text-sm text-slate-600 dark:text-slate-400">Số tiền thanh toán</Text>
+            <Text className="text-sm text-slate-600 dark:text-slate-400">Amount</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatAmountVND(BigInt(req.amount))}</Text>
           </View>
 
           <View className="flex-row justify-between items-center w-full mt-2">
-            <Text className="text-sm text-slate-600 dark:text-slate-400">Phí giao dịch</Text>
+            <Text className="text-sm text-slate-600 dark:text-slate-400">Fee</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">
-              {feeData ? formatAmountVND(BigInt(feeData.fee)) : 'Đang tính...'}
+              {feeData ? formatAmountVND(BigInt(feeData.fee)) : 'Calculating...'}
             </Text>
           </View>
 
           <View className="h-px bg-slate-100 dark:bg-slate-700 w-full my-3" />
 
           <View className="flex-row justify-between items-center w-full">
-            <Text className="text-base font-bold text-slate-900 dark:text-white">Tổng cộng</Text>
+            <Text className="text-base font-bold text-slate-900 dark:text-white">Total</Text>
             <Text className="text-lg font-extrabold text-brand">
               {feeData ? formatAmountVND(BigInt(feeData.total)) : formatAmountVND(BigInt(req.amount))}
             </Text>
@@ -155,7 +155,7 @@ function PayRequestForm() {
         {hasInsufficientFunds ? (
           <View className="flex-row items-center bg-rose-50 rounded-xl p-3 gap-2 border border-rose-100">
             <Ionicons name="warning-outline" size={20} color="#dc2626" />
-            <Text className="flex-1 text-xs color-rose-600 font-semibold">Số dư tài khoản không đủ để thực hiện giao dịch.</Text>
+            <Text className="flex-1 text-xs color-rose-600 font-semibold">Your balance is not enough for this Transaction.</Text>
           </View>
         ) : null}
       </View>
@@ -171,7 +171,7 @@ function PayRequestForm() {
           {guard.isPending ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text className="text-white text-base font-bold">Xác nhận & Thanh toán</Text>
+            <Text className="text-white text-base font-bold">Confirm & pay</Text>
           )}
         </Pressable>
       </View>

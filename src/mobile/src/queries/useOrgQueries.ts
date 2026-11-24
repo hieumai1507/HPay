@@ -103,7 +103,7 @@ export function useDecideApproval() {
   });
 }
 
-// Maker withdraws their own still-pending request (mockup "Hủy lệnh").
+// Maker withdraws their own still-pending request (mockup "Cancel order").
 export function useCancelApproval() {
   return useMutation({
     mutationFn: (input: { id: string; refCode?: string }) =>

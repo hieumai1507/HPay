@@ -44,14 +44,14 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Trang chủ',
+          title: 'Home',
           tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Lịch sử',
+          title: 'History',
           tabBarIcon: ({ focused }) => <TabIcon name="time" focused={focused} />,
         }}
       />
@@ -65,7 +65,7 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: 'Tài khoản',
+          title: 'Account',
           tabBarIcon: ({ focused }) => <TabIcon name="person" focused={focused} />,
         }}
       />

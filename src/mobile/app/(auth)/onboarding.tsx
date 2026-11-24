@@ -9,24 +9,24 @@ import { color, radius, space, type } from '@/src/ui/tokens';
 const SLIDES = [
   {
     icon: '💠',
-    title: 'Chuyển tiền trong\nmột chạm',
-    subtitle: 'Ví điện tử an toàn với phê duyệt đa tầng\ncho cả cá nhân và doanh nghiệp',
+    title: 'Transfer money in\none tap',
+    subtitle: 'A secure Wallet with multi-level Approval\nfor individuals and businesses',
     amount: '12.450.000 ₫',
     cardHolder: '••4821',
   },
   {
     icon: '🏢',
-    title: 'Giải pháp ví\ndoanh nghiệp',
-    subtitle: 'Quy trình Maker-Checker chuyên nghiệp,\nphê duyệt lệnh chi nhiều cấp linh hoạt',
+    title: 'A Wallet built\nfor business',
+    subtitle: 'Professional Maker-Checker workflow,\nflexible multi-level payment Approval',
     amount: '850.000.000 ₫',
-    cardHolder: 'TẬP ĐOÀN ĐÔNG Á',
+    cardHolder: 'DONG A GROUP',
   },
   {
     icon: '🛡️',
-    title: 'Bảo mật thông minh\nvà an toàn',
-    subtitle: 'Xác minh danh tính bằng trí tuệ nhân tạo\nvà giám sát giao dịch bất thường 24/7',
+    title: 'Smart security\nand safe',
+    subtitle: 'Identity verification powered by AI\nand 24/7 monitoring of unusual Transactions',
     amount: '100.000.000 ₫',
-    cardHolder: 'HẠN MỨC HÀNG NGÀY',
+    cardHolder: 'DAILY LIMIT',
   },
 ];
 
@@ -97,7 +97,7 @@ export default function OnboardingScreen() {
               <Text style={styles.heroIcon}>{slide.icon}</Text>
             )}
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroLabel}>Số dư ví</Text>
+              <Text style={styles.heroLabel}>Wallet balance</Text>
               <Text style={styles.heroAmount}>{slide.amount}</Text>
             </View>
             <View style={styles.heroFooter}>
@@ -113,8 +113,8 @@ export default function OnboardingScreen() {
                 <Text style={styles.alertCheckText}>✓</Text>
               </View>
               <View>
-                <Text style={styles.alertTitle}>Nhận 500.000 ₫</Text>
-                <Text style={styles.alertSub}>từ Minh Anh · vừa xong</Text>
+                <Text style={styles.alertTitle}>Received 500,000 ₫</Text>
+                <Text style={styles.alertSub}>from Minh Anh · just now</Text>
               </View>
             </View>
           )}
@@ -146,12 +146,12 @@ export default function OnboardingScreen() {
       {/* Buttons */}
       <View style={styles.footer}>
         <Button
-          label={currentSlide === SLIDES.length - 1 ? 'Bắt đầu' : 'Tạo tài khoản'}
+          label={currentSlide === SLIDES.length - 1 ? 'Get started' : 'Sign up'}
           onPress={() => router.push('/(auth)/register')}
           style={styles.button}
         />
         <Button
-          label="Tôi đã có tài khoản"
+          label="I already have an account"
           variant="ghost"
           onPress={() => router.push('/(auth)/login')}
           style={styles.button}

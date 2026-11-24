@@ -26,8 +26,8 @@ export function PinPrompt({ visible, onSubmit, onCancel }: PinPromptProps) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.title}>Nhập mã PIN</Text>
-          <Text style={styles.subtitle}>Nhập mã PIN 6 số để xác nhận giao dịch</Text>
+          <Text style={styles.title}>Enter PIN</Text>
+          <Text style={styles.subtitle}>Enter your 6-digit PIN to confirm the Transaction</Text>
           <OTPInput value={pin} onChange={setPin} secureTextEntry />
           <View style={styles.row}>
             <Pressable
@@ -36,7 +36,7 @@ export function PinPrompt({ visible, onSubmit, onCancel }: PinPromptProps) {
               onPress={onCancel}
               style={[styles.btn, styles.btnSecondary]}
             >
-              <Text style={styles.btnSecondaryText}>Hủy</Text>
+              <Text style={styles.btnSecondaryText}>Cancel</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -46,7 +46,7 @@ export function PinPrompt({ visible, onSubmit, onCancel }: PinPromptProps) {
               onPress={() => onSubmit(pin)}
               style={[styles.btn, styles.btnPrimary, !complete && styles.btnDisabled]}
             >
-              <Text style={styles.btnPrimaryText}>Xác nhận</Text>
+              <Text style={styles.btnPrimaryText}>Confirm</Text>
             </Pressable>
           </View>
         </View>

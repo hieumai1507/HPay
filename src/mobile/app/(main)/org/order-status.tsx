@@ -27,13 +27,13 @@ function hoursLeft(iso: string): number {
   return Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / (60 * 60 * 1000)));
 }
 
-// Mockup 03-business.html frame 19 "Maker — Trạng thái lệnh" (order status): created -> each
+// Mockup 03-business.html frame 19 "Maker — Order status" (order status): created -> each
 // recorded signature -> current step (pending) or final result -> transfer.
 export function buildTimeline(d: ApprovalDetail): TimelineStep[] {
   const steps: TimelineStep[] = [
     {
-      title: 'Bạn đã tạo lệnh',
-      sub: new Date(d.created_at).toLocaleString('vi-VN'),
+      title: 'You created the order',
+      sub: new Date(d.created_at).toLocaleString('en-GB'),
       dot: 'done',
     },
   ];
@@ -41,15 +41,15 @@ export function buildTimeline(d: ApprovalDetail): TimelineStep[] {
   for (const sig of d.signatures) {
     if (sig.action === 'reject') {
       steps.push({
-        title: `Level ${sig.level} — ${sig.checker_name} đã từ chối`,
-        sub: `${new Date(sig.acted_at).toLocaleString('vi-VN')} · OTP ✓`,
+        title: `Level ${sig.level} — ${sig.checker_name} rejected`,
+        sub: `${new Date(sig.acted_at).toLocaleString('en-GB')} · OTP ✓`,
         dot: 'rejected',
       });
       return steps;
     }
     steps.push({
-      title: `Level ${sig.level} — ${sig.checker_name} đã duyệt`,
-      sub: `${new Date(sig.acted_at).toLocaleString('vi-VN')} · OTP ✓`,
+      title: `Level ${sig.level} — ${sig.checker_name} approved`,
+      sub: `${new Date(sig.acted_at).toLocaleString('en-GB')} · OTP ✓`,
       dot: 'done',
     });
   }
@@ -57,17 +57,17 @@ export function buildTimeline(d: ApprovalDetail): TimelineStep[] {
   if (d.status === 'pending') {
     const remaining = Math.max(0, d.signatures_required - d.signatures.length);
     steps.push({
-      title: `Level ${d.current_level} — chờ ${remaining} chữ ký`,
-      sub: `hết hạn sau ${hoursLeft(d.expires_at)} giờ`,
+      title: `Level ${d.current_level} — waiting for ${remaining} signature(s)`,
+      sub: `expires in ${hoursLeft(d.expires_at)} h`,
       dot: 'active',
     });
-    steps.push({ title: 'Thực hiện chuyển tiền', dot: 'wait' });
+    steps.push({ title: 'Execute Transfer', dot: 'wait' });
   } else if (d.status === 'approved') {
-    steps.push({ title: 'Đã thực hiện chuyển tiền', dot: 'done' });
+    steps.push({ title: 'Transfer executed', dot: 'done' });
   } else if (d.status === 'expired') {
-    steps.push({ title: 'Lệnh đã hết hạn — không thực hiện', dot: 'rejected' });
+    steps.push({ title: 'Order expired — not executed', dot: 'rejected' });
   } else if (d.status === 'cancelled') {
-    steps.push({ title: 'Bạn đã hủy lệnh', dot: 'rejected' });
+    steps.push({ title: 'You cancelled the order', dot: 'rejected' });
   }
 
   return steps;
@@ -92,11 +92,11 @@ function TimelineStepRow({ step, isLast }: { step: TimelineStep; isLast: boolean
 }
 
 const STATUS_CHIP: Record<string, { text: string; className: string }> = {
-  pending: { text: 'Chờ duyệt', className: 'bg-amber-50 color-amber-700' },
-  approved: { text: 'Đã duyệt', className: 'bg-emerald-50 color-emerald-700' },
-  rejected: { text: 'Đã từ chối', className: 'bg-rose-50 color-rose-700' },
-  expired: { text: 'Đã hết hạn', className: 'bg-slate-100 color-slate-500' },
-  cancelled: { text: 'Đã hủy', className: 'bg-slate-100 color-slate-500' },
+  pending: { text: 'Pending', className: 'bg-amber-50 color-amber-700' },
+  approved: { text: 'Approved', className: 'bg-emerald-50 color-emerald-700' },
+  rejected: { text: 'Rejected', className: 'bg-rose-50 color-rose-700' },
+  expired: { text: 'Expired', className: 'bg-slate-100 color-slate-500' },
+  cancelled: { text: 'Cancelled', className: 'bg-slate-100 color-slate-500' },
 };
 
 export default function OrderStatusScreen() {
@@ -107,17 +107,17 @@ export default function OrderStatusScreen() {
 
   const confirmCancel = () => {
     if (!data) return;
-    Alert.alert('Hủy lệnh', 'Bạn chắc chắn muốn hủy lệnh chi này? Thao tác này không thể hoàn tác.', [
-      { text: 'Không', style: 'cancel' },
+    Alert.alert('Cancel order', 'Are you sure you want to cancel this payment order? This cannot be undone.', [
+      { text: 'No', style: 'cancel' },
       {
-        text: 'Hủy lệnh',
+        text: 'Cancel order',
         style: 'destructive',
         onPress: async () => {
           try {
             setCancelling(true);
             await cancelMutation.mutateAsync({ id: data.id, refCode: data.ref_code });
           } catch (e: unknown) {
-            Alert.alert('Không hủy được', describeError(e));
+            Alert.alert('Could not cancel', describeError(e));
           } finally {
             setCancelling(false);
           }
@@ -133,7 +133,7 @@ export default function OrderStatusScreen() {
           <Ionicons name="arrow-back" size={22} color="#0f172a" />
         </Pressable>
         <Text className="text-base font-bold text-slate-900 dark:text-white flex-1 text-center mx-2" numberOfLines={1}>
-          Lệnh chi #{refCode}
+          Payment order #{refCode}
         </Text>
         <View className="w-5" />
       </View>
@@ -141,11 +141,11 @@ export default function OrderStatusScreen() {
       {isLoading ? (
         <View className="flex-1 items-center justify-center gap-3">
           <ActivityIndicator size="large" color="#0E90A3" />
-          <Text className="text-xs text-slate-500">Đang khởi tạo lệnh…</Text>
+          <Text className="text-xs text-slate-500">Creating order...</Text>
         </View>
       ) : isError || !data ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-sm color-rose-600 font-semibold">Không thể tải trạng thái lệnh.</Text>
+          <Text className="text-sm color-rose-600 font-semibold">Could not load the order status.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
@@ -155,13 +155,13 @@ export default function OrderStatusScreen() {
             <View className={`px-3 py-1 rounded-full ${STATUS_CHIP[data.status]?.className ?? 'bg-slate-100'}`}>
               <Text className={`text-xs font-bold ${STATUS_CHIP[data.status]?.className ?? ''}`}>
                 {STATUS_CHIP[data.status]?.text ?? data.status}
-                {data.status === 'pending' ? ` · ${data.signatures.length}/${data.signatures_required} chữ ký` : ''}
+                {data.status === 'pending' ? ` · ${data.signatures.length}/${data.signatures_required} signatures` : ''}
               </Text>
             </View>
           </View>
 
           <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-xs">
-            <Text className="text-xs font-bold text-slate-500 tracking-wide mb-4">TIẾN TRÌNH PHÊ DUYỆT</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wide mb-4">APPROVAL PROGRESS</Text>
             {buildTimeline(data).map((step, i, arr) => (
               <TimelineStepRow key={i} step={step} isLast={i === arr.length - 1} />
             ))}
@@ -169,11 +169,11 @@ export default function OrderStatusScreen() {
 
           <View className="bg-white dark:bg-slate-800 rounded-xl px-4 border border-slate-100 dark:border-slate-700 shadow-xs">
             <View className="flex-row justify-between items-center py-3.5">
-              <Text className="text-xs font-semibold text-slate-500">Chính sách</Text>
+              <Text className="text-xs font-semibold text-slate-500">Policy</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">{data.policy_name}</Text>
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
-              <Text className="text-xs font-semibold text-slate-500">Phí</Text>
+              <Text className="text-xs font-semibold text-slate-500">Fee</Text>
               <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.fee))}</Text>
             </View>
           </View>
@@ -187,7 +187,7 @@ export default function OrderStatusScreen() {
               {cancelling ? (
                 <ActivityIndicator color="#e11d48" />
               ) : (
-                <Text className="text-sm font-bold color-rose-600">Hủy lệnh</Text>
+                <Text className="text-sm font-bold color-rose-600">Cancel order</Text>
               )}
             </Pressable>
           )}

@@ -18,10 +18,10 @@ import {
 type Filter = 'all' | 'in' | 'out' | 'processing';
 
 const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'in', label: 'Tiền vào' },
-  { value: 'out', label: 'Tiền ra' },
-  { value: 'processing', label: 'Đang xử lý' },
+  { value: 'all', label: 'All' },
+  { value: 'in', label: 'Money in' },
+  { value: 'out', label: 'Money out' },
+  { value: 'processing', label: 'Processing' },
 ];
 
 const PROCESSING_STATUSES = ['created', 'processing', 'pending_approval'];
@@ -44,9 +44,9 @@ function dayLabel(iso: string): string {
   const now = new Date();
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
-  if (diffDays === 0) return 'Hôm nay';
-  if (diffDays === 1) return 'Hôm qua';
-  return d.toLocaleDateString('vi-VN');
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-GB');
 }
 
 interface HeaderItem {
@@ -90,7 +90,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
-      <Text className="text-2xl font-bold text-slate-900 dark:text-white px-4 pt-2 mb-2">Lịch sử giao dịch</Text>
+      <Text className="text-2xl font-bold text-slate-900 dark:text-white px-4 pt-2 mb-2">History</Text>
       <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
 
       {q.isLoading ? (
@@ -122,8 +122,8 @@ export default function HistoryScreen() {
             estimatedItemSize={72}
             ListEmptyComponent={
               <EmptyState
-                title="Không có giao dịch"
-                subtitle={filter === 'all' ? 'Giao dịch của bạn sẽ hiện ở đây.' : 'Không có giao dịch khớp bộ lọc.'}
+                title="Nothing here yet"
+                subtitle={filter === 'all' ? 'Your Transactions will show up here.' : 'No Transactions match the filter.'}
               />
             }
             ListFooterComponent={q.isFetchingNextPage ? <LoadingFooter /> : null}

@@ -38,12 +38,12 @@ export function BalanceCard({ balanceMinorUnits, visible, onToggleVisible }: Bal
       className="rounded-2xl p-5 gap-3 shadow-md"
     >
       <View className="flex-row items-center justify-between">
-        <Text className="text-xs text-white/90 font-semibold">Số dư khả dụng</Text>
+        <Text className="text-xs text-white/90 font-semibold">Available balance</Text>
         <Pressable
           onPress={onToggleVisible}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={visible ? 'Ẩn số dư' : 'Hiện số dư'}
+          accessibilityLabel={visible ? 'Hide balance' : 'Show balance'}
         >
           <Ionicons
             name={visible ? 'eye-off-outline' : 'eye-outline'}

@@ -30,7 +30,7 @@ function MembersTab({ orgId }: { orgId: string }) {
 
   const handleAdd = async () => {
     if (!phone.trim()) {
-      Alert.alert('Thiếu thông tin', 'Vui lòng nhập số điện thoại.');
+      Alert.alert('Missing information', 'Please enter a phone number.');
       return;
     }
     try {
@@ -44,9 +44,9 @@ function MembersTab({ orgId }: { orgId: string }) {
         }),
       });
       setPhone('');
-      Alert.alert('Thành công', 'Đã thêm thành viên vào doanh nghiệp.');
+      Alert.alert('Success', 'Member added to the organization.');
     } catch (e: unknown) {
-      Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+      Alert.alert('Error', (e instanceof Error ? e.message : String(e)));
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,7 @@ function MembersTab({ orgId }: { orgId: string }) {
   return (
     <View className="gap-4">
       <View>
-        <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Số điện thoại thành viên</Text>
+        <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Member phone number</Text>
         <TextInput
           className="h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-base text-slate-900 dark:text-white"
           placeholder="Vd: 0912345678"
@@ -67,7 +67,7 @@ function MembersTab({ orgId }: { orgId: string }) {
       </View>
 
       <View>
-        <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Vai trò</Text>
+        <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Role</Text>
         <View className="flex-row gap-2">
           {(['maker', 'checker'] as const).map((r) => (
             <Pressable
@@ -85,7 +85,7 @@ function MembersTab({ orgId }: { orgId: string }) {
 
       {role === 'checker' && (
         <View>
-          <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Cấp Checker</Text>
+          <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Checker level</Text>
           <View className="flex-row gap-2">
             {[1, 2].map((l) => (
               <Pressable
@@ -107,7 +107,7 @@ function MembersTab({ orgId }: { orgId: string }) {
         disabled={loading}
         className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${loading ? 'opacity-70' : ''}`}
       >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Thêm thành viên</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Add member</Text>}
       </Pressable>
     </View>
   );
@@ -146,7 +146,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
         }
         const parsed = parseAmountStrict(t.min_amount);
         if (!parsed.ok) {
-          Alert.alert('Thiếu thông tin', `Mức tiền của Level ${t.level} không hợp lệ.`);
+          Alert.alert('Missing information', `The amount for Level ${t.level} is invalid.`);
           return;
         }
         parsedTiers.push({ level: t.level, min_amount: parsed.value, required_approvals: t.required_approvals });
@@ -160,16 +160,16 @@ function PolicyTab({ orgId }: { orgId: string }) {
             body: payload,
           }),
         );
-        Alert.alert('Đã lưu', 'Chính sách phê duyệt mới đã có hiệu lực ngay lập tức.');
+        Alert.alert('Saved', 'The new Approval policy is now in effect.');
       } catch (e: unknown) {
-        Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+        Alert.alert('Error', (e instanceof Error ? e.message : String(e)));
       }
     });
 
   return (
     <View className="gap-4">
       <Text className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-cyan-50 dark:bg-slate-800 p-3.5 rounded-xl border border-cyan-100 dark:border-slate-700">
-        Mỗi tier là một cấp độ phê duyệt. Các lệnh chi từ mức tiền tương ứng sẽ cần đủ chữ ký của cấp đó.
+        Each tier is an Approval level. Payment orders from the matching amount need all signatures of that level.
       </Text>
       {tiers.map((tier, i) => (
         <View key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-4 gap-3 border border-slate-100 dark:border-slate-700 shadow-xs">
@@ -182,7 +182,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
             )}
           </View>
           <View>
-            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Từ mức tiền (₫)</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">From amount (₫)</Text>
             <TextInput
               className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-base text-slate-900 dark:text-white"
               placeholder="Vd: 10000000"
@@ -193,7 +193,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
             />
           </View>
           <View>
-            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Số chữ ký yêu cầu</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">Signatures required</Text>
             <View className="flex-row gap-2">
               {[1, 2, 3].map((n) => (
                 <Pressable
@@ -212,7 +212,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
       ))}
 
       <Pressable onPress={addTier} className="h-11 rounded-xl border-1.5 border-dashed border-cyan-300 items-center justify-center">
-        <Text className="text-sm font-semibold text-brand">+ Thêm cấp phê duyệt</Text>
+        <Text className="text-sm font-semibold text-brand">+ Add Approval level</Text>
       </Pressable>
 
       <Pressable
@@ -220,7 +220,7 @@ function PolicyTab({ orgId }: { orgId: string }) {
         disabled={guard.isPending}
         className={`h-13 bg-brand rounded-xl items-center justify-center mt-2 active:bg-brand-600 ${guard.isPending ? 'opacity-70' : ''}`}
       >
-        {guard.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Lưu chính sách</Text>}
+        {guard.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-base font-bold text-white">Save policy</Text>}
       </Pressable>
     </View>
   );
@@ -234,9 +234,9 @@ export default function AdminScreen() {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
         <View className="flex-1 items-center justify-center gap-4">
-          <Text className="text-sm color-rose-600 font-semibold text-center">Chỉ Admin mới có thể truy cập màn hình này.</Text>
+          <Text className="text-sm color-rose-600 font-semibold text-center">Only admins can access this screen.</Text>
           <Pressable onPress={() => router.back()} className="px-5 py-2.5 bg-brand rounded-xl">
-            <Text className="text-white font-bold">Quay lại</Text>
+            <Text className="text-white font-bold">Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -254,7 +254,7 @@ export default function AdminScreen() {
             <Ionicons name="arrow-back" size={22} color="#0f172a" />
           </Pressable>
           <Text className="text-base font-bold text-slate-900 dark:text-white flex-1 text-center mx-2" numberOfLines={1}>
-            Quản trị · {activeOrg.name}
+            Admin · {activeOrg.name}
           </Text>
           <View className="w-5" />
         </View>
@@ -267,7 +267,7 @@ export default function AdminScreen() {
               className={`flex-1 h-11 items-center justify-center ${tab === t ? 'border-b-2 border-brand' : ''}`}
             >
               <Text className={`text-sm font-semibold ${tab === t ? 'text-brand' : 'text-slate-400'}`}>
-                {t === 'members' ? 'Thành viên' : 'Chính sách'}
+                {t === 'members' ? 'Members' : 'Policy'}
               </Text>
             </Pressable>
           ))}

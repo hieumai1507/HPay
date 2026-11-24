@@ -28,17 +28,17 @@ const STATUS_CLASSES: Record<Status, { bg: string; fg: string; dot: string; icon
 };
 
 const STATUS_LABEL: Record<Status, string> = {
-  completed: 'Hoàn tất',
-  processing: 'Đang xử lý',
-  running: 'Đang xử lý',
-  pending_approval: 'Chờ duyệt',
-  manual_review: 'Đang xét duyệt',
-  failed: 'Thất bại',
-  rejected: 'Bị từ chối',
-  expired: 'Đã hết hạn',
-  created: 'Đã tạo',
-  reversed: 'Đã hoàn tiền',
-  compensated: 'Đã hoàn tiền',
+  completed: 'Completed',
+  processing: 'Processing',
+  running: 'Processing',
+  pending_approval: 'Pending',
+  manual_review: 'Under review',
+  failed: 'Failed',
+  rejected: 'Rejected',
+  expired: 'Expired',
+  created: 'Created',
+  reversed: 'Refunded',
+  compensated: 'Refunded',
 };
 
 export interface StatusBadgeProps {

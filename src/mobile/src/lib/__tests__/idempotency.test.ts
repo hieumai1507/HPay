@@ -17,7 +17,7 @@ describe('TestEdge_M01_IdempotencyKey_StablePerConfirmFlow', () => {
     const firstKey = result.current;
     expect(firstKey).toBeTruthy();
 
-    // Simulate re-renders from double-tapping "Chuyển tiền" (state updates, no navigation).
+    // Simulate re-renders from double-tapping "Transfer" (state updates, no navigation).
     await rerender({ resetKey: '0912345678:50000' });
     await rerender({ resetKey: '0912345678:50000' });
 
