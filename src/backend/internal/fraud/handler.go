@@ -164,11 +164,11 @@ func (h *handler) enqueueAdvisory(flagID uuid.UUID, txn store.GetTransactionByWo
 		}
 
 		evidence, _ := json.Marshal(signals)
-		user := "Giao dịch ref " + txn.RefCode + ", điểm rủi ro " + itoa(score) +
-			". Các dấu hiệu: " + string(evidence) +
-			". Giải thích ngắn gọn bằng tiếng Việt vì sao giao dịch này đáng ngờ, cho nhân viên review đọc."
+		user := "Transaction ref " + txn.RefCode + ", risk score " + itoa(score) +
+			". Signals: " + string(evidence) +
+			". Explain in English, briefly, why this transaction looks suspicious, for the reviewing analyst."
 		text, err := advisor.Complete(ctx,
-			"Bạn là trợ lý phân tích gian lận. Chỉ giải thích, không đưa quyết định chặn/mở.", user)
+			"You are a fraud analysis assistant. Only explain; never decide to block or release.", user)
 		if err != nil || text == "" {
 			h.log.Debug("fraud advisory unavailable", "flag", flagID, "err", err)
 			return // no advice is fine: the rules already decided

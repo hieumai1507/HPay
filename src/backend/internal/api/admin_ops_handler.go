@@ -347,7 +347,7 @@ type adminUpdatePolicyReq struct {
 	Tiers     []approval.Tier `json:"tiers" binding:"required"`
 }
 
-// UpdateOrgPolicy is the platform-ops override path (hpay-admin "Tổ chức &
+// UpdateOrgPolicy is the platform-ops override path (hpay-admin "Organizations &
 // Policy" edit form). Separate from OrgHandler.CreatePolicy — that one is
 // mounted under RequireAuth (user-audience JWT) and calls
 // org.Service.CreatePolicy, which requireRole()s the caller as an org_members

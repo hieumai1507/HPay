@@ -49,7 +49,7 @@ func TestMockScorerDeterministic(t *testing.T) {
 }
 
 func TestParseScoreJSON(t *testing.T) {
-	res, err := parseScoreJSON("Here you go:\n```json\n{\"score\": 72, \"reasons\": [\"ảnh rõ\"]}\n```")
+	res, err := parseScoreJSON("Here you go:\n```json\n{\"score\": 72, \"reasons\": [\"clear photo\"]}\n```")
 	if err != nil || res.Score != 72 || len(res.Reasons) != 1 {
 		t.Fatalf("parse: %v %+v", err, res)
 	}

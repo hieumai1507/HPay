@@ -151,7 +151,7 @@ func classify(day time.Time,
 			items = append(items, classifiedItem{
 				txnID: t.ID, result: store.ReconResultMissingExternal,
 				detail: map[string]any{"ref_code": t.RefCode, "amount": t.Amount,
-					"note": "không tìm thấy sao kê ngân hàng cho giao dịch này"},
+					"note": "no bank statement found for this transaction"},
 			})
 		default:
 			st := matches[0]
@@ -214,8 +214,8 @@ func (s *Service) summarize(ctx context.Context, day time.Time, items []classifi
 		}
 	}
 	evidence, _ := json.Marshal(b)
-	user := fmt.Sprintf("Đối soát ngày %s: %d khớp, %d lệch. Chi tiết các mục lệch: %s. "+
-		"Tóm tắt ngắn gọn nguyên nhân lệch bằng tiếng Việt cho nhân viên vận hành.",
+	user := fmt.Sprintf("Reconciliation for %s: %d matched, %d mismatched. Mismatch details: %s. "+
+		"Summarize the likely causes of the mismatches briefly, in English, for the operations analyst.",
 		day.Format("2006-01-02"), matched, mismatched, string(evidence))
 
 	// Fetch dynamic active setting for fraud_advising
@@ -243,7 +243,7 @@ func (s *Service) summarize(ctx context.Context, day time.Time, items []classifi
 	}
 
 	text, err := activeAdvisor.Complete(ctx,
-		"Bạn là trợ lý đối soát tài chính. Chỉ tóm tắt, không đề xuất hành động thay đổi số dư.", user)
+		"You are a financial reconciliation assistant. Only summarize; never propose actions that change balances.", user)
 	if err != nil {
 		return ""
 	}

@@ -67,7 +67,7 @@ func TestAIConfig_OpenAIRoutingAndInactivation(t *testing.T) {
 			"choices": []map[string]any{
 				{
 					"message": map[string]any{
-						"content": `{"score": 85, "reasons": ["Khuôn mặt khớp hoàn hảo", "Chứng minh thư hợp lệ"]}`,
+						"content": `{"score": 85, "reasons": ["Face matches perfectly", "ID card is valid"]}`,
 					},
 				},
 			},

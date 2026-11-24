@@ -49,7 +49,7 @@ func TestVault_DepositMovesMoneyAndBalances(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
 	testkit.Fund(t, e.Pool, userID, mainWallet, 2_000_000)
-	vaultID := newVault(t, e, userID, "Du lịch Đà Lạt")
+	vaultID := newVault(t, e, userID, "Holiday fund")
 
 	mainBefore := testutil.WalletBalance(t, e.Pool, mainWallet)
 
@@ -78,7 +78,7 @@ func TestVault_WithdrawReturnsToMain(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
 	testkit.Fund(t, e.Pool, userID, mainWallet, 2_000_000)
-	vaultID := newVault(t, e, userID, "Quỹ khẩn cấp")
+	vaultID := newVault(t, e, userID, "Emergency fund")
 
 	dep, err := vaultMove(t, e, userID, vaultID, 800_000, "deposit")
 	if err != nil {
@@ -112,7 +112,7 @@ func TestVault_WithdrawOverBalanceRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
 	testkit.Fund(t, e.Pool, userID, mainWallet, 1_000_000)
-	vaultID := newVault(t, e, userID, "Hũ rỗng")
+	vaultID := newVault(t, e, userID, "Empty vault")
 
 	_, err := vaultMove(t, e, userID, vaultID, 100_000, "withdraw")
 	if !errors.Is(err, ledger.ErrInsufficientBalance) {
@@ -130,7 +130,7 @@ func TestVault_ForeignVaultRejected(t *testing.T) {
 	attacker, attackerWallet, _ := e.UserWithMoney(t, 0)
 	testkit.Fund(t, e.Pool, attacker, attackerWallet, 1_000_000)
 	victim, _, _ := e.UserWithMoney(t, 0)
-	victimVault := newVault(t, e, victim, "Hũ của người khác")
+	victimVault := newVault(t, e, victim, "Someone else's vault")
 
 	_, err := vaultMove(t, e, attacker, victimVault, 100_000, "deposit")
 	if !errors.Is(err, vault.ErrNotFound) {
@@ -142,7 +142,7 @@ func TestVault_DirectionMustBeValid(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
 	testkit.Fund(t, e.Pool, userID, mainWallet, 1_000_000)
-	vaultID := newVault(t, e, userID, "Hũ test hướng")
+	vaultID := newVault(t, e, userID, "Direction test vault")
 
 	if _, err := vaultMove(t, e, userID, vaultID, 100_000, "sideways"); !errors.Is(err, vault.ErrDirectionInvalid) {
 		t.Fatalf("bad direction: err = %v, want ErrDirectionInvalid", err)
@@ -156,13 +156,13 @@ func TestVault_MultipleVaultsPerUser(t *testing.T) {
 	userID, _, _ := e.UserWithMoney(t, 0)
 
 	svc := vault.New(e.Pool)
-	if _, err := svc.Create(context.Background(), userID, "Hũ A", 1_000_000); err != nil {
+	if _, err := svc.Create(context.Background(), userID, "Vault A", 1_000_000); err != nil {
 		t.Fatalf("first vault: %v", err)
 	}
-	if _, err := svc.Create(context.Background(), userID, "Hũ B", 0); err != nil {
+	if _, err := svc.Create(context.Background(), userID, "Vault B", 0); err != nil {
 		t.Fatalf("second vault must be allowed: %v", err)
 	}
-	if _, err := svc.Create(context.Background(), userID, "Hũ A", 0); !errors.Is(err, vault.ErrLabelTaken) {
+	if _, err := svc.Create(context.Background(), userID, "Vault A", 0); !errors.Is(err, vault.ErrLabelTaken) {
 		t.Fatalf("duplicate label: err = %v, want ErrLabelTaken", err)
 	}
 

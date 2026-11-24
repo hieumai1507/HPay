@@ -92,8 +92,8 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
   const currentAction = actions[selectedActionIndex] || actions[0]!;
 
   return (
-    <Modal open={open} onClose={onClose} title={`Transaction Design Manager · ${service.code}`}>
-      <div className="flex flex-col w-[840px] max-w-[90vw]">
+    <Modal open={open} onClose={onClose} size="lg" title={`Transaction Design Manager · ${service.code}`}>
+      <div className="flex flex-col w-full min-w-0">
         {/* Tab Bar */}
         <div className="flex gap-2 border-b border-slate-200 mb-3.5 overflow-x-auto">
           <button
@@ -146,7 +146,7 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
         {/* Tab 0: Overview */}
         {activeTab === 'overview' && (
           <div className="flex flex-col gap-3 min-h-[300px]">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] font-bold text-slate-500 mb-1 block">Service code</label>
                 <div className="h-9 flex items-center px-3 bg-slate-100 rounded-lg text-xs font-bold font-mono text-slate-900">{service.code}</div>
@@ -258,8 +258,8 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
 
         {/* Tab 3: Action Pipeline */}
         {activeTab === 'pipeline' && (
-          <div className="flex gap-4 min-h-[300px]">
-            <div className="w-64 flex flex-col gap-2.5 shrink-0">
+          <div className="flex flex-col md:flex-row gap-4 min-h-[300px]">
+            <div className="w-full md:w-64 flex flex-col gap-2.5 shrink-0">
               <div className="text-[11px] font-bold text-slate-500 tracking-wider uppercase">ACTION STEPS</div>
               {actions.map((act, i) => (
                 <div
@@ -282,7 +282,7 @@ export function ServicePipelineModal({ open, onClose, service }: Props) {
 
             <div className="flex-1 flex flex-col gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
               <h4 className="m-0 text-sm font-bold text-slate-900">Step {selectedActionIndex + 1}: {currentAction.name}</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 mb-1 block">Entry Point (Endpoint)</label>
                   <input type="text" defaultValue={currentAction.entry_point} className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white" />

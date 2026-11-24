@@ -321,7 +321,7 @@ func (s *Service) ExecuteEngineRequest(ctx context.Context, input EngineRequestI
 	}
 
 	if srv.Status != store.ServiceStatusActive {
-		return EngineRequestResult{}, errors.New("dịch vụ hiện đang bảo trì hoặc tạm ngưng")
+		return EngineRequestResult{}, errors.New("service is under maintenance or suspended")
 	}
 
 	// Dispatch profile: resolve ledger txn type + workflow definition + wallet
@@ -558,7 +558,7 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 			}
 			receiverID = rcv.ID
 		} else {
-			return enginePlan{}, errors.New("thiếu thông tin người nhận")
+			return enginePlan{}, errors.New("recipient is missing")
 		}
 		if receiverID == input.SenderUserID {
 			return enginePlan{}, ledger.ErrSelfTransfer
@@ -579,7 +579,7 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 		}, nil
 
 	default:
-		return enginePlan{}, fmt.Errorf("wallet_strategy chưa hỗ trợ qua engine dispatch: %s", strategy)
+		return enginePlan{}, fmt.Errorf("wallet_strategy is not supported through engine dispatch: %s", strategy)
 	}
 }
 

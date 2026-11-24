@@ -201,8 +201,8 @@ func (s *Service) CreatePolicy(ctx context.Context, actorID, orgID uuid.UUID, na
 	return s.createPolicy(ctx, actorID, "user", orgID, name, minAmount, maxAmount, tiers)
 }
 
-// CreatePolicyAsAdmin is the platform-ops override path (hpay-admin "Tổ
-// chức & Policy") — the caller is an admin_users row, not an org member, so
+// CreatePolicyAsAdmin is the platform-ops override path (hpay-admin "Organizations
+// & Policy") — the caller is an admin_users row, not an org member, so
 // it skips requireRole (an admin is never in org_members) and checks only
 // that the org itself is real and active. approval_policies.created_by has
 // no FK (migration 000012) specifically so this can record the admin's id

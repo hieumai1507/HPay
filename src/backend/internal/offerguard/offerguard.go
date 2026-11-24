@@ -23,13 +23,13 @@ import (
 
 // Sentinel violations — the API layer maps each to a stable ERR_* code.
 var (
-	ErrServiceNotInOffer = errors.New("dịch vụ không có trong gói của bạn")
-	ErrServiceDisabled   = errors.New("dịch vụ đang tắt trong gói của bạn")
-	ErrBelowMin          = errors.New("số tiền dưới mức tối thiểu của dịch vụ")
-	ErrLimitPerTxn       = errors.New("vượt hạn mức mỗi giao dịch")
-	ErrLimitDaily        = errors.New("vượt hạn mức trong ngày")
-	ErrLimitMonthly      = errors.New("vượt hạn mức trong tháng")
-	ErrTooFrequent       = errors.New("giao dịch quá nhanh, vui lòng thử lại sau")
+	ErrServiceNotInOffer = errors.New("service is not part of your plan")
+	ErrServiceDisabled   = errors.New("service is turned off in your plan")
+	ErrBelowMin          = errors.New("amount is below the service minimum")
+	ErrLimitPerTxn       = errors.New("amount exceeds the per-transaction limit")
+	ErrLimitDaily        = errors.New("daily limit exceeded")
+	ErrLimitMonthly      = errors.New("monthly limit exceeded")
+	ErrTooFrequent       = errors.New("transactions too frequent, please try again shortly")
 	ErrOfferInactive     = errors.New("offer is inactive")
 )
 

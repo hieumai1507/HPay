@@ -39,7 +39,7 @@ func Evaluate(in Input) ([]Signal, int) {
 	if in.TxnsInLast5Min >= 4 {
 		signals = append(signals, Signal{
 			Code: "VELOCITY_5MIN", Points: 30,
-			Evidence: fmt.Sprintf("%d giao dịch trong 5 phút", in.TxnsInLast5Min),
+			Evidence: fmt.Sprintf("%d transactions in 5 minutes", in.TxnsInLast5Min),
 		})
 	}
 
@@ -47,7 +47,7 @@ func Evaluate(in Input) ([]Signal, int) {
 	if in.Avg30dAmount > 0 && in.Amount >= in.Avg30dAmount*5 {
 		signals = append(signals, Signal{
 			Code: "AMOUNT_SPIKE", Points: 35,
-			Evidence: fmt.Sprintf("số tiền %d gấp %d lần trung bình 30 ngày (%d)",
+			Evidence: fmt.Sprintf("amount %d is %d times the 30-day average (%d)",
 				in.Amount, in.Amount/max64(in.Avg30dAmount, 1), in.Avg30dAmount),
 		})
 	}
@@ -56,7 +56,7 @@ func Evaluate(in Input) ([]Signal, int) {
 	if in.HourOfDay >= 0 && in.HourOfDay < 5 {
 		signals = append(signals, Signal{
 			Code: "ODD_HOURS", Points: 20,
-			Evidence: fmt.Sprintf("giao dịch lúc %02d giờ", in.HourOfDay),
+			Evidence: fmt.Sprintf("transaction at %02d:00", in.HourOfDay),
 		})
 	}
 
@@ -64,7 +64,7 @@ func Evaluate(in Input) ([]Signal, int) {
 	if in.IsNewReceiver {
 		signals = append(signals, Signal{
 			Code: "NEW_RECEIVER", Points: 20,
-			Evidence: "người nhận chưa từng nhận tiền từ tài khoản này",
+			Evidence: "recipient has never received money from this account",
 		})
 	}
 

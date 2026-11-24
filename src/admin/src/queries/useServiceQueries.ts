@@ -25,14 +25,76 @@ export interface ServiceItem {
   inputFields?: InputFieldRule[];
 }
 
+/** The row exactly as the API sends it: snake_case, JSON columns as base64 text, nullable text as null. */
+export interface ServiceRow {
+  id: string;
+  code: string;
+  name: string;
+  full_name?: string | null;
+  service_note?: string | null;
+  category: ServiceItem['category'];
+  transaction_type?: string;
+  action_priority: ServiceItem['actionPriority'];
+  status: ServiceItem['status'];
+  confirmation?: boolean;
+  service_target?: string | null;
+  channels?: string | string[] | null;
+  amount_formula?: string | Record<string, unknown> | null;
+  actions?: string | ActionStepConfig[] | null;
+  input_fields?: string | InputFieldRule[] | null;
+}
+
+/**
+ * The backend serialises Postgres jsonb columns as []byte, which Go's JSON encoder writes as a
+ * base64 string ("W10=" is "[]"). Decode that, accept an already-parsed value too, and fall back
+ * to the supplied default for null, bad base64 or bad JSON, so one odd row cannot crash a page.
+ */
+export function decodeJsonColumn<T>(value: unknown, fallback: T): T {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value !== 'string') return value as T;
+  try {
+    const bin = atob(value);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes)) as T;
+  } catch {
+    try {
+      return JSON.parse(value) as T; // plain JSON text, in case the API ever stops base64-encoding
+    } catch {
+      return fallback;
+    }
+  }
+}
+
+export function mapServiceRow(r: ServiceRow): ServiceItem {
+  const actions = decodeJsonColumn<ActionStepConfig[]>(r.actions, []);
+  const inputFields = decodeJsonColumn<InputFieldRule[]>(r.input_fields, []);
+  return {
+    id: r.id,
+    code: r.code,
+    name: r.name,
+    fullName: r.full_name ?? undefined,
+    category: r.category,
+    transactionType: r.transaction_type,
+    actionPriority: r.action_priority,
+    status: r.status,
+    channels: decodeJsonColumn<string[]>(r.channels, []),
+    serviceNote: r.service_note ?? undefined,
+    confirmation: r.confirmation,
+    serviceTarget: r.service_target ?? undefined,
+    amountFormula: decodeJsonColumn<Record<string, unknown>>(r.amount_formula, {}),
+    actions: Array.isArray(actions) ? actions : [],
+    inputFields: Array.isArray(inputFields) ? inputFields : [],
+  };
+}
+
 export function useServices(params?: AdminQueryParams) {
   return useQuery({
     queryKey: ['admin', 'services', params],
     queryFn: async (): Promise<Paged<ServiceItem>> => {
-      const res = await apiRequest<{ services: ServiceItem[] | null; total?: number }>(
+      const res = await apiRequest<{ services: ServiceRow[] | null; total?: number }>(
         `/v1/admin/services${buildQueryString(params)}`
       );
-      const rows = res?.services ?? [];
+      const rows = (res?.services ?? []).map(mapServiceRow);
       return { rows, total: res?.total ?? rows.length };
     },
   });
@@ -43,7 +105,7 @@ export function useUpdateServiceStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: ServiceItem['status'] }) =>
-      apiRequest<ServiceItem>(`/v1/admin/services/${id}`, {
+      apiRequest<ServiceRow>(`/v1/admin/services/${id}`, {
         method: 'PUT',
         body: { status },
         headers: idempotencyHeaders(),

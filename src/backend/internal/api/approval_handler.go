@@ -101,7 +101,7 @@ func (h *ApprovalHandler) DetailByRefCode(c *gin.Context) {
 }
 
 // Cancel lets the maker withdraw their own still-pending request (mockup
-// "Hủy lệnh" (cancel order), frame 19). Only the request's own maker may cancel it.
+// "Cancel order", frame 19). Only the request's own maker may cancel it.
 func (h *ApprovalHandler) Cancel(c *gin.Context) {
 	reqID, ok := approvalIDParam(c)
 	if !ok {

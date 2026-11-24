@@ -150,7 +150,7 @@ func (w *Worker) processStepMessage(ctx context.Context, payload string) error {
 	}
 
 	// Replay? Re-emit the recorded result and stop (E04: crash after commit,
-	// before publish/ack â€” the engine must still hear about it).
+	// before publish/ack — the engine must still hear about it).
 	prev, err := w.q.GetStepExecution(ctx, store.GetStepExecutionParams{
 		InstanceID: ev.InstanceID, StepName: ev.Step, Attempt: int16(ev.Attempt),
 	})
@@ -298,12 +298,12 @@ func jsonbOrNil(t pgtype.Text) []byte {
 }
 
 // PumpLocal drains due outbox events and processes them in-process, bypassing
-// Redis. TEST/DEV HARNESS ONLY â€” the production path is outbox.Relay + streams.
+// Redis. TEST/DEV HARNESS ONLY — the production path is outbox.Relay + streams.
 //
 // Start events whose handler is NOT in this worker's registry are SKIPPED
 // (left unpublished) so a pump with the right registry can claim them.
 // Packages that pump the shared test database must not run concurrently
-// (`go test -p 1`) â€” two differently-wired engines (F6 pause hook) stealing
+// (`go test -p 1`) — two differently-wired engines (F6 pause hook) stealing
 // each other's events would break both.
 // Returns the number of events processed by THIS worker.
 func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {

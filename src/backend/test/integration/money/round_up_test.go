@@ -30,7 +30,7 @@ func TestRoundUp_AppliesDifference(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
-	vaultID := newVault(t, e, userID, "Làm tròn")
+	vaultID := newVault(t, e, userID, "Round-up")
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
 	senderBefore := testutil.WalletBalance(t, e.Pool, senderWallet)
@@ -61,7 +61,7 @@ func TestRoundUp_ExactAmount_Skipped(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, _, _ := e.UserWithMoney(t, 2_000_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
-	vaultID := newVault(t, e, userID, "Làm tròn")
+	vaultID := newVault(t, e, userID, "Round-up")
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
 	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 120_000, "exact", uuid.NewString())
@@ -101,7 +101,7 @@ func TestRoundUp_InsufficientBalance_SkippedNotFailed(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, senderWallet, _ := e.UserWithMoney(t, 0)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
-	vaultID := newVault(t, e, userID, "Làm tròn")
+	vaultID := newVault(t, e, userID, "Round-up")
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
 	// Fund exactly amount+fee so nothing is left over for the round-up leg.
@@ -132,8 +132,8 @@ func TestRoundUp_ChangingTarget_UnsetsOld(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, _, _ := e.UserWithMoney(t, 2_000_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
-	vaultA := newVault(t, e, userID, "Hũ A")
-	vaultB := newVault(t, e, userID, "Hũ B")
+	vaultA := newVault(t, e, userID, "Vault A")
+	vaultB := newVault(t, e, userID, "Vault B")
 
 	setRoundUpTarget(t, e, userID, vaultA, true)
 	setRoundUpTarget(t, e, userID, vaultB, true)
@@ -174,7 +174,7 @@ func TestRoundUp_TargetIsOwnerScoped(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	attacker, _, _ := e.UserWithMoney(t, 0)
 	victim, _, _ := e.UserWithMoney(t, 0)
-	victimVault := newVault(t, e, victim, "Không phải của bạn")
+	victimVault := newVault(t, e, victim, "Not yours")
 
 	if _, err := vault.New(e.Pool).SetRoundUpTarget(context.Background(), attacker, victimVault, true); !errors.Is(err, vault.ErrNotFound) {
 		t.Fatalf("foreign vault: err = %v, want vault.ErrNotFound", err)

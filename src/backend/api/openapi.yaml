@@ -329,7 +329,7 @@ paths:
                   masked_name:
                     {
                       type: string,
-                      example: "Nguyễn V** A*",
+                      example: "Nguyen V** A*",
                       description: server-masked — raw names never leave the API,
                     }
         "400": { $ref: "#/components/responses/Validation" }
@@ -713,7 +713,7 @@ paths:
               type: object
               required: [label]
               properties:
-                label: { type: string, maxLength: 60, example: "Du lịch Đà Lạt" }
+                label: { type: string, maxLength: 60, example: "Holiday fund" }
                 target_amount:
                   {
                     type: integer,
@@ -1380,7 +1380,7 @@ paths:
   /v1/admin/orgs/{id}/policies:
     put:
       tags: [admin]
-      summary: Platform-ops override — create a new approval policy version for an org (admin console "Tổ chức & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership
+      summary: Platform-ops override — create a new approval policy version for an org (admin console "Organizations & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/OrgId" }]
       requestBody:
@@ -1684,7 +1684,7 @@ paths:
   /v1/org/approvals/{id}/cancel:
     post:
       tags: [approvals]
-      summary: Maker withdraws their own still-pending request (mockup "Hủy lệnh") — reuses the same finalize path as a checker reject
+      summary: Maker withdraws their own still-pending request (mockup "Cancel order") — reuses the same finalize path as a checker reject
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/ApprovalId" }]
       responses:
@@ -1840,7 +1840,7 @@ components:
       description: A savings pocket. Backed by a wallets row with purpose='vault', so its balance is ledger-derived like any other wallet.
       properties:
         id: { type: string, format: uuid }
-        label: { type: string, example: "Du lịch Đà Lạt" }
+        label: { type: string, example: "Holiday fund" }
         balance: { type: integer, format: int64, description: minor units (VND) }
         target_amount:
           {
@@ -1930,7 +1930,7 @@ components:
             description: relative to the caller's main wallet,
           }
         counterparty_name:
-          { type: string, nullable: true, example: "Nguyễn V** A*" }
+          { type: string, nullable: true, example: "Nguyen V** A*" }
         counterparty_phone:
           { type: string, nullable: true, example: "091****678" }
         created_at: { type: string, format: date-time }

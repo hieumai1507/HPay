@@ -93,7 +93,7 @@ FROM approval_actions WHERE request_id = $1 ORDER BY id;
 
 -- name: ListApprovalActionsWithNames :many
 -- Signature history for the detail endpoint: same rows as ListApprovalActions
--- plus the checker's display name (frame 21's "CHỮ KÝ" (signatures) list).
+-- plus the checker's display name (frame 21's "SIGNATURES" list).
 SELECT a.checker_id, u.full_name AS checker_name, a.level, a.action, a.acted_at
 FROM approval_actions a
 JOIN users u ON u.id = a.checker_id

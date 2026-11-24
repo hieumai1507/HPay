@@ -78,10 +78,10 @@ func (s *seeder) run() {
 	s.systemWallet("SYSTEM_FEE")
 
 	// --- users ---
-	u1 := s.user("0900000001", "Hiếu Mai", "verified", "active", hash)
+	u1 := s.user("0900000001", "Hieu Mai", "verified", "active", hash)
 	u2 := s.user("0900000002", "Minh Anh", "verified", "active", hash)
-	u3 := s.user("0900000003", "Trần Văn Ba", "manual_review", "active", hash)
-	u4 := s.user("0900000004", "Lê Thị Tư", "none", "locked", hash)
+	u3 := s.user("0900000003", "Tran Van Ba", "manual_review", "active", hash)
+	u4 := s.user("0900000004", "Le Thi Tu", "none", "locked", hash)
 	owner := s.user("0900000011", "Acme Owner", "verified", "active", hash)
 	maker := s.user("0900000012", "Acme Maker", "verified", "active", hash)
 	l1 := s.user("0900000013", "Acme Checker L1", "verified", "active", hash)
@@ -98,7 +98,7 @@ func (s *seeder) run() {
 		s.assignOffer(biz, "OFFER_BIZ_STARTER")
 	}
 
-	w1 := s.mainWallet(u1, "Hiếu Mai main")
+	w1 := s.mainWallet(u1, "Hieu Mai main")
 	w2 := s.mainWallet(u2, "Minh Anh main")
 	s.mainWallet(u3, "user3 main")
 	w4 := s.mainWallet(u4, "user4 main")
@@ -106,7 +106,7 @@ func (s *seeder) run() {
 	wMaker := s.mainWallet(maker, "maker main")
 	wL1 := s.mainWallet(l1, "checker L1 main")
 	wL2 := s.mainWallet(l2, "checker L2 main")
-	vault := s.vaultWallet(u1, "Du lịch Đà Lạt")
+	vault := s.vaultWallet(u1, "Holiday fund")
 
 	// --- u1 history: >=10 mixed txns across several days; final 12,450,000 ---
 	s.txn("seed-u1-topup-1", "topup", cashIn, w1, 15_000_000, u1, -6)
@@ -124,14 +124,14 @@ func (s *seeder) run() {
 	s.txn("seed-u2-topup-1", "topup", cashIn, w2, 500_000, u2, -4)
 	s.txn("seed-u11-topup-1", "topup", cashIn, wOwner, 500_000, owner, -2)
 
-	// --- organization Acme Corp + policy "Chi lớn" (large spend) v3 ---
+	// --- organization Acme Corp + policy "Large spend" (large spend) v3 ---
 	orgID := s.org("Acme Corp", owner)
 	orgWallet := s.orgWallet(orgID)
 	s.member(orgID, owner, "admin", 0)
 	s.member(orgID, maker, "maker", 0)
 	s.member(orgID, l1, "checker", 1)
 	s.member(orgID, l2, "checker", 2)
-	policyID := s.policy(orgID, "Chi lớn", 3, owner)
+	policyID := s.policy(orgID, "Large spend", 3, owner)
 
 	s.txn("seed-org-topup", "topup", cashIn, orgWallet, 854_500_000, owner, -7)
 	// completed disbursement with a full step trail
@@ -162,7 +162,7 @@ func (s *seeder) run() {
 	s.txn("seed-u4-topup", "topup", cashIn, w4, 1_000_000, u4, -3)
 	badTxn := s.txn("seed-u4-p2p", "p2p", w4, w2, 500_000, u4, -1)
 	s.fraudFlag(badTxn, "VELOCITY_5MIN", 92,
-		`{"signals":[{"code":"VELOCITY_5MIN","points":60,"evidence":"3 giao dịch trong 4 phút"}],"advisory":"AI: hành vi giống tài khoản bị chiếm quyền — khuyến nghị khóa và đảo giao dịch"}`,
+		`{"signals":[{"code":"VELOCITY_5MIN","points":60,"evidence":"3 transactions in 4 minutes"}],"advisory":"AI: behaviour resembles an account takeover — recommend locking the account and reversing the transactions"}`,
 		"confirmed_fraud")
 	s.reversalApproval(badTxn)
 
@@ -171,10 +171,10 @@ func (s *seeder) run() {
 	// ({signals:[{code,points,evidence}], advisory}) — not a plain string
 	// array, which the admin console's Fraud Monitor can't render (F6 bug).
 	s.fraudFlag(velocity, "VELOCITY_5MIN", 87,
-		`{"signals":[{"code":"VELOCITY_5MIN","points":55,"evidence":"5 giao dịch trong 5 phút"}],"advisory":"AI: tần suất bất thường so với 30 ngày gần nhất — nên xem thủ công"}`,
+		`{"signals":[{"code":"VELOCITY_5MIN","points":55,"evidence":"5 transactions in 5 minutes"}],"advisory":"AI: unusual frequency compared with the last 30 days — review manually"}`,
 		"open")
 	s.fraudFlag(flagged, "AMOUNT_SPIKE", 45,
-		`{"signals":[{"code":"AMOUNT_SPIKE","points":45,"evidence":"gấp 4.2 lần trung bình 30 ngày"}],"advisory":"AI: người nhận quen thuộc, rủi ro thấp"}`,
+		`{"signals":[{"code":"AMOUNT_SPIKE","points":45,"evidence":"4.2 times the 30-day average"}],"advisory":"AI: familiar recipient, low risk"}`,
 		"cleared")
 
 	// --- kyc queue: u3 sitting at manual_review, ai_score 64 ---
@@ -195,13 +195,13 @@ func (s *seeder) run() {
 	s.reconRun(y)
 
 	// --- money requests: 1 pending incoming for u1 + a split group 2/3 paid ---
-	s.moneyRequest("seed-mreq-1", u2, u1, 200_000, "Tiền cà phê tuần này", nil, "pending", uuid.Nil)
+	s.moneyRequest("seed-mreq-1", u2, u1, 200_000, "Coffee money this week", nil, "pending", uuid.Nil)
 	split := fixedUUID("seed-split-group")
 	p1 := s.txn("seed-split-pay-u2", "p2p", w2, w1, 150_000, u2, 0)
 	p2 := s.txn("seed-split-pay-u11", "p2p", wOwner, w1, 150_000, owner, 0)
-	s.moneyRequest("seed-mreq-s1", u1, u2, 150_000, "Split: ăn tối nhóm", &split, "paid", p1)
-	s.moneyRequest("seed-mreq-s2", u1, owner, 150_000, "Split: ăn tối nhóm", &split, "paid", p2)
-	s.moneyRequest("seed-mreq-s3", u1, maker, 150_000, "Split: ăn tối nhóm", &split, "pending", uuid.Nil)
+	s.moneyRequest("seed-mreq-s1", u1, u2, 150_000, "Split: group dinner", &split, "paid", p1)
+	s.moneyRequest("seed-mreq-s2", u1, owner, 150_000, "Split: group dinner", &split, "paid", p2)
+	s.moneyRequest("seed-mreq-s3", u1, maker, 150_000, "Split: group dinner", &split, "pending", uuid.Nil)
 
 	s.assertLedger()
 	s.summary()
@@ -491,7 +491,7 @@ func (s *seeder) member(orgID, userID uuid.UUID, role string, level int) {
 	}
 }
 
-// policy "Chi lớn" (large spend) v3: >=10M needs 1 L1 signature; >=40M adds 1 L2 signature.
+// policy "Large spend" (large spend) v3: >=10M needs 1 L1 signature; >=40M adds 1 L2 signature.
 func (s *seeder) policy(orgID uuid.UUID, name string, version int, by uuid.UUID) uuid.UUID {
 	id := fixedUUID(fmt.Sprintf("policy:%s:%d", name, version))
 	if _, err := s.pool.Exec(s.ctx, `
@@ -553,7 +553,7 @@ func (s *seeder) instance(key, defName string, txnID uuid.UUID, status, current 
 // approvalOrgTxn: pending request at 1/2 signatures — L1 already approved.
 func (s *seeder) approvalOrgTxn(txnID, orgID, instID, policyID, maker, l1 uuid.UUID) {
 	snap, _ := json.Marshal(map[string]any{
-		"policy_id": policyID, "name": "Chi lớn", "version": 3,
+		"policy_id": policyID, "name": "Large spend", "version": 3,
 		"tiers": []map[string]int{{"level": 1, "required_approvals": 1}, {"level": 2, "required_approvals": 1}},
 	})
 	id := fixedUUID("approval:org:" + txnID.String())
@@ -604,7 +604,7 @@ func (s *seeder) kycRequest(userID uuid.UUID) {
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO kyc_requests (id, user_id, id_card_url, selfie_url, ai_score, ai_verdict, ai_reasons, status)
 		VALUES ($1,$2,'seed/kyc/id-card.jpg','seed/kyc/selfie.jpg',64,'manual_review',
-		  '["Ảnh giấy tờ hơi mờ ở góc phải","Tên khớp nhưng độ tin cậy khuôn mặt 71%","Cần người duyệt xác nhận"]'::jsonb,
+		  '["ID photo is slightly blurry at the right corner","Name matches but face confidence is 71%","A reviewer needs to confirm"]'::jsonb,
 		  'manual_review')
 		ON CONFLICT (id) DO NOTHING`, fixedUUID("kyc:"+userID.String()), userID); err != nil {
 		fatal("kyc: %v", err)
@@ -664,7 +664,7 @@ func (s *seeder) reconRun(day time.Time) {
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO reconciliation_runs (run_date, total, matched, mismatched, ai_summary)
 		VALUES ($1::date, 6, 3, 3,
-		 'Đối soát ngày hôm qua: 3/6 khớp hoàn toàn. 3 sao kê ngân hàng không có giao dịch nội bộ tương ứng, đều rơi vào cửa sổ 23:58–00:02 — khả năng cao là lệch cutoff cuối ngày, khuyến nghị đối chiếu với batch sáng hôm sau trước khi coi là thất thoát.')
+		 'Reconciliation for yesterday: 3 of 6 matched exactly. 3 bank statement lines have no matching internal transaction and all fall in the 23:58–00:02 window, most likely an end-of-day cutoff mismatch; compare with the next morning batch before treating them as losses.')
 		ON CONFLICT (run_date) DO NOTHING`, day); err != nil {
 		fatal("recon run: %v", err)
 	}
@@ -714,11 +714,11 @@ func (s *seeder) summary() {
 	fmt.Println("─────────────────────────────────────────────────────────")
 	fmt.Println(" HPay demo seed OK — password for every user: Demo@123")
 	fmt.Println("─────────────────────────────────────────────────────────")
-	fmt.Println(" 0900000001  Hiếu Mai      verified, 12.450.000₫, vault 'Du lịch Đà Lạt' 4.2/6M")
+	fmt.Println(" 0900000001  Hieu Mai      verified, 12,450,000₫, vault 'Holiday fund' 4.2/6M")
 	fmt.Println(" 0900000002  Minh Anh      verified, P2P counterpart, 1 money request pending")
 	fmt.Println(" 0900000003  (queue)       KYC manual_review, ai_score 64 → admin KYC queue")
 	fmt.Println(" 0900000004  (locked)      confirmed_fraud + reversal pending in admin My Tasks")
-	fmt.Println(" 0900000011-14 Acme Corp    owner/maker/checker L1/L2 — policy 'Chi lớn' v3")
+	fmt.Println(" 0900000011-14 Acme Corp    owner/maker/checker L1/L2 — policy 'Large spend' v3")
 	fmt.Println("   org wallet 842.500.000₫ · 1 disbursement waiting 1/2 signatures (45M)")
 	fmt.Println(" Admin monitor: instances failed@MOVE_FUNDS · compensated · processing_async")
 	fmt.Println(" Recon yesterday: 3 matched + 3 missing_external in the 23:58–00:02 window")
