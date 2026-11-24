@@ -179,6 +179,7 @@ func (s *seeder) run() {
 
 	// --- kyc queue: u3 sitting at manual_review, ai_score 64 ---
 	s.kycRequest(u3)
+	writeKYCDemoImages(s.ctx)
 
 	// --- recon: yesterday, 3 matched + 3 missing_external at the cutoff window ---
 	y := time.Now().AddDate(0, 0, -1)
@@ -603,10 +604,10 @@ func (s *seeder) fraudFlag(txnID uuid.UUID, rule string, score int, reasons, sta
 func (s *seeder) kycRequest(userID uuid.UUID) {
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO kyc_requests (id, user_id, id_card_url, selfie_url, ai_score, ai_verdict, ai_reasons, status)
-		VALUES ($1,$2,'seed/kyc/id-card.jpg','seed/kyc/selfie.jpg',64,'manual_review',
+		VALUES ($1,$2,'seed/kyc/id-card.png','seed/kyc/selfie.png',64,'manual_review',
 		  '["ID photo is slightly blurry at the right corner","Name matches but face confidence is 71%","A reviewer needs to confirm"]'::jsonb,
 		  'manual_review')
-		ON CONFLICT (id) DO NOTHING`, fixedUUID("kyc:"+userID.String()), userID); err != nil {
+		ON CONFLICT (id) DO UPDATE SET id_card_url = EXCLUDED.id_card_url, selfie_url = EXCLUDED.selfie_url`, fixedUUID("kyc:"+userID.String()), userID); err != nil {
 		fatal("kyc: %v", err)
 	}
 }

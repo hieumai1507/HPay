@@ -78,6 +78,8 @@ Reversibility check (E18): `make migrate-verify` (up, down -all, up). It destroy
 
 The seeder (`cmd/seed`) is idempotent: users upsert by phone, every transaction has a fixed idempotency key. It runs only for `APP_ENV` `dev`, `ci` or `demo`, refuses a non-local database host unless `--allow-remote-db` is passed, and requires `DATABASE_URL`. At the end it asserts `wallets.balance == SUM(ledger)` for every wallet it touched and exits non-zero on drift. All money moves through `ledger.Post`.
 
+The seeded KYC request points at two demo images (`seed/kyc/id-card.png`, `seed/kyc/selfie.png`). The seeder draws two plain placeholder PNGs (no personal data) into `KYC_STORAGE_DIR` (default `./data/kyc`), so the admin KYC screen shows pictures. The server must read the same directory: set `KYC_STORAGE_DIR` to the same value for both, and make sure `STORAGE_PROVIDER` is `local` (a `.env` with `STORAGE_PROVIDER=cloudinary` makes the server look for the images in Cloudinary, which does not have them, and every image answers 404).
+
 ```powershell
 cd src\backend
 $env:DATABASE_URL = "postgres://HPay:HPay@localhost:5432/HPay?sslmode=disable"
