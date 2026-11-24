@@ -43,3 +43,7 @@ Thumbs.db
 
 # Tai lieu tham khao he khac (D9: giu ngoai repo)
 docs/reference/external/
+
+# agent worktrees are scratch copies, never part of the repository
+.claude/worktrees/
+_tmp_audit/
