@@ -1,4 +1,4 @@
-# HPay – Bug-fix and Monorepo Consolidation Plan
+﻿# HPay â€“ Bug-fix and Monorepo Consolidation Plan
 
 Date: 2026-11-21. Basis: `docs/audit/AUDIT-REPORT.md` (including the verification appendix).
 Status: **in progress**. Completed so far: monorepo merge (src/ + docs/), git history reset, skills consolidated at `.claude/skills` with workflows `hpay-feature` / `hpay-bugfix` / `hpay-review`, subagents in `.claude/agents`, Docker-based backend test runner (`scripts/test-backend.ps1`; baseline in `docs/handoff/baseline.md`: 160 Go tests pass with `-race`, mobile jest 80 pass, eslint has pre-existing errors in admin (6) and mobile (3)). Docs conversion to English Markdown is in progress. Not started: Wave 1 onward.
@@ -36,7 +36,7 @@ Each item has a default I propose. If you say nothing, the plan uses the default
 
 ---
 
-## 2. Wave 0 – Foundation (do first, sequentially, by you or 1 agent)
+## 2. Wave 0 â€“ Foundation (do first, sequentially, by you or 1 agent)
 
 | ID | Task | Done when |
 |---|---|---|
@@ -87,9 +87,9 @@ A pipeline from a vague requirement to a test-fix loop, assembled from several s
 
 Notation: **P0** = do before going live. A file owned by an agent may only be edited by that agent in that wave.
 
-### Wave 1 – DB and money foundation (P0, 3 agents in parallel)
+### Wave 1 â€“ DB and money foundation (P0, 3 agents in parallel)
 
-**Agent A1 – Migration 000014 (constraints)**
+**Agent A1 â€“ Migration 000014 (constraints)**
 - Owns: `src/backend/db/migrations/000014_*`, `internal/store/queries/*.sql`, `internal/store/gen/` (sqlc generate).
 - Tasks:
   1. UNIQUE `(initiated_by, idempotency_key)`, add a `request_hash` column, drop the global UNIQUE. Check existing data before the change.
@@ -102,7 +102,7 @@ Notation: **P0** = do before going live. A file owned by an agent may only be ed
 - Skill: `gen-migration`. Include a down file. Run up/down/up on a clean DB.
 - Done when: migration runs cleanly, `sqlc generate` compiles, existing tests still pass.
 
-**Agent A2 – Configuration and baseline security**
+**Agent A2 â€“ Configuration and baseline security**
 - Owns: `internal/platform/config/`, `cmd/server/main.go`, `cmd/seed/main.go`, `internal/api/router.go` (mount section), `docker-compose.yml`, `.env.example`.
 - Tasks:
   1. `APP_ENV` is mandatory, whitelist `dev|ci|demo|production`, unify every comparison. Require `JWT_SECRET >= 32` and a separate `MOCK_BANK_SECRET` when not dev. `godotenv.Load()` only in dev.
@@ -114,20 +114,20 @@ Notation: **P0** = do before going live. A file owned by an agent may only be ed
   7. `docker-compose.yml`: Redis has a password, bind to `127.0.0.1`.
 - Done when: config tests for each env, server refuses to start with a wrong config.
 
-**Agent A3 – Repo consolidation (monorepo)**
+**Agent A3 â€“ Repo consolidation (monorepo)**
 - Owns: root (`.gitignore`, `README.md`, top-level `Makefile`, `.github/`), does not touch application code.
 - Tasks: carry out W0-2 to W0-5; a single CI that runs backend, admin, mobile; `gitleaks` in CI; update paths in the old workflows; re-run the GitNexus index.
 - Done when: CI is green on an empty branch.
 
-### Wave 2 – Fix money logic (P0, sequential by dependency, 2 agents)
+### Wave 2 â€“ Fix money logic (P0, sequential by dependency, 2 agents)
 
 Wait for Wave 1 to merge (A1 must finish before B1).
 
-**Agent B1 – Ledger, workflow, idempotency**
+**Agent B1 â€“ Ledger, workflow, idempotency**
 - Owns: `internal/ledger/`, `internal/workflow/` (engine, consumer, handlers, recovery), `internal/outbox/`, `internal/transfer/`, `internal/wallet/`, `internal/moneyrequest/`, `internal/api/middleware.go` (idempotency part).
 - Tasks in order (each: write a failing test first):
   1. **BE-C1**: record `step_executions` (claim `running`) and post to the ledger safely on replay. Use A1's `posting_kind` and UNIQUE to prevent duplicate posting. Tests: call `ledger.Post` twice with the same `txnID`; simulate a crash between Commit and `recordAndEmit` and then replay.
-  2. **BE-C2 (engine part)**: `request` stops at the AUTH step and only continues after a valid confirm. State model `request → confirm → verify` with an expiry, confirming twice is safe, fee locked at `request`.
+  2. **BE-C2 (engine part)**: `request` stops at the AUTH step and only continues after a valid confirm. State model `request â†’ confirm â†’ verify` with an expiry, confirming twice is safe, fee locked at `request`.
   3. **BE-H1**: idempotency per user + `request_hash`, 409 on a different payload, mandatory key on every money-writing endpoint (add `RequireIdempotencyKey` for `/money-requests`, `/split`, `/vaults`, round-up). Remove the auto-generated UUID when the key is missing.
   4. **BE-H5**: money request stays `pending`/`paying` until the transaction is `completed`, and reverts on failure.
   5. Compensation: use `compensation_failed`, call `FailTransactionGuarded`, let the recovery sweep scan `compensating`, support retry (remove the fixed Attempt 101).
@@ -135,7 +135,7 @@ Wait for Wave 1 to merge (A1 must finish before B1).
   7. Ledger: check wallet `status` and `currency`, guard against int64 overflow, cap amount at every input.
 - Done when: all new tests pass with `-race`, existing tests do not break, `fintech-review` PASS.
 
-**Agent B2 – Offerguard, fee, reversal, approval**
+**Agent B2 â€“ Offerguard, fee, reversal, approval**
 - Owns: `internal/offerguard/`, `internal/fee/`, `internal/reversal/`, `internal/approval/`, `internal/org/`, `internal/vault/`, `internal/qr/`, `internal/recon/`, `internal/fraud/`.
 - Tasks:
   1. **BE-H2**: `pg_advisory_xact_lock` in the same tx as the INSERT; fix the timezone to Asia/Ho_Chi_Minh.
@@ -149,9 +149,9 @@ Wait for Wave 1 to merge (A1 must finish before B1).
 
 > **D10** (decided): when the receiver has already spent the money, the reversal fails into a `needs_manual` status with an audit record; balances never go negative. **D11** (decided): fraud/LLM failure is fail-closed (the transaction is held for review).
 
-### Wave 3 – Authentication, authorization, KYC (P0, 2 agents in parallel)
+### Wave 3 â€“ Authentication, authorization, KYC (P0, 2 agents in parallel)
 
-**Agent C1 – Auth, PIN, RBAC**
+**Agent C1 â€“ Auth, PIN, RBAC**
 - Owns: `internal/auth/`, `internal/user/`, `internal/api/` (auth_handler, admin_handler, auth middleware, errmap), `internal/gateway/`.
 - Tasks:
   1. **BE-C2 (authentication part)**: real PIN (D3): hash table/column, set/change PIN endpoint, verify in confirm, count wrong attempts and lock, check `initiated_by == user` (404 otherwise). Remove PIN/OTP fields that are accepted but unused. Add `ERR_*` to `errmap.go`.
@@ -162,29 +162,29 @@ Wait for Wave 1 to merge (A1 must finish before B1).
   6. Admin decide: audit includes IP, KYC review requires a reason on reject.
 - Done when: IDOR tests, brute-force tests, per-route RBAC tests, SSRF tests with the blocked IP list.
 
-**Agent C2 – KYC and file storage**
+**Agent C2 â€“ KYC and file storage**
 - Owns: `internal/kyc/`, `internal/storage/`, `internal/ai/`.
 - Tasks: **BE-H9**: `image.DecodeConfig` and a pixel limit, `http.MaxBytesReader`, write the correct extension, Cloudinary upload as `authenticated/private` with signed URLs, a separate signing key (not `JWT_SECRET`), `nosniff` and `Content-Disposition`, audit when a link is issued, clean up orphan files, network errors when fetching images are retryable. Settle the policy for sending national ID (CCCD) images to a third-party LLM (D12: with user consent, or send only extracted data).
 - Done when: tests for forged files, polyglots, oversized images, expired links.
 
-### Wave 4 – Frontend (parallel with Wave 3, after Wave 2 for the contract)
+### Wave 4 â€“ Frontend (parallel with Wave 3, after Wave 2 for the contract)
 
-**Agent F1 – Contract and OpenAPI**
+**Agent F1 â€“ Contract and OpenAPI**
 - Owns: `src/backend/api/openapi.yaml`, `src/admin/src/api/schema.d.ts` and `src/api/client.ts`, `src/mobile/src/api/`.
 - Tasks: unify endpoints (the mismatch list is in the verification appendix): decide for each endpoint whether the backend adds it or the frontend is fixed; update the `workflow status` enum; regenerate `schema.d.ts`; add a CI step checking that openapi matches the real routes; compare transaction/money-request/KYC status enums with the DB (not yet done).
 
-**Agent F2 – Mobile**
+**Agent F2 â€“ Mobile**
 - Owns: `src/mobile/`.
 - Tasks: remove the PIN `'123456'` (a real PIN entry screen connected to the server, per C1); app lock uses real authentication with a limit on attempts; `useSubmitGuard` (ref flag + disabled button) for every money action, store the idempotency key per transaction id; remove `Number()/parseInt()` on amounts (use bigint, add a lint rule); refresh clears the session only on 401/403; `app.config.ts` changes env `dev` to localhost, add `bundleIdentifier` and `package`; check the KYC draft in SecureStore.
 
-**Agent F3 – Admin**
+**Agent F3 â€“ Admin**
 - Owns: `src/admin/`.
-- Tasks: `RequirePermission` for sensitive routes and hide buttons by `can()`; separate mock from production (D6) and show real errors, show "—" when a number is missing; Idempotency-Key and disabled button on writes; remove `Number()` for amounts; CSP in `index.html`; handle non-JSON responses; delete `Placeholder.tsx` if confirmed unused; remove the hard-coded e2e password (read from env).
+- Tasks: `RequirePermission` for sensitive routes and hide buttons by `can()`; separate mock from production (D6) and show real errors, show "â€”" when a number is missing; Idempotency-Key and disabled button on writes; remove `Number()` for amounts; CSP in `index.html`; handle non-JSON responses; delete `Placeholder.tsx` if confirmed unused; remove the hard-coded e2e password (read from env).
 
-### Wave 5 – Docs converted to Markdown (parallel, independent of code)
+### Wave 5 â€“ Docs converted to Markdown (parallel, independent of code)
 
-**Agent D1 – Convert HTML → MD**
-- Owns: `docs/` → `docs/` (root).
+**Agent D1 â€“ Convert HTML â†’ MD**
+- Owns: `docs/` â†’ `docs/` (root).
 - Proposed structure:
   ```
   docs/
@@ -203,26 +203,26 @@ Wait for Wave 1 to merge (A1 must finish before B1).
 - Conventions: diagrams use ```mermaid in md; HTML mockups (28KB+ each) are **not** converted to md because they are design deliverables, only a README describing them. Must run without losing content: use `pandoc` (or a script) and then a **human reviews tables, mermaid and links**.
 - Done when: all internal links work (checked by script), no `.html` files remain in `docs/` outside `mockups/`.
 
-**Agent D2 – Fix docs content** (runs after D1 to avoid editing twice)
+**Agent D2 â€“ Fix docs content** (runs after D1 to avoid editing twice)
 - Tasks, following the appendix and sections 3-5 of `docs/audit/AUDIT-REPORT.md`:
   1. Separate information from other projects (D5): README, doc 06 (use the name "HPay Service Engine"), `index`, doc 00, doc 04, master-plan. The comment in `approval/service.go` is already fixed.
-  2. Figures: number of migrations (13, 14 after A1), E01–E20 and "39 cases", number of mockups, F11 into the master-plan, EN version "$200" → 5,000,000 VND, "US wallet" → state explicitly that it is a UI style.
+  2. Figures: number of migrations (13, 14 after A1), E01â€“E20 and "39 cases", number of mockups, F11 into the master-plan, EN version "$200" â†’ 5,000,000 VND, "US wallet" â†’ state explicitly that it is a UI style.
   3. KYC limits: a single table (D7), other places reference it.
   4. Enums: `processing_async`, `cancelled`, `reversal`, `compensation_failed`, roles L1/L2 mapped to `org_role`.
-  5. Fix docs to match the code: asynq → goroutine + lease (D8), Cloudinary storage, add `/v1` to endpoints, relationship between `verify` and `confirm`.
+  5. Fix docs to match the code: asynq â†’ goroutine + lease (D8), Cloudinary storage, add `/v1` to endpoints, relationship between `verify` and `confirm`.
   6. Write an "Invariants and exceptions" section: idempotency, reversal, balance hold while awaiting approval, lock order, system wallet allowed to go negative, a reconciliation job `wallets.balance = SUM(ledger_entries)`, fee (rounding, who pays, fee refund), timezone for limits, behavior on LLM failure.
 - Done when: no contradictions remain in the section 4 list of the report.
 
-### Wave 6 – Tests, test-case-driven verification, fix loop (after Waves 2-4)
+### Wave 6 â€“ Tests, test-case-driven verification, fix loop (after Waves 2-4)
 
-**Agent T1 – Backend integration tests**
+**Agent T1 â€“ Backend integration tests**
 - Tasks: map test cases (xlsx `qa/test-cases/*`) to `TestEdge_<ID>_*`. Add the missing tests: ledger post twice, crash-recovery MOVE_FUNDS, offerguard race, idempotency across users and with different payloads, concurrent reversal and receiver out of funds, confirm by a non-owning user, forged signed URL, path traversal, property-based `fee.Calc`. DB tests use real Postgres + Redis via docker compose (the repo currently does not use testcontainers, none needed).
-- Loop: run → fail → `systematic-debugging` finds the root cause → fix → rerun, at most 3 rounds per bug; beyond 3 rounds, stop and report to the user.
+- Loop: run â†’ fail â†’ `systematic-debugging` finds the root cause â†’ fix â†’ rerun, at most 3 rounds per bug; beyond 3 rounds, stop and report to the user.
 
-**Agent T2 – E2E**
+**Agent T2 â€“ E2E**
 - Tasks: Playwright for admin (`e2e/` already exists), add tests for mobile web or Maestro if feasible. Cross-check against the xlsx test cases. E2E login uses a dedicated account from env.
 
-**Agent T3 – Static scanning and regression**
+**Agent T3 â€“ Static scanning and regression**
 - Tasks: `govulncheck`, `gosec`, `gitleaks`, `npm audit`, `gitnexus analyze --pdg` then `explain` to review taint, `detect_changes` against baseline, report in `docs/handoff/final-verification.md`.
 
 ---
@@ -234,7 +234,7 @@ Wait for Wave 1 to merge (A1 must finish before B1).
 - Approve the deletion file list (W0-3).
 - Provide or confirm business policy for D3, D7, D10, D11, D12 (D3, D7, D10, D11 are answered; D12 remains open).
 
-### 5.2 KYC limits (D7) – currently 4 sources disagree
+### 5.2 KYC limits (D7) â€“ currently 4 sources disagree
 Decision: take the seed values in code (`OFFER_CUST_L1` = 50M, `OFFER_CUST_L2` = 200M VND). The remaining sources below must be aligned to them.
 
 | Source | Value |
@@ -276,13 +276,13 @@ The items below have not been read or run by an agent. Each item is assigned to 
 
 ```
 W0 (foundation, sequential)
- └─ W1: A1 (migration) ─┐ A2 (config) ─┐ A3 (monorepo/CI)   [parallel]
-        └──────────────┴──────────────┘
- └─ W2: B1 (ledger/workflow/idempotency) → B2 (offerguard/reversal/approval)
- └─ W3: C1 (auth/PIN/RBAC) ‖ C2 (KYC/storage)      (after W1; C1 before F2)
- └─ W4: F1 (contract) → F2 mobile ‖ F3 admin       (after W2/W3 for the contract)
- └─ W5: D1 (HTML→MD) → D2 (fix content)            (independent, can run right after W0)
- └─ W6: T1 ‖ T2 → T3 (final confirmation, fix loop)
+ â””â”€ W1: A1 (migration) â”€â” A2 (config) â”€â” A3 (monorepo/CI)   [parallel]
+        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+ â””â”€ W2: B1 (ledger/workflow/idempotency) â†’ B2 (offerguard/reversal/approval)
+ â””â”€ W3: C1 (auth/PIN/RBAC) â€– C2 (KYC/storage)      (after W1; C1 before F2)
+ â””â”€ W4: F1 (contract) â†’ F2 mobile â€– F3 admin       (after W2/W3 for the contract)
+ â””â”€ W5: D1 (HTMLâ†’MD) â†’ D2 (fix content)            (independent, can run right after W0)
+ â””â”€ W6: T1 â€– T2 â†’ T3 (final confirmation, fix loop)
 ```
 
 Wave 5 depends only on W0, so it can run in parallel with W1 to save time. Each wave ends with a merge and a re-run of the baseline.
@@ -290,7 +290,7 @@ Wave 5 depends only on W0, so it can run in parallel with W1 to save time. Each 
 ## 8. Main risks of the plan
 
 - **Migration 000014 changes the UNIQUE of the idempotency key on a DB that already has data.** Check whether the DB in use (Neon) has real data, and that a backup exists before applying.
-- **Changing the `request → confirm` flow** affects both mobile and admin; F1 must settle the contract before F2/F3 start.
+- **Changing the `request â†’ confirm` flow** affects both mobile and admin; F1 must settle the contract before F2/F3 start.
 - **Background agents cannot ask back.** Every D* decision must be settled before assigning work, otherwise the agent will guess.
 - **The audit results are based on reading code**, with no tests actually run. Step W0-6 and T1 are where bugs are proven or refuted.
 
@@ -360,3 +360,6 @@ Correctness held (600 of 600 transfers, 0 ledger mismatches) but throughput was 
 | G23 | P1: one consumer goroutine per workflow stream (about 13 events per transfer) | caps completion near 8 transfers per second | several consumers per stream with per-instance ordering and a test with 2 or more workers; re-measure |
 | G24 | P3: the outbox relay waits for the next 200 ms tick even when the batch was full | next ceiling after G23 (about 38 transfers per second) | relay again at once when a batch is full; configurable batch and interval |
 | G25 | P2: PIN verification uses login-grade argon2id (64 MiB) on every payment | 50 concurrent confirms need about 3.2 GB and saturate the CPUs | bound concurrent hashes with a semaphore, keep the strong parameters (owner's choice); an ADR if the parameters ever change |
+
+
+Status 2026-11-24: G20, G21, G22 (PumpLocal part), G23, G24, G25 (semaphore) are done; results in docs/quality/performance/2026-11-24-load-test-baseline.md. Open: lighter PIN hashing parameters (needs an ADR) and the SYSTEM_CASH_IN funding lock-order check.

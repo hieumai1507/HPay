@@ -26,6 +26,8 @@ func NewRelay(pool *pgxpool.Pool, rdb *redis.Client, log *slog.Logger) *Relay {
 	return &Relay{pool: pool, rdb: rdb, log: log}
 }
 
+const relayBatch = 100
+
 // Run polls until ctx is cancelled.
 func (r *Relay) Run(ctx context.Context) {
 	t := time.NewTicker(200 * time.Millisecond)
@@ -35,8 +37,19 @@ func (r *Relay) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			if _, err := r.RelayOnce(ctx, 100); err != nil && ctx.Err() == nil {
-				r.log.Warn("outbox relay pass failed; will retry", "err", err) // E17: keep going
+			// A full batch means more is waiting: relay again at once instead
+			// of idling until the next tick (caps throughput at batch/tick).
+			for {
+				n, err := r.RelayOnce(ctx, relayBatch)
+				if err != nil {
+					if ctx.Err() == nil {
+						r.log.Warn("outbox relay pass failed; will retry", "err", err) // E17: keep going
+					}
+					break
+				}
+				if n < relayBatch || ctx.Err() != nil {
+					break
+				}
 			}
 		}
 	}

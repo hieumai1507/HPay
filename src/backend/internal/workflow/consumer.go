@@ -35,21 +35,45 @@ type Worker struct {
 	reg    *Registry
 	engine *Engine
 	log    *slog.Logger
+
+	consumers int // per stream; 0 means DefaultConsumers
 }
 
 func NewWorker(pool *pgxpool.Pool, rdb *redis.Client, reg *Registry, engine *Engine, log *slog.Logger) *Worker {
 	return &Worker{pool: pool, q: store.New(pool), rdb: rdb, reg: reg, engine: engine, log: log}
 }
 
+// DefaultConsumers is how many goroutines read each stream. One was the
+// throughput cap found by the 2026-11-24 load test (P1).
+const DefaultConsumers = 8
+
+// SetConcurrency sets the number of consumers per stream (min 1). Call before Run.
+// Safe because OnResult locks the instance row (results of one instance are
+// serialized) and step execution is guarded by unique(instance, step, attempt).
+func (w *Worker) SetConcurrency(n int) {
+	if n < 1 {
+		n = 1
+	}
+	w.consumers = n
+}
+
 // Run blocks until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) {
+	n := w.consumers
+	if n < 1 {
+		n = DefaultConsumers
+	}
 	for _, name := range w.reg.Names() {
 		stream := StepStream(name)
 		w.ensureGroup(ctx, stream, groupWorkers)
-		go w.consumeLoop(ctx, stream, groupWorkers, w.processStepMessage)
+		for i := 0; i < n; i++ {
+			go w.consumeLoop(ctx, stream, groupWorkers, fmt.Sprintf("%s-%d", consumerName, i), w.processStepMessage)
+		}
 	}
 	w.ensureGroup(ctx, EventsStream, groupEngine)
-	go w.consumeLoop(ctx, EventsStream, groupEngine, w.processResultMessage)
+	for i := 0; i < n; i++ {
+		go w.consumeLoop(ctx, EventsStream, groupEngine, fmt.Sprintf("%s-%d", consumerName, i), w.processResultMessage)
+	}
 	<-ctx.Done()
 }
 
@@ -60,13 +84,13 @@ func (w *Worker) ensureGroup(ctx context.Context, stream, group string) {
 	}
 }
 
-func (w *Worker) consumeLoop(ctx context.Context, stream, group string, process func(context.Context, string) error) {
+func (w *Worker) consumeLoop(ctx context.Context, stream, group, consumer string, process func(context.Context, string) error) {
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 		res, err := w.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
-			Group: group, Consumer: consumerName,
+			Group: group, Consumer: consumer,
 			Streams: []string{stream, ">"}, Count: 10, Block: 2 * time.Second,
 		}).Result()
 		if err != nil {

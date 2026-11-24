@@ -139,6 +139,7 @@ func run(role string) error {
 		engine.SetPauseHook(approvalSvc)
 
 		worker := workflow.NewWorker(pool, rdb, registry, engine, log)
+		worker.SetConcurrency(cfg.WorkflowConsumers)
 		relay := outbox.NewRelay(pool, rdb, log)
 		recovery := workflow.NewRecovery(pool, rdb, registry, engine, worker, log)
 		sweeper := approval.NewSweeper(approvalSvc, log)

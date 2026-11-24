@@ -60,12 +60,13 @@ func (r Role) MountsPublicAPI() bool { return r == RoleAPI || r == RoleAll }
 func (r Role) MountsAdminAPI() bool { return r == RoleAdmin || r == RoleAll }
 
 type Config struct {
-	Env         string // dev | ci | demo | production (required, validated; see ADR-0012)
-	Role        Role
-	HTTPPort    int
-	DatabaseURL string
-	RedisAddr   string
-	JWTSecret   string
+	Env               string // dev | ci | demo | production (required, validated; see ADR-0012)
+	Role              Role
+	HTTPPort          int
+	DatabaseURL       string
+	RedisAddr         string
+	WorkflowConsumers int
+	JWTSecret         string
 	// F8 KYC
 	KYCStorageDir string // local image storage root
 	// F10 — mock bank callback (E15); route lives under /internal/
@@ -122,7 +123,9 @@ func Load(role string) (Config, error) {
 		HTTPPort:    getenvInt("HTTP_PORT", 8080),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		RedisAddr:   getenv("REDIS_ADDR", "localhost:6379"),
-		JWTSecret:   os.Getenv("JWT_SECRET"),
+		// Consumers per workflow stream (P1). Raise on bigger machines.
+		WorkflowConsumers: getenvInt("WORKFLOW_CONSUMERS", 8),
+		JWTSecret:         os.Getenv("JWT_SECRET"),
 
 		KYCStorageDir: getenv("KYC_STORAGE_DIR", "./data/kyc"),
 
