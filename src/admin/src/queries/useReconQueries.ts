@@ -79,7 +79,7 @@ export function mapReconResponse(res: ReconResponse, date: string): { run: Recon
       internalAmount: toMinorUnits(detail.internal_amount),
       externalAmount: toMinorUnits(detail.statement_amount),
       timestamp: strOrNull(detail.stmt_date),
-      suggestedAction: 'Đối chiếu →',
+      suggestedAction: 'Check →',
     };
   });
   return { run, items };

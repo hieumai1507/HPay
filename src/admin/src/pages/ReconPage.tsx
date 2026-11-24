@@ -30,9 +30,9 @@ export default function ReconPage() {
     if (runMutation.isPending) return;
     try {
       await runMutation.mutateAsync(date);
-      alert(`Đã hoàn tất đối soát cho ngày ${date}!`);
+      alert(`Reconciliation completed for ${date}.`);
     } catch (e: unknown) {
-      alert(`Lỗi: ${e instanceof Error ? e.message : String(e)}`);
+      alert(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -40,22 +40,22 @@ export default function ReconPage() {
     if (runInfo?.reportUrl) {
       window.open(runInfo.reportUrl, '_blank');
     } else {
-      alert(`Chưa có file đối soát cho ngày ${date}.`);
+      alert(`No Reconciliation file for ${date} yet.`);
     }
   };
 
   const columns = useMemo(
     () => [
       columnHelper.accessor('status', {
-        header: 'Kết quả',
+        header: 'Result',
         cell: (info) => renderReconStatusBadge(info.getValue()),
       }),
       columnHelper.accessor('internalRef', {
-        header: 'Mã GD nội bộ',
+        header: 'Internal Transaction ID',
         cell: (info) => <span className="font-mono text-slate-800">{info.getValue()}</span>,
       }),
       columnHelper.accessor('externalRef', {
-        header: 'Ref sao kê',
+        header: 'Bank statement ref',
         cell: (info) => (
           <span className={`font-mono ${info.getValue() ? 'text-slate-900' : 'text-slate-400'}`}>
             {info.getValue() || '—'}
@@ -63,7 +63,7 @@ export default function ReconPage() {
         ),
       }),
       columnHelper.accessor('internalAmount', {
-        header: 'Ví (₫)',
+        header: 'Wallet (₫)',
         cell: (info) => <span className="font-mono font-medium">{formatCount(info.getValue())}</span>,
       }),
       columnHelper.accessor('externalAmount', {
@@ -75,16 +75,16 @@ export default function ReconPage() {
         ),
       }),
       columnHelper.accessor('timestamp', {
-        header: 'Thời điểm',
+        header: 'Time',
         cell: (info) => <span className="font-mono text-slate-600">{info.getValue() ?? '—'}</span>,
       }),
       columnHelper.display({
         id: 'suggestedAction',
-        header: 'Xử lý',
+        header: 'Resolve',
         cell: (info) => (
           <button
             type="button"
-            onClick={() => alert(`Xem chi tiết và xử lý bút toán ${info.row.original.internalRef}`)}
+            onClick={() => alert(`View details and resolve entry ${info.row.original.internalRef}`)}
             className="text-brand font-semibold text-xs hover:underline cursor-pointer bg-none border-none p-0"
           >
             {info.row.original.suggestedAction || 'Xem →'}
@@ -119,14 +119,14 @@ export default function ReconPage() {
       {/* Topbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-slate-900">Đối soát ngày {date}</h2>
+          <h2 className="text-lg font-bold text-slate-900">Reconciliation for {date}</h2>
           {runInfo && (
             <span
               className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                 mismatched !== null && mismatched > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}
             >
-              {mismatched === null ? '—' : mismatched > 0 ? `Lệch ${mismatched} bút toán` : 'Khớp 100%'}
+              {mismatched === null ? '—' : mismatched > 0 ? `${mismatched} mismatched` : 'Matched 100%'}
             </span>
           )}
         </div>
@@ -145,14 +145,14 @@ export default function ReconPage() {
             title={canRun ? undefined : NO_PERMISSION_REASON}
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {runMutation.isPending ? 'Đang chạy…' : '⟳ Chạy đối soát'}
+            {runMutation.isPending ? 'Processing...' : '⟳ Run Reconciliation'}
           </button>
           <button
             type="button"
             onClick={handleExport}
             className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50"
           >
-            ⤓ Xuất Excel
+            ⤓ Export Excel
           </button>
         </div>
       </div>
@@ -172,28 +172,28 @@ export default function ReconPage() {
         {runInfo && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Tổng đối chiếu</span>
+              <span className="text-xs text-slate-500">Total reconciled</span>
               <div className="text-2xl font-bold text-slate-900">{formatCount(runInfo.totalCount)}</div>
-              <span className="text-xs text-slate-500">giao dịch</span>
+              <span className="text-xs text-slate-500">Transactions</span>
             </div>
             <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Khớp</span>
+              <span className="text-xs text-slate-500">Matched</span>
               <div className="text-2xl font-bold text-emerald-600">
                 {formatCount(runInfo.matchedCount)}
               </div>
               <span className="text-xs text-emerald-600 font-medium">{matchedPercent === null ? '—' : `${matchedPercent}%`}</span>
             </div>
             <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Lệch</span>
+              <span className="text-xs text-slate-500">Mismatched</span>
               <div className={`text-2xl font-bold ${mismatched !== null && mismatched > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                 {formatCount(mismatched)}
               </div>
-              <span className="text-xs text-rose-600 font-medium">cần xử lý</span>
+              <span className="text-xs text-rose-600 font-medium">needs action</span>
             </div>
             <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Thời gian chạy</span>
+              <span className="text-xs text-slate-500">Run time</span>
               <div className="text-xl font-bold text-slate-900">
-                {runInfo.runAt ? new Date(runInfo.runAt).toLocaleTimeString('vi-VN') : '—'}
+                {runInfo.runAt ? new Date(runInfo.runAt).toLocaleTimeString('en-GB') : '—'}
               </div>
               <span className="text-xs text-slate-500">
                 cron daily · {runInfo.durationMs === null ? '—' : `${Math.round(runInfo.durationMs / 100) / 10}s`}
@@ -205,7 +205,7 @@ export default function ReconPage() {
         {/* AI Summary Card */}
         {runInfo?.aiSummary && (
           <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-l-4 border-purple-600 rounded-xl p-4 border border-slate-200 shadow-xs">
-            <div className="text-[11px] font-bold text-purple-600 tracking-wider mb-1.5 uppercase">🤖 AI TÓM TẮT NGUYÊN NHÂN</div>
+            <div className="text-[11px] font-bold text-purple-600 tracking-wider mb-1.5 uppercase">🤖 AI ROOT-CAUSE SUMMARY</div>
             <div className="text-sm text-slate-700 leading-relaxed">{runInfo.aiSummary}</div>
           </div>
         )}
@@ -215,7 +215,7 @@ export default function ReconPage() {
           table={table}
           isLoading={isLoading}
           totalCount={items.length}
-          emptyMessage="Không có bút toán đối soát nào"
+          emptyMessage="Nothing here yet"
         />
       </div>
     </div>

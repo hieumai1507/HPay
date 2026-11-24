@@ -36,7 +36,7 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
           <strong className="text-base font-bold text-slate-900">{title}</strong>
           <button
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label="Close"
             className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors cursor-pointer"
           >
             <X size={18} />

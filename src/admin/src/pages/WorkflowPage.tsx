@@ -45,23 +45,23 @@ export default function WorkflowPage() {
         cell: (info) => <span className="text-slate-800">{info.getValue()}</span>,
       }),
       columnHelper.accessor('txnRef', {
-        header: 'Giao dịch',
+        header: 'Transaction',
         cell: (info) => <span className="font-mono">{info.getValue() || '—'}</span>,
       }),
       columnHelper.accessor('amount', {
-        header: 'Số tiền',
+        header: 'Amount',
         cell: (info) => (
           <span className="font-mono font-semibold">
-            {info.getValue() ? `${info.getValue()?.toLocaleString('vi-VN')} ₫` : '—'}
+            {info.getValue() ? `${info.getValue()?.toLocaleString('en-US')} ₫` : '—'}
           </span>
         ),
       }),
       columnHelper.accessor('currentStep', {
-        header: 'Bước hiện tại',
+        header: 'Current step',
         cell: (info) => <b>{info.getValue()}</b>,
       }),
       columnHelper.accessor('age', {
-        header: 'Tuổi',
+        header: 'Age',
         cell: (info) => (
           <span className={info.row.original.isStuck ? 'text-rose-600 font-bold' : 'text-slate-700'}>
             {info.getValue()}
@@ -69,7 +69,7 @@ export default function WorkflowPage() {
         ),
       }),
       columnHelper.accessor('status', {
-        header: 'Trạng thái',
+        header: 'Status',
         cell: (info) => renderStatusBadge(info.getValue()),
       }),
       columnHelper.display({
@@ -81,7 +81,7 @@ export default function WorkflowPage() {
             onClick={() => navigate(`/workflows/${info.row.original.id}`)}
             className="text-brand font-semibold text-xs hover:underline cursor-pointer bg-none border-none p-0"
           >
-            Mở →
+            Open →
           </button>
         ),
       }),
@@ -111,7 +111,7 @@ export default function WorkflowPage() {
           <h2 className="text-lg font-bold text-slate-900">Workflow Monitor</h2>
           {stuckCount > 0 && (
             <span className="bg-rose-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {stuckCount} kẹt &gt; 5m
+              {stuckCount} stuck &gt; 5m
             </span>
           )}
         </div>
@@ -125,7 +125,7 @@ export default function WorkflowPage() {
               stuckOnly ? 'border-rose-600 bg-rose-50 text-rose-600' : 'border-slate-200 bg-white text-slate-700'
             }`}
           >
-            Kẹt &gt; 5 phút
+            Stuck &gt; 5 min
           </button>
 
           {/* Status filter */}
@@ -134,7 +134,7 @@ export default function WorkflowPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            <option value="all">Status: Tất cả</option>
+            <option value="all">Status: All</option>
             <option value="failed">Failed</option>
             <option value="running">Running</option>
             <option value="waiting">Waiting</option>
@@ -148,7 +148,7 @@ export default function WorkflowPage() {
             onChange={(e) => setDefFilter(e.target.value)}
             className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            <option value="all">Definition: Tất cả</option>
+            <option value="all">Definition: All</option>
             <option value="org_disbursement">org_disbursement</option>
             <option value="p2p_transfer">p2p_transfer</option>
             <option value="kyc_verification">kyc_verification</option>
@@ -159,7 +159,7 @@ export default function WorkflowPage() {
             onClick={() => refetch()}
             className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors"
           >
-            ⟳ Làm mới
+            ⟳ Refresh
           </button>
         </div>
       </div>
@@ -171,12 +171,12 @@ export default function WorkflowPage() {
           table={table}
           isLoading={isLoading}
           totalCount={total}
-          emptyMessage="Không có workflow instance nào"
+          emptyMessage="Nothing here yet"
         />
 
         {/* Footer info */}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-xs text-slate-500">{instances.length} instances hiện tại · auto-refresh 10s</span>
+          <span className="text-xs text-slate-500">{instances.length} instances now · auto-refresh 10s</span>
         </div>
       </div>
     </div>

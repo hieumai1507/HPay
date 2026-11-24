@@ -33,8 +33,8 @@ export function Topbar({ title }: { title?: string }) {
             clearSession();
             navigate('/login', { replace: true });
           }}
-          aria-label="Đăng xuất"
-          title="Đăng xuất"
+          aria-label="Log out"
+          title="Log out"
           className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <LogOut size={17} />

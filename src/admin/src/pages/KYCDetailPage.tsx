@@ -55,7 +55,7 @@ export default function KYCDetailPage() {
       { id: item.id, action, reason: reasonText },
       {
         onSuccess: () => {
-          toast(action === 'approve' ? 'Đã phê duyệt hồ sơ.' : 'Đã từ chối hồ sơ.', 'success');
+          toast(action === 'approve' ? 'Application approved.' : 'Application rejected.', 'success');
           setRejectOpen(false);
           setReason('');
           const next = rows[idx + 1] ?? rows[idx - 1];
@@ -64,10 +64,10 @@ export default function KYCDetailPage() {
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 409) {
-            toast('Hồ sơ đã được xử lý ở nơi khác — danh sách vừa được cập nhật.', 'info');
+            toast('This application was already handled elsewhere. The list has been refreshed.', 'info');
             navigate(`/kyc?tab=${tab}`);
           } else {
-            toast(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.', 'error');
+            toast(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.', 'error');
           }
         },
       },
@@ -105,12 +105,12 @@ export default function KYCDetailPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [rejectOpen, canReview]);
 
-  if (isPending) return <div className="text-slate-500 p-6">Đang tải…</div>;
+  if (isPending) return <div className="text-slate-500 p-6">Loading...</div>;
   if (!item)
     return (
       <div className="text-slate-500 p-6">
-        Không tìm thấy hồ sơ trong tab này (có thể đã được xử lý).{' '}
-        <a href={`/kyc?tab=${tab}`} className="text-brand font-semibold hover:underline">← Về danh sách</a>
+        Application not found in this tab (it may already have been handled).{' '}
+        <a href={`/kyc?tab=${tab}`} className="text-brand font-semibold hover:underline">← Back to list</a>
       </div>
     );
 
@@ -126,17 +126,17 @@ export default function KYCDetailPage() {
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
           <Button variant="ghost" onClick={() => navigate(`/kyc?tab=${tab}`)}>
-            ← Danh sách
+            ← Back
           </Button>
           <strong className="text-base font-bold text-slate-900">{item.full_name}</strong>
           <Badge tone={toneForVerdict(item.ai_verdict)}>{item.ai_verdict}</Badge>
         </div>
         <div className="text-xs text-slate-500">
-          {idx + 1}/{rows.length} · <code className="font-mono bg-slate-100 px-1 rounded">J</code>/<code className="font-mono bg-slate-100 px-1 rounded">K</code> chuyển hồ sơ
+          {idx + 1}/{rows.length} · <code className="font-mono bg-slate-100 px-1 rounded">J</code>/<code className="font-mono bg-slate-100 px-1 rounded">K</code> switch application
           {canReview && (
             <>
               {' '}
-              · <code className="font-mono bg-slate-100 px-1 rounded">A</code> duyệt · <code className="font-mono bg-slate-100 px-1 rounded">R</code> từ chối
+              · <code className="font-mono bg-slate-100 px-1 rounded">A</code> approve · <code className="font-mono bg-slate-100 px-1 rounded">R</code> reject
             </>
           )}
         </div>
@@ -158,22 +158,22 @@ export default function KYCDetailPage() {
         {/* Info & Decision */}
         <div className="flex flex-col gap-3.5">
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <strong className="text-sm font-bold text-slate-900">Thông tin đăng ký</strong>
+            <strong className="text-sm font-bold text-slate-900">Registration details</strong>
             <table className="mt-2 text-xs w-full border-separate border-spacing-y-1">
               <tbody>
                 <tr>
-                  <td className="text-slate-500 pr-4 pb-1">Họ tên</td>
+                  <td className="text-slate-500 pr-4 pb-1">Full name</td>
                   <td className="font-semibold text-slate-900">{item.full_name}</td>
                 </tr>
                 <tr>
-                  <td className="text-slate-500 pr-4 pb-1">SĐT</td>
+                  <td className="text-slate-500 pr-4 pb-1">Phone number</td>
                   <td>
                     <code className="font-mono text-slate-700">{item.phone}</code>
                   </td>
                 </tr>
                 <tr>
-                  <td className="text-slate-500 pr-4 pb-1">Nộp lúc</td>
-                  <td className="text-slate-700">{new Date(item.created_at).toLocaleString('vi-VN')}</td>
+                  <td className="text-slate-500 pr-4 pb-1">Submitted at</td>
+                  <td className="text-slate-700">{new Date(item.created_at).toLocaleString('en-GB')}</td>
                 </tr>
                 <tr>
                   <td className="text-slate-500 pr-4">AI score</td>
@@ -184,9 +184,9 @@ export default function KYCDetailPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <strong className="text-sm font-bold text-slate-900">AI phân tích</strong>
+            <strong className="text-sm font-bold text-slate-900">AI analysis</strong>
             {reasons.length === 0 ? (
-              <p className="text-slate-500 text-xs mt-1.5">Không có ghi chú từ AI.</p>
+              <p className="text-slate-500 text-xs mt-1.5">No notes from AI.</p>
             ) : (
               <ul className="mt-1.5 pl-4 list-disc text-xs text-slate-700 space-y-1">
                 {reasons.map((r, i) => (
@@ -203,10 +203,10 @@ export default function KYCDetailPage() {
                 loading={review.isPending}
                 onClick={() => decide('approve')}
               >
-                ✓ Phê duyệt (A)
+                ✓ Approve (A)
               </Button>
               <Button variant="danger" className="flex-1" onClick={() => setRejectOpen(true)}>
-                ✕ Từ chối (R)
+                ✕ Reject (R)
               </Button>
             </div>
           )}
@@ -216,12 +216,12 @@ export default function KYCDetailPage() {
       {/* Reject Modal */}
       <Modal
         open={rejectOpen}
-        title="Từ chối hồ sơ KYC"
+        title="Reject KYC application"
         onClose={() => setRejectOpen(false)}
         footer={
           <>
             <Button variant="secondary" onClick={() => setRejectOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               variant="danger"
@@ -229,25 +229,25 @@ export default function KYCDetailPage() {
               loading={review.isPending}
               onClick={() => decide('reject', reason.trim())}
             >
-              Xác nhận từ chối
+              Confirm rejection
             </Button>
           </>
         }
       >
         <p className="mb-2.5 text-xs text-slate-700">
-          Lý do bắt buộc (≥ 10 ký tự) — được ghi vào audit log.
+          A reason is required (at least 10 characters). It is saved to the Audit log.
         </p>
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={4}
           autoFocus
-          placeholder="Ví dụ: Ảnh CCCD mờ, không khớp khuôn mặt selfie…"
+          placeholder="e.g. Blurry ID photo, face does not match the selfie…"
           className="w-full p-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-500"
         />
         {reason.length > 0 && reason.trim().length < 10 && (
           <div className="text-rose-600 text-xs mt-1">
-            Cần tối thiểu 10 ký tự ({reason.trim().length}/10).
+            At least 10 characters required ({reason.trim().length}/10).
           </div>
         )}
       </Modal>

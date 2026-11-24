@@ -47,7 +47,7 @@ export function LoginPage() {
       setSession(res.access_token, res.admin);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Không kết nối được máy chủ.');
+      setError(err instanceof ApiError ? err.message : 'Could not reach the server.');
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 4 }}>
           <Logo size={40} color="var(--brand)" textColor="var(--n900)" showText={false} />
           <h1 style={{ fontSize: 20, fontWeight: 800, margin: '4px 0 0' }}>HPay Admin</h1>
-          <p style={{ color: 'var(--n500)', fontSize: 13, margin: '4px 0 0' }}>Đăng nhập nội bộ</p>
+          <p style={{ color: 'var(--n500)', fontSize: 13, margin: '4px 0 0' }}>Internal log in</p>
         </div>
         <Input
           label="Email"
@@ -89,7 +89,7 @@ export function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <Input
-          label="Mật khẩu"
+          label="Password"
           type="password"
           autoComplete="current-password"
           required
@@ -98,7 +98,7 @@ export function LoginPage() {
         />
         {error && <div style={{ color: 'var(--danger)', fontSize: 13.5 }}>{error}</div>}
         <Button type="submit" loading={loading}>
-          Đăng nhập
+          Log in
         </Button>
       </form>
     </div>

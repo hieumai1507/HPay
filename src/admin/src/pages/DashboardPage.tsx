@@ -9,7 +9,7 @@ import { MOCKS_ENABLED } from '@/lib/env';
 // There is no analytics API yet, so the KPI cards and the hourly chart have no
 // real data source. In a production build they show an em dash. Demo numbers
 // are loaded only in a Vite dev server with VITE_USE_MOCKS=true.
-const KPI_LABELS = ['Người dùng mới (hôm nay)', 'Giao dịch (24h)', 'Volume (24h)', 'Tỉ lệ thất bại'];
+const KPI_LABELS = ['New users (today)', 'Transactions (24h)', 'Volume (24h)', 'Failure rate'];
 const HOUR_LABELS = Array.from({ length: 24 }, (_, h) => `${h}h`);
 
 interface Kpi {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const alerts = [
     {
       to: '/kyc',
-      label: 'KYC chờ duyệt',
+      label: 'Pending KYC',
       count: kycQueue.data?.total,
       loading: kycQueue.isPending,
       error: Boolean(kycQueue.error),
@@ -54,7 +54,7 @@ export default function DashboardPage() {
     },
     {
       to: '/fraud',
-      label: 'Fraud flags đang mở',
+      label: 'Open Fraud flags',
       count: fraudFlags.data?.total,
       loading: fraudFlags.isPending,
       error: Boolean(fraudFlags.error),
@@ -63,7 +63,7 @@ export default function DashboardPage() {
     },
     {
       to: '/workflows',
-      label: 'Workflow kẹt > 5 phút',
+      label: 'Workflows stuck > 5 min',
       count: undefined,
       loading: false,
       error: false,
@@ -83,7 +83,7 @@ export default function DashboardPage() {
             <div className="text-xs text-emerald-600 font-semibold">
               {kpi.delta ?? ''}{' '}
               <span className="text-slate-400 font-normal">
-                {mocked ? '(minh họa — chưa có analytics API)' : '(chưa có analytics API)'}
+                {mocked ? '(sample data, no analytics API yet)' : '(no analytics API yet)'}
               </span>
             </div>
           </Card>
@@ -93,8 +93,8 @@ export default function DashboardPage() {
       {/* volume chart */}
       <Card>
         <div className="flex justify-between items-center mb-3">
-          <strong className="text-base font-bold text-slate-900">Volume theo giờ</strong>
-          <span className="text-xs text-slate-500">{mocked ? 'dữ liệu minh họa' : 'chưa có dữ liệu'}</span>
+          <strong className="text-base font-bold text-slate-900">Volume by hour</strong>
+          <span className="text-xs text-slate-500">{mocked ? 'sample data' : 'no data yet'}</span>
         </div>
         {volume ? (
           <BarChart values={volume} labels={HOUR_LABELS} />
@@ -105,7 +105,7 @@ export default function DashboardPage() {
 
       {/* attention panels — live counts */}
       <div>
-        <strong className="text-base font-bold text-slate-900">Cần chú ý</strong>
+        <strong className="text-base font-bold text-slate-900">Needs attention</strong>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-2.5">
           {alerts.map((a) => (
             <Link key={a.to} to={a.to} className="no-underline text-inherit block">
@@ -115,7 +115,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-sm font-semibold text-slate-800 mt-1">{a.label}</div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {a.error ? 'Could not load this count' : a.count === undefined && !a.loading ? 'API sẽ có ở A3' : 'Bấm để mở danh sách →'}
+                  {a.error ? 'Could not load this count' : a.count === undefined && !a.loading ? 'API coming in A3' : 'Click to open the list →'}
                 </div>
               </Card>
             </Link>
