@@ -50,6 +50,7 @@ func newPinService(t *testing.T) (*Service, uuid.UUID, string) {
 	log := slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	svc := NewService(pool, NewJWTIssuer("pin-test-secret-0123456789-0123456789", "user"), log, "ci")
 	svc.SetTOTPKey([]byte("0123456789abcdef0123456789abcdef"))
+	svc.SetPINPepper(testPinPepperSet(t))
 	userID, _ := testutil.NewUserWithWallet(t, pool)
 	// testutil.NewUserWithWallet stores password_hash 'x'; give the user a real password for step-up.
 	pw := "S3cret!password"

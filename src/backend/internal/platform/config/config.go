@@ -82,6 +82,12 @@ type Config struct {
 	// TOTPKey is the 32-byte AES-256 key that protects TOTP secrets at rest (ADR-0017). Required
 	// (TOTP_ENCRYPTION_KEY, base64) outside dev and ci; dev and ci get a fixed test key.
 	TOTPKey []byte
+	// PINPepper is the 32-byte key that is mixed into every transaction PIN hash (ADR-0018). Required
+	// (PIN_PEPPER, base64) outside dev and ci; dev and ci get a fixed test value. PINPepperID names it
+	// inside each stored hash; PINPepperOld lists retired keys that may still verify while hashes use them.
+	PINPepper    []byte
+	PINPepperID  string
+	PINPepperOld []PINPepperKey
 	// OfferGuardDisabled is true only when OFFERGUARD_ENABLED=false, which removes every offer limit.
 	// Load refuses that outside dev and ci.
 	OfferGuardDisabled bool
@@ -91,6 +97,16 @@ type Config struct {
 	TwilioAPIKey     string
 	TwilioAPISecret  string
 	TwilioFrom       string
+}
+
+// DevPINPepper is the fixed pepper used in dev and ci only (exactly 32 bytes). It is public, so
+// production and demo refuse it. Tests use it through testkit.
+const DevPINPepper = "dev-only-pin-pepper-0123456789ab"
+
+// PINPepperKey is a retired pepper kept for verification only.
+type PINPepperKey struct {
+	ID  string
+	Key []byte
 }
 
 // IsDev is true only for APP_ENV=dev: the single environment that may return
