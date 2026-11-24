@@ -12,8 +12,8 @@ build:
 test:
 	go test ./... -count=1
 
-test-integration: ## needs docker compose up + migrate-up; uses the dev database
-	TEST_DATABASE_URL="$(DB_URL)" go test ./... -count=1
+test-integration: ## needs docker compose up + migrate-up; uses the dev database; -p 1 because packages share it
+	TEST_DATABASE_URL="$(DB_URL)" APP_ENV=ci go test -p 1 ./... -count=1
 
 lint:
 	go vet ./...
@@ -35,8 +35,11 @@ seed: ## F10: idempotent demo data (needs migrate-up); asserts balance == SUM(le
 	go build -o bin/seed ./cmd/seed
 	APP_ENV=dev DATABASE_URL="$(DB_URL)" ./bin/seed
 
-loadtest: ## F10: 100 TPS transfer for 60s against a running server (make dev + seed first)
-	k6 run scripts/loadtest/k6-transfer.js
+# Load test of the real transfer path (request, confirm with PIN, workflow, ledger). Needs Postgres and Redis\n# running and a FRESH migrated database; leftover rows from other tests distort the numbers.\n# Tune with LOAD_USERS, LOAD_WORKERS and LOAD_SECONDS. Results and history: docs/quality/performance/.\nLOAD_DB_URL ?= postgres://HPay:HPay@localhost:5432/load?sslmode=disable\nloadtest: ## Go load test of the P2P path (create the database 'load' and migrate it first)
+	TEST_DATABASE_URL="$(LOAD_DB_URL)" REDIS_ADDR=localhost:6379 APP_ENV=ci \
+	  go test -tags loadtest ./test/loadtest -run TestP2PLoad -v -count=1 -timeout 15m
+
+# HTTP load test with k6. The old script is stale (see scripts/loadtest/README.md); not wired up.
 
 up:
 	docker compose up -d

@@ -348,3 +348,15 @@ BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency p
 
 ### Breaking changes of this pass
 `APP_ENV` is required; confirming a payment needs a PIN (users must set one); the 2fa band is refused; users without an offer fall to L0 (2,500,000 VND per transaction).
+
+### Load test findings, 2026-11-24 (owner's run; details in `docs/quality/performance/2026-11-24-load-test-baseline.md`)
+Correctness held (600 of 600 transfers, 0 ledger mismatches) but throughput was about 8 completed transfers per second. Order chosen by the owner: G20, G21, G22, then G23, G24, G25.
+
+| # | Gap | Why it matters | Next step |
+|---|-----|----------------|-----------|
+| G20 | P4: a fresh clone does not build (`internal/store/gen` is gitignored, sqlc is not run by the quick start) | a reviewer cannot run the project | state `make sqlc` first in the README and run it in the test scripts |
+| G21 | P5: `scripts/loadtest/k6-transfer.js` calls routes that no longer exist and ignores login and confirm rate limits | `make loadtest` is broken | point `make loadtest` at the Go load test, or rewrite the k6 script for request plus confirm |
+| G22 | P6: integration packages share one database, so `go test ./...` in parallel deadlocks and steals outbox events; `PumpLocal` marks events published before processing | flaky local runs; a real deadlock on `SYSTEM_CASH_IN` may exist in production too | run with `-p 1` or one database per package in the Linux script; check lock order of funding |
+| G23 | P1: one consumer goroutine per workflow stream (about 13 events per transfer) | caps completion near 8 transfers per second | several consumers per stream with per-instance ordering and a test with 2 or more workers; re-measure |
+| G24 | P3: the outbox relay waits for the next 200 ms tick even when the batch was full | next ceiling after G23 (about 38 transfers per second) | relay again at once when a batch is full; configurable batch and interval |
+| G25 | P2: PIN verification uses login-grade argon2id (64 MiB) on every payment | 50 concurrent confirms need about 3.2 GB and saturate the CPUs | bound concurrent hashes with a semaphore, keep the strong parameters (owner's choice); an ADR if the parameters ever change |

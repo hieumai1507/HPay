@@ -276,6 +276,7 @@ func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {
 	}
 
 	type work struct {
+		id        int64
 		eventType string
 		payload   string
 	}
@@ -290,7 +291,7 @@ func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {
 				}
 			}
 		}
-		mine = append(mine, work{r.EventType, string(r.Payload)})
+		mine = append(mine, work{r.ID, r.EventType, string(r.Payload)})
 		ids = append(ids, r.ID)
 	}
 	if len(ids) > 0 {
@@ -301,7 +302,7 @@ func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
-	for _, r := range mine {
+	for i, r := range mine {
 		var perr error
 		switch r.eventType {
 		case EventStepStart:
@@ -310,6 +311,17 @@ func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {
 			perr = w.processResultMessage(ctx, r.payload)
 		}
 		if perr != nil {
+			// The batch was marked published before processing. Release the
+			// events after the failing one so a later pump still sees them
+			// instead of stranding their workflows.
+			if rest := mine[i+1:]; len(rest) > 0 {
+				back := make([]int64, 0, len(rest))
+				for _, x := range rest {
+					back = append(back, x.id)
+				}
+				_, _ = w.pool.Exec(context.WithoutCancel(ctx),
+					`UPDATE outbox SET published_at = NULL WHERE id = ANY($1::bigint[])`, back)
+			}
 			return 0, perr
 		}
 	}

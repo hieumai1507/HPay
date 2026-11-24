@@ -1,3 +1,8 @@
+// STALE: do not use. This script calls routes that no longer exist (/v1/transactions/transfer,
+// /v1/wallets/topup). The flow is now /v1/transactions/request + /v1/transactions/confirm with a PIN,
+// and the login, register and confirm rate limits apply. Use `make loadtest` (the Go load test) instead;
+// see scripts/loadtest/README.md. Kept as a starting point for an HTTP-level rewrite.
+
 // F10 load test — 100 TPS P2P transfer for 60s (NFR doc 01 §5).
 // Open model (constant-arrival-rate) so we measure real TPS, not a closed
 // loop that self-throttles when the system slows down.
