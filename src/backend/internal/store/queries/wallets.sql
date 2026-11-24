@@ -5,8 +5,14 @@ FROM wallets WHERE id = $1;
 -- name: GetWalletsForUpdate :many
 -- CRITICAL: ORDER BY id enforces lock ordering (E03). Callers pass ALL wallet
 -- ids they intend to touch in one call — never lock in a loop.
+-- FOR NO KEY UPDATE, not FOR UPDATE: inserting a transaction row takes a
+-- KEY SHARE lock on its wallets through the foreign keys, and FOR UPDATE
+-- conflicts with that, so two concurrent postings on one wallet (SYSTEM_CASH_IN
+-- during top-ups) each held KEY SHARE and waited for the other: 40P01. A balance
+-- change never touches a key column, so the weaker lock is correct and is
+-- compatible with KEY SHARE. Two postings still exclude each other.
 SELECT id, owner_type, currency, purpose, balance, version
-FROM wallets WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE;
+FROM wallets WHERE id = ANY($1::uuid[]) ORDER BY id FOR NO KEY UPDATE;
 
 -- name: CreateUserWallet :one
 INSERT INTO wallets (owner_type, owner_id, currency, purpose, label)

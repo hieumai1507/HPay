@@ -43,7 +43,7 @@ Conclusion: correctness under concurrency holds; throughput is low (about 8 tran
 | P3 | Outbox relay polls every 200 ms with a batch of 100 (ceiling 500 events/s) | `internal/outbox/relay.go` | done in code (G24) |
 | P4 | A fresh clone does not build: `internal/store/gen` is gitignored and the quick start does not stress that `make sqlc` is required | README, `scripts/test-backend.*` | done |
 | P5 | The k6 script calls routes that no longer exist (`/v1/transactions/transfer`, `/v1/wallets/topup`) and ignores the login and confirm rate limits | `scripts/loadtest/k6-transfer.js`, `make loadtest` | done |
-| P6 | Integration packages are not safe to run in parallel against one database; `PumpLocal` marks events published before processing them | CI and `scripts/test-backend.sh`, `workflow/worker.go` | PumpLocal fixed; funding lock order not yet checked |
+| P6 | Integration packages are not safe to run in parallel against one database; `PumpLocal` marks events published before processing them | CI and `scripts/test-backend.sh`, `workflow/worker.go` | PumpLocal fixed; the funding deadlock was real in production code too and is fixed (see below) |
 | P7 | Items already in PLAN.md: G7 (login lockout: done by BUG-0016), G18 (limit windows race), G19 (outbox idempotency for non-money steps), G1 (done: Go 1.26), G3 (gosec and gitleaks not in CI) | `docs/planning/PLAN.md` | partly done |
 
 ## Order chosen by the owner (2026-11-24)
@@ -65,3 +65,7 @@ Settings: 200 users, 50 workers, 60 s, fresh migrated database `load`, `TEST_DB_
 Second run after fixing a Redis connection-pool starvation found by CI (one blocking read per consumer for all step streams instead of one per stream): 700 accepted (11.0 req/s), 694 completed + 6 failed by fraud rules (9.3/s), end to end p50 / p95 / p99 = 34.8 / 51.5 / 54.2 s, 0 ledger mismatches. Run-to-run noise on this laptop is large (first run p50 20.6 s), so only the direction is reliable: end-to-end latency is lower than the owner's 42.6 s baseline, completed per second rose from 7.9 to about 9.2, intake barely moved.
 
 Reading: removing the single consumer helps latency a little, but intake is still about 10 requests per second. Intake is bound by the argon2 PIN check on the CPUs; the semaphore bounds memory and keeps latency stable, it cannot raise CPU-bound throughput. Raising intake needs cheaper PIN hashing (OWASP minimum m=19 MiB, t=2, p=1) or more CPUs; that is a security trade-off for the owner and needs an ADR. Not measured: a run on the owner's machine, and a run with lighter PIN parameters.
+
+
+## Funding deadlock (P6, found and fixed)
+The 40P01 seen in parallel test runs was not only a test artefact. 24 concurrent top-ups plus 24 transfers on the shared SYSTEM_CASH_IN wallet deadlocked every time (test TestFunding_ConcurrentTopupsNeverDeadlock, red before the fix). Cause: inserting a transaction row takes a KEY SHARE lock on its wallets through the foreign keys, and GetWalletsForUpdate used FOR UPDATE, which conflicts with KEY SHARE; two postings each held KEY SHARE on the system wallet and waited for the other's row lock. The id ordering in ledger.Post was already right. Fix: FOR NO KEY UPDATE in GetWalletsForUpdate (a balance change never touches a key column; postings still exclude each other). Test is green 3 of 3 runs and the full suite passes on a fresh database.
