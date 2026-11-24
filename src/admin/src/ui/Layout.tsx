@@ -11,8 +11,8 @@ const TITLES: Record<string, string> = {
   '/workflows': 'Workflow Monitor',
   '/tasks': 'My Tasks',
   '/attention': 'Needs attention',
-  '/recon': 'Đối soát',
-  '/orgs': 'Tổ chức & Policy',
+  '/recon': 'Reconciliation',
+  '/orgs': 'Organizations & Policy',
   '/ai-settings': 'AI Settings',
   '/audit': 'Audit Log',
 };

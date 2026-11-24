@@ -35,7 +35,7 @@ export default function AuditPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('timestamp', {
-        header: 'Thời điểm',
+        header: 'Time',
         cell: (info) => <span className="font-mono">{info.getValue()}</span>,
       }),
       columnHelper.accessor('actor', {
@@ -48,15 +48,15 @@ export default function AuditPage() {
         ),
       }),
       columnHelper.accessor('action', {
-        header: 'Hành động (Action)',
+        header: 'Action',
         cell: (info) => <Badge tone={info.row.original.actionType}>{info.getValue()}</Badge>,
       }),
       columnHelper.accessor('resource', {
-        header: 'Tài nguyên',
+        header: 'Resource',
         cell: (info) => <span className="font-semibold text-slate-800">{info.getValue()}</span>,
       }),
       columnHelper.accessor('details', {
-        header: 'Chi tiết sự kiện',
+        header: 'Event details',
         cell: (info) => <span className="text-slate-700">{info.getValue()}</span>,
       }),
       columnHelper.accessor('ip', {
@@ -94,7 +94,7 @@ export default function AuditPage() {
             Audit Logs &amp; System Trails
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Nhật ký kiểm toán thời gian thực theo dõi từng hành động admin &amp; sự kiện giao dịch.
+            Real-time audit log tracking every admin action &amp; transaction event.
           </p>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function AuditPage() {
       <div className="flex gap-3 items-center">
         <input
           type="text"
-          placeholder="🔍 Tìm theo Action, Resource, lý do..."
+          placeholder="🔍 Search by action, resource, reason..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="h-9 w-80 rounded-lg border border-slate-200 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"

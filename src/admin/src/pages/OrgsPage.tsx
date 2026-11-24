@@ -50,12 +50,12 @@ export default function OrgsPage() {
     try {
       const res = await savePolicyMutation.mutateAsync({
         orgId: selectedOrg.org_id,
-        name: 'Chi lớn',
+        name: 'Large payments',
         tiers,
       });
-      alert(`Đã lưu chính sách phê duyệt mới (version v${res.version}) cho ${selectedOrg.name}!`);
+      alert(`Saved new approval policy (version v${res.version}) for ${selectedOrg.name}.`);
     } catch (e: unknown) {
-      alert(`Lỗi: ${e instanceof Error ? e.message : String(e)}`);
+      alert(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -64,16 +64,16 @@ export default function OrgsPage() {
       {/* Topbar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-bold text-slate-900">
-          {selectedOrg ? `${selectedOrg.name} — Chính sách phê duyệt` : 'Tổ chức & Policy'}
+          {selectedOrg ? `${selectedOrg.name} — Approval policy` : 'Organizations & Policy'}
         </h2>
         <button
           type="button"
-          onClick={() => alert('Thêm chính sách phê duyệt mới')}
+          onClick={() => alert('Add new approval policy')}
           disabled={!canEdit}
           title={canEdit ? undefined : NO_PERMISSION_REASON}
           className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
         >
-          + Thêm policy
+          + Add policy
         </button>
       </div>
 
@@ -81,14 +81,14 @@ export default function OrgsPage() {
       {!canEdit && <div className="text-xs text-slate-500">{NO_PERMISSION_REASON} (orgs.edit)</div>}
 
       {isLoading ? (
-        <div className="p-10 text-center text-slate-500">Đang tải danh sách tổ chức…</div>
+        <div className="p-10 text-center text-slate-500">Loading...</div>
       ) : (
         <div className="flex gap-5 flex-col md:flex-row">
           {/* Left Column — Org List Sidebar */}
           <div className="w-full md:w-72 flex flex-col gap-3 shrink-0">
             <input
               type="text"
-              placeholder="🔍 Tìm tổ chức…"
+              placeholder="🔍 Search organizations…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 px-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
@@ -116,7 +116,7 @@ export default function OrgsPage() {
                     <div>
                       <div className="text-sm font-semibold text-slate-900">{org.name}</div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        {org.memberCount} thành viên · {org.policiesCount} policies
+                        {org.memberCount} members · {org.policiesCount} policies
                       </div>
                     </div>
                   </div>
@@ -131,7 +131,7 @@ export default function OrgsPage() {
               {/* In-flight snapshot warning card */}
               {selectedOrg.pendingApprovalsCount > 0 && (
                 <div className="bg-amber-50 border-l-4 border-amber-500 p-3 px-4 rounded-lg text-xs text-slate-700">
-                  ⚠️ Có <b>{selectedOrg.pendingApprovalsCount} lệnh đang chờ duyệt</b> theo policy snapshot cũ. Thay đổi dưới đây chỉ áp dụng cho lệnh tạo mới.
+                  ⚠️ <b>{selectedOrg.pendingApprovalsCount} orders awaiting approval</b> use the old policy snapshot. Changes below apply only to newly created orders.
                 </div>
               )}
 
@@ -139,8 +139,8 @@ export default function OrgsPage() {
               <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
                 <div className="flex justify-between items-center mb-3.5">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 mb-0.5">Chi lớn (v3)</h3>
-                    <div className="text-xs text-slate-500">Áp dụng: 10.000.000 ₫ → không giới hạn · đang hiệu lực</div>
+                    <h3 className="text-base font-bold text-slate-900 mb-0.5">Large payments (v3)</h3>
+                    <div className="text-xs text-slate-500">Applies to: 10,000,000 ₫ → no limit · active</div>
                   </div>
                   <Badge tone="success">Active</Badge>
                 </div>
@@ -151,7 +151,7 @@ export default function OrgsPage() {
                     <div key={idx} className="flex items-center gap-3.5 bg-slate-50 rounded-xl p-3">
                       <Badge tone="info">Level {tier.level}</Badge>
                       <span className="text-xs font-medium text-slate-900 flex-1">
-                        Từ {formatMillions(tier.min_amount)} — cần <b>{tier.required_approvals}</b> chữ ký Checker L{tier.level}
+                        From {formatMillions(tier.min_amount)} — needs <b>{tier.required_approvals}</b> Checker L{tier.level} signatures
                       </span>
                       <div className="flex items-center gap-1.5 border border-slate-200 rounded-md px-1.5 py-0.5 bg-white">
                         <button
@@ -181,7 +181,7 @@ export default function OrgsPage() {
                     disabled={!canEdit}
                     className="h-10 rounded-lg border-1.5 border-dashed border-slate-300 bg-white text-slate-700 text-xs font-semibold cursor-pointer hover:border-brand hover:text-brand flex items-center justify-center transition-colors"
                   >
-                    + Thêm level
+                    + Add level
                   </button>
                 </div>
               </div>
@@ -190,8 +190,8 @@ export default function OrgsPage() {
               <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 mb-0.5">Chi thường (v1)</h3>
-                    <div className="text-xs text-slate-500">Dưới 10.000.000 ₫ · cần 1 chữ ký Checker L1</div>
+                    <h3 className="text-base font-bold text-slate-900 mb-0.5">Regular payments (v1)</h3>
+                    <div className="text-xs text-slate-500">Under 10,000,000 ₫ · needs 1 Checker L1 signature</div>
                   </div>
                   <Badge tone="success">Active</Badge>
                 </div>
@@ -203,7 +203,7 @@ export default function OrgsPage() {
                   type="button"
                   className="h-9 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-semibold text-xs cursor-pointer hover:bg-slate-50"
                 >
-                  Hủy thay đổi
+                  Discard changes
                 </button>
                 <button
                   type="button"
@@ -212,7 +212,7 @@ export default function OrgsPage() {
                   title={canEdit ? undefined : NO_PERMISSION_REASON}
                   className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {savePolicyMutation.isPending ? 'Đang lưu…' : 'Lưu — tạo version v4'}
+                  {savePolicyMutation.isPending ? 'Saving…' : 'Save — create version v4'}
                 </button>
               </div>
             </div>

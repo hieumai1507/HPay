@@ -27,7 +27,7 @@ export function Table<T>({
   data,
   rowKey,
   onRowClick,
-  emptyText = 'Không có dữ liệu',
+  emptyText = 'Nothing here yet',
   getRowStyle,
 }: TableProps<T>) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);

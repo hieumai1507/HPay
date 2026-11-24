@@ -18,7 +18,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
       <div className="font-medium">
         {totalCount !== undefined ? (
           <span>
-            Hiển thị <strong>{totalCount > 0 ? startItem : 0}</strong> - <strong>{endItem}</strong> trong tổng số <strong>{totalCount}</strong> kết quả
+            Showing <strong>{totalCount > 0 ? startItem : 0}</strong> - <strong>{endItem}</strong> of <strong>{totalCount}</strong> results
           </span>
         ) : (
           <span>Trang <strong>{pageIndex + 1}</strong> / <strong>{Math.max(1, pageCount)}</strong></span>
@@ -27,7 +27,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
 
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-slate-500">Số hàng / trang:</span>
+          <span className="text-slate-500">Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => table.setPageSize(Number(e.target.value))}
@@ -49,7 +49,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
             className={`w-8 h-8 rounded-md border border-slate-300 bg-white flex items-center justify-center font-bold text-xs transition-colors ${
               table.getCanPreviousPage() ? 'hover:bg-slate-50 cursor-pointer text-slate-700' : 'opacity-40 cursor-not-allowed text-slate-400'
             }`}
-            title="Đầu tiên"
+            title="First"
           >
             ««
           </button>
@@ -60,7 +60,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
             className={`w-8 h-8 rounded-md border border-slate-300 bg-white flex items-center justify-center font-bold text-xs transition-colors ${
               table.getCanPreviousPage() ? 'hover:bg-slate-50 cursor-pointer text-slate-700' : 'opacity-40 cursor-not-allowed text-slate-400'
             }`}
-            title="Trước"
+            title="Previous"
           >
             ‹
           </button>
@@ -76,7 +76,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
             className={`w-8 h-8 rounded-md border border-slate-300 bg-white flex items-center justify-center font-bold text-xs transition-colors ${
               table.getCanNextPage() ? 'hover:bg-slate-50 cursor-pointer text-slate-700' : 'opacity-40 cursor-not-allowed text-slate-400'
             }`}
-            title="Tiếp"
+            title="Next"
           >
             ›
           </button>
@@ -87,7 +87,7 @@ export function DataTablePagination<TData>({ table, totalCount }: DataTablePagin
             className={`w-8 h-8 rounded-md border border-slate-300 bg-white flex items-center justify-center font-bold text-xs transition-colors ${
               table.getCanNextPage() ? 'hover:bg-slate-50 cursor-pointer text-slate-700' : 'opacity-40 cursor-not-allowed text-slate-400'
             }`}
-            title="Cuối cùng"
+            title="Last"
           >
             »»
           </button>

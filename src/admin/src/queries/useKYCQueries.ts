@@ -56,9 +56,9 @@ export function useKYCReview() {
 export function toneForVerdict(verdict: string): BadgeTone {
   if (!verdict) return 'neutral';
   const v = verdict.toLowerCase();
-  if (v.includes('pass') || v.includes('approve') || v.includes('khớp')) return 'success';
+  if (v.includes('pass') || v.includes('approve') || v.includes('match')) return 'success';
   if (v.includes('warn') || v.includes('check') || v.includes('nghi')) return 'warning';
-  if (v.includes('fail') || v.includes('reject') || v.includes('giả')) return 'danger';
+  if (v.includes('fail') || v.includes('reject') || v.includes('fake')) return 'danger';
   return 'neutral';
 }
 
