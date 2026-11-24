@@ -92,9 +92,7 @@ func TestPINReset_CoolingCapAppliesToConfirm(t *testing.T) {
 	testkit.Fund(t, e.Pool, sender, mustWallet(t, e, sender), 40_000_000)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, _, rcv := e.UserWithMoney(t, 0)
-	if _, err := e.Pool.Exec(context.Background(), `UPDATE transactions SET created_at = created_at - interval '1 hour' WHERE initiated_by=$1`, sender); err != nil {
-		t.Fatal(err)
-	}
+	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	if _, err := e.Pool.Exec(context.Background(), `UPDATE users SET pin_reset_at = now() WHERE id=$1`, sender); err != nil {
 		t.Fatal(err)
 	}

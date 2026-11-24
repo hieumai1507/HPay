@@ -668,10 +668,7 @@ func (s *Service) ExecuteEngineConfirm(ctx context.Context, input EngineConfirmI
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('limit-window:' || $1::text, 0))`, input.SenderUserID); err != nil {
 			return Result{}, err
 		}
-		if err := offerguard.NewWithQueries(qtx).CheckWindows(ctx, input.SenderUserID, txn.ServiceCode, txn.Type, txn.Amount, txn.Fee, txn.CreatedAt.Time); err != nil {
-			if errors.Is(err, offerguard.ErrWindowCrossed) {
-				return Result{}, ErrAuthExpired // request again: it is metered in today's window
-			}
+		if err := offerguard.NewWithQueries(qtx).CheckWindows(ctx, input.SenderUserID, txn.ServiceCode, txn.Type, txn.Amount, txn.Fee); err != nil {
 			return Result{}, err
 		}
 	}

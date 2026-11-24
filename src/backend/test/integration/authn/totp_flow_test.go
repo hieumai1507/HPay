@@ -29,9 +29,7 @@ func twoFactorSender(t *testing.T, e *testkit.Env) (uuid.UUID, string, uuid.UUID
 	}
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, rw, rcv := e.UserWithMoney(t, 0)
-	if _, err := e.Pool.Exec(context.Background(), `UPDATE transactions SET created_at = created_at - interval '1 hour' WHERE initiated_by = $1`, sender); err != nil {
-		t.Fatal(err)
-	}
+	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	return sender, rcv, rw
 }
 
@@ -189,9 +187,7 @@ func TestConfirm_TwoFactorAcceptsRecoveryCodeOnce(t *testing.T) {
 	e.Drain(t)
 	// a second large transaction (L2 cap allows it after more funding)
 	testkit.Fund(t, e.Pool, sender, mainWallet(t, e, sender), 70_000_000)
-	if _, err := e.Pool.Exec(ctx, `UPDATE transactions SET created_at = created_at - interval '1 hour' WHERE initiated_by = $1`, sender); err != nil {
-		t.Fatal(err)
-	}
+	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	second, err := request2FA(e, sender, rcv)
 	if err != nil {
 		t.Fatal(err)

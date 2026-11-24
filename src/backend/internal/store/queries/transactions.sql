@@ -1,6 +1,6 @@
 -- name: InsertTransaction :one
-INSERT INTO transactions (ref_code, idempotency_key, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, initiated_by, request_hash)
-VALUES ($1, $2, $3, 'processing', $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO transactions (ref_code, idempotency_key, type, status, sender_wallet_id, receiver_wallet_id, amount, fee, note, initiated_by, request_hash, started_at)
+VALUES ($1, $2, $3, 'processing', $4, $5, $6, $7, $8, $9, $10, now())
 RETURNING id, ref_code, status, created_at;
 
 -- name: GetTransactionByIdempotencyKey :one
@@ -113,7 +113,7 @@ FROM transactions WHERE id = $1 FOR UPDATE;
 -- Records what the request resolved so confirm starts exactly that workflow.
 -- Guarded: only a row that is still processing and has no instance yet.
 UPDATE transactions
-SET status = 'awaiting_auth', auth_method = $2, workflow_name = $3, service_code = $4
+SET status = 'awaiting_auth', auth_method = $2, workflow_name = $3, service_code = $4, started_at = NULL
 WHERE id = $1 AND status = 'processing';
 
 -- name: GetOwnedTransactionForUpdate :one
@@ -134,7 +134,7 @@ FROM transactions WHERE id = $1 AND initiated_by = $2;
 
 -- name: StartAwaitingAuthTransaction :one
 -- Guarded awaiting_auth -> processing. Whoever loses a race gets no row.
-UPDATE transactions SET status = 'processing'
+UPDATE transactions SET status = 'processing', started_at = now()
 WHERE id = $1 AND status = 'awaiting_auth'
 RETURNING id, ref_code;
 

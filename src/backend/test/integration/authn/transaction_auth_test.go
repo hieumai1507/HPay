@@ -207,9 +207,7 @@ func TestRequest_TwoFactorBandIsRefused(t *testing.T) {
 	}
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
 	// funding posts p2p rows initiated by the sender, which the interval throttle would count
-	if _, err := e.Pool.Exec(context.Background(), `UPDATE transactions SET created_at = created_at - interval '1 hour' WHERE initiated_by = $1`, sender); err != nil {
-		t.Fatal(err)
-	}
+	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	_, err := e.Svc.ExecuteEngineRequest(context.Background(), transfer.EngineRequestInput{
 		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: rcvPhone,
 		Amount: 60_000_000, Idempotency: wallet.NewRefCode(),
@@ -267,7 +265,7 @@ func TestOfferGuard_AwaitingAuthDoesNotConsumeQuota(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		_ = e.RequestP2P(t, sender, rcvPhone, 100_000)
 		// the interval throttle would reject an immediate second attempt; age the previous row
-		_, _ = e.Pool.Exec(ctx, `UPDATE transactions SET created_at = created_at - interval '1 minute' WHERE initiated_by=$1`, sender)
+		testkit.AgeUserTransactions(t, e, sender, "1 minute")
 	}
 	var sum int64
 	if err := e.Pool.QueryRow(ctx, `SELECT COALESCE(SUM(amount + fee), 0)::bigint FROM transactions WHERE initiated_by=$1 AND type='p2p' AND status NOT IN ('failed','reversed','awaiting_auth')`, sender).Scan(&sum); err != nil {

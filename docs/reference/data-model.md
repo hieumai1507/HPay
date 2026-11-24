@@ -115,6 +115,7 @@ Triggers (07): `trg_ledger_entries_no_update` BEFORE UPDATE and `trg_ledger_entr
 | note | VARCHAR(255) | yes | |
 | reversal_of | UUID | yes | FK transactions |
 | completed_at | TIMESTAMPTZ | yes | |
+| started_at | TIMESTAMPTZ | yes | when the transaction started to move money (BUG-0018, migration 000027); NULL while awaiting_auth and for older rows; limits read COALESCE(started_at, created_at) |
 | created_at | TIMESTAMPTZ | no | now() |
 
 Indexes: `idx_txn_sender(sender_wallet_id, created_at DESC)`, `idx_txn_receiver(receiver_wallet_id, created_at DESC)`, `idx_txn_ref(ref_code)` (redundant with the UNIQUE).

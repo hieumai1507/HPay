@@ -23,17 +23,18 @@ JOIN services s ON s.id = os.service_id
 WHERE o.code = $1 AND s.code = $2;
 
 -- name: SumUserTxnAmountSince :one
--- Rolling volume for daily/monthly limits. Failed, reversed and awaiting_auth (not yet confirmed) do not consume quota.
+-- Rolling volume for daily/monthly limits, counted from when a transaction STARTED (BUG-0017).
+-- Failed, reversed and awaiting_auth (not yet confirmed) do not consume quota.
 SELECT COALESCE(SUM(amount + fee), 0)::bigint AS total
 FROM transactions
 WHERE initiated_by = $1
   AND type = $2
   AND status NOT IN ('failed', 'reversed', 'awaiting_auth')
-  AND created_at >= $3;
+  AND COALESCE(started_at, created_at) >= $3;
 
 -- name: LastUserTxnAt :one
 -- Most recent attempt of this type, for the interval_seconds throttle.
-SELECT COALESCE(MAX(created_at), 'epoch'::timestamptz)::timestamptz AS last_at
+SELECT COALESCE(MAX(COALESCE(started_at, created_at)), 'epoch'::timestamptz)::timestamptz AS last_at
 FROM transactions
 WHERE initiated_by = $1 AND type = $2 AND status <> 'awaiting_auth';
 

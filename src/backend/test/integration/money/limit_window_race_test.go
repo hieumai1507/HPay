@@ -87,29 +87,79 @@ func TestLimitWindow_ConfirmCountsTheFee(t *testing.T) {
 	}
 }
 
-// A request made before today's Vietnam midnight is metered by its creation time, so it would
-// dodge today's volume. Confirm refuses it and asks for a new request.
-func TestLimitWindow_RequestFromAnEarlierDayIsRefusedAtConfirm(t *testing.T) {
+// The quota counts a transaction from the moment it STARTS, not from when it was requested
+// (BUG-0017). A request made yesterday and confirmed today uses today's quota; counting it by
+// its creation time would let it dodge both days.
+func TestLimitWindow_VolumeIsCountedFromWhenTheTransactionStarted(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	ctx := context.Background()
+	sender, _, _ := e.UserWithMoney(t, 2_400_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L0")
 	e.SetPIN(t, sender, testkit.ValidPIN)
 
-	held := e.RequestP2P(t, sender, receiverPhone, 100_000)
-	if _, err := e.Pool.Exec(context.Background(),
-		`UPDATE transactions SET created_at = now() - interval '2 days' WHERE id = $1`, held.TransactionID); err != nil {
+	first := e.RequestP2P(t, sender, receiverPhone, 1_500_000)
+	if err := confirmPIN(e, sender, first); err != nil {
+		t.Fatalf("first confirm: %v", err)
+	}
+	// Pretend that request was created two days ago; it started just now.
+	if _, err := e.Pool.Exec(ctx, `UPDATE transactions SET created_at = created_at - interval '2 days' WHERE id = $1`, first.TransactionID); err != nil {
 		t.Fatal(err)
 	}
-	err := confirmPIN(e, sender, held)
-	if !errors.Is(err, transfer.ErrAuthExpired) {
-		t.Fatalf("a request from an earlier day must be refused at confirm, got %v", err)
+	_, err := e.Svc.ExecuteEngineRequest(ctx, transfer.EngineRequestInput{
+		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: receiverPhone,
+		Amount: 1_100_000, Idempotency: uuid.NewString(),
+	})
+	if !errors.Is(err, offerguard.ErrLimitDaily) {
+		t.Fatalf("1,500,000 started today plus 1,100,000 exceeds the 2,500,000 daily limit, got %v", err)
 	}
-	var status string
-	if err := e.Pool.QueryRow(context.Background(), `SELECT status FROM transactions WHERE id=$1`, held.TransactionID).Scan(&status); err != nil {
+}
+
+// The throttle (interval_seconds) measures the spacing of STARTS. Held requests do not count, so
+// holding several and confirming them together used to bypass it.
+func TestLimitWindow_IntervalThrottleHoldsAtConfirm(t *testing.T) {
+	e := testkit.NewEnv(t, "")
+	ctx := context.Background()
+	sender, _, _ := e.UserWithMoney(t, 2_400_000)
+	_, _, receiverPhone := e.UserWithMoney(t, 0)
+	e.SetPIN(t, sender, testkit.ValidPIN)
+
+	code := "OFFER_TEST_" + uuid.NewString()[:8]
+	if _, err := e.Pool.Exec(ctx, `
+		WITH o AS (INSERT INTO offers (code, name, role, level, is_active) VALUES ($1, 'throttle test', 'customer', 1, true) RETURNING id)
+		INSERT INTO offer_services (offer_id, service_id, is_enabled, min_amount, max_amount_per_txn, daily_limit, monthly_limit, interval_seconds)
+		SELECT o.id, s.id, true, 0, 0, 0, 0, 3600 FROM o, services s WHERE s.code = 'P2P_TRANSFER'`, code); err != nil {
 		t.Fatal(err)
 	}
-	if status != "awaiting_auth" {
-		t.Fatalf("the refused request must not start, status=%s", status)
+	e.SetOffer(t, sender, code)
+
+	const n = 4
+	held := make([]transfer.EngineRequestResult, 0, n)
+	for i := 0; i < n; i++ {
+		held = append(held, e.RequestP2P(t, sender, receiverPhone, 10_000))
+	}
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := range held {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs[i] = confirmPIN(e, sender, held[i])
+		}()
+	}
+	wg.Wait()
+	started, throttled := 0, 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			started++
+		case errors.Is(err, offerguard.ErrTooFrequent):
+			throttled++
+		default:
+			t.Errorf("unexpected confirm error: %v", err)
+		}
+	}
+	if started != 1 || throttled != n-1 {
+		t.Fatalf("one start per 3600 s: want 1 started and %d throttled, got %d and %d", n-1, started, throttled)
 	}
 }

@@ -155,7 +155,7 @@ Key point (ADR-0014): the request is a quote that parks the transaction in `awai
 - Fee on the row equals what MOVE_FUNDS posts: legs are derived from the immutable row (BR-TRF-14).
 - Sender debit = receiver credit + fee for p2p and vault moves, via the ledger balance rule.
 - The transaction row and workflow start commit atomically (BR-TRF-13); a failed `engine.Start` rolls back the row.
-- A request over a limit never creates a row (OfferGuard runs before the DB write). Limits are checked again at confirm under a per-user advisory lock, because held requests do not count toward the quota (BUG-0017).
+- A request over a limit never creates a row (OfferGuard runs before the DB write). Limits are checked again at confirm under a per-user advisory lock, because held requests do not count toward the quota (BUG-0017, BUG-0018).
 
 ## 7. Data
 Link: `../reference/data-model.md`.
@@ -185,7 +185,7 @@ Error mapping: limits -> `ERR_LIMIT_PER_TXN|ERR_LIMIT_DAILY|ERR_LIMIT_MONTHLY` (
 - BE-C2 is FIXED in the working tree (2026-11-21, not yet committed): BUG-0012, ADR-0014, BR-TRF-31 to 36. Remaining: no 2fa provider (the band is refused), no PIN reset flow, no admin unlock, the confirm rate limit is per user, not per transaction.
 - BE-C1: MOVE_FUNDS can post twice on redelivery/crash (`handlers.go:83-121`; see ledger.md).
 - BE-H1 (transfer/engine path) is fixed, see BR-TRF-03..03b and BUG-0002. `internal/org` (topup, disbursement) is fixed too, see BR-ORG-17.
-- BE-H2: FIXED (BUG-0017): `ExecuteEngineConfirm` serializes a user's confirms with `pg_advisory_xact_lock` and re-runs `offerguard.CheckWindows` before the workflow starts; windows use Asia/Ho_Chi_Minh.
+- BE-H2: FIXED (BUG-0017, BUG-0018): `ExecuteEngineConfirm` serializes a user's confirms with `pg_advisory_xact_lock` and re-runs `offerguard.CheckWindows` before the workflow starts; windows use Asia/Ho_Chi_Minh.
 - BE-H4: compensation fails terminally if the receiver already spent the funds (`handlers.go:113-115`).
 - Money request status is set before MOVE_FUNDS runs (BE-H5), documented in the money request domain.
 - Personal limits now follow the offer (BR-TRF-29, ADR-0007). Weekly rolling limits, balance-ceiling enforcement and a currency model are not implemented.

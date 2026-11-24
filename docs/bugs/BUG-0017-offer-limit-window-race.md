@@ -11,7 +11,7 @@ found: 2026-11-24
 fixed: 2026-11-24
 commit: pending
 regression_test: src/backend/test/integration/money/limit_window_race_test.go ; src/backend/internal/offerguard/window_test.go
-related: [BUG-0012]
+related: [BUG-0012, BUG-0018]
 ---
 
 # BUG-0017: limit window race and time zone
@@ -42,7 +42,7 @@ A user could move more than the daily or monthly limit of their offer. At L0 the
 `domain/service-catalog.md`, `domain/transfer-and-fees.md`, `architecture/crosscutting-concepts.md`, `product/kyc-tiers-and-limits.md`, `reference/data-model.md`, `constitution.md` (C-12), `audit/AUDIT-REPORT.md`, `planning/PLAN.md` (G18).
 
 ## Not done
-- The interval throttle can still be bypassed by holding requests and confirming them together.
+- The interval throttle bypass and the creation-time measurement were fixed in BUG-0018; the request-from-an-earlier-day refusal described above was replaced there by counting from `started_at`.
 - A one-time code (otp, 2fa) is consumed before the limit refusal, so a refused confirm needs a new challenge.
 - `OFFERGUARD_ENABLED=false` disables every limit in any environment (not gated on APP_ENV).
 - Money-request pay (`moneyrequest`) starts its workflow with the per-transaction check only and is outside the lock.
