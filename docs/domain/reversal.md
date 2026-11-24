@@ -111,7 +111,7 @@ sequenceDiagram
 
 ## 10. Known gaps (as-is vs intended)
 - BE-H3 (double reversal) and BE-H4 (receiver without funds) are FIXED in the working tree (2026-11-21, not yet committed): see BR-REV-03, 12 to 15, ADR-0013 and the bug records. Remaining in this area:
-- **Resolution of `needs_manual`** is manual and undefined: nothing in the system retries, writes off, or opens a debt record (ADR-0009 follow-up). Admin screens do not yet show or filter the new status.
+- **Resolution of `needs_manual`** is manual and undefined: nothing in the system retries, writes off, or opens a debt record (ADR-0009 follow-up). Since G12 the admin app shows parked requests: `GET /v1/admin/approvals?status=needs_manual` and the "Needs attention" page (read-only; see `specs/g12-needs-attention-queue/spec.md`).
 - Any transaction type with status `completed` is reversible (topup, vault_move, p2p, org_disbursement); there is no type restriction or age limit.
 - `GET /v1/admin/approvals` shows reversals only while `expires_at > now()` (`approval.sql:56`).
 - No wallet-owner status check (locked/inactive owner) in the executor.
