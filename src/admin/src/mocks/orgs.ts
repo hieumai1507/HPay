@@ -10,8 +10,8 @@ export const MOCK_ORGS: AdminOrgItem[] = [
     policiesCount: 2,
     pendingApprovalsCount: 3,
     policies: [
-      { id: 'pol-1', name: 'Chi lớn', version: 3, isActive: true, minAmount: 10000000, tiers: [{ level: 1, min_amount: 10000000, required_approvals: 1 }, { level: 2, min_amount: 40000000, required_approvals: 1 }] },
-      { id: 'pol-2', name: 'Chi thường', version: 1, isActive: true, minAmount: 0, tiers: [{ level: 1, min_amount: 0, required_approvals: 1 }] },
+      { id: 'pol-1', name: 'Large payments', version: 3, isActive: true, minAmount: 10000000, tiers: [{ level: 1, min_amount: 10000000, required_approvals: 1 }, { level: 2, min_amount: 40000000, required_approvals: 1 }] },
+      { id: 'pol-2', name: 'Regular payments', version: 1, isActive: true, minAmount: 0, tiers: [{ level: 1, min_amount: 0, required_approvals: 1 }] },
     ],
   },
   {
@@ -20,6 +20,6 @@ export const MOCK_ORGS: AdminOrgItem[] = [
     memberCount: 4,
     policiesCount: 1,
     pendingApprovalsCount: 0,
-    policies: [{ id: 'pol-3', name: 'Chính sách chung', version: 1, isActive: true, minAmount: 0, tiers: [{ level: 1, min_amount: 0, required_approvals: 1 }] }],
+    policies: [{ id: 'pol-3', name: 'General policy', version: 1, isActive: true, minAmount: 0, tiers: [{ level: 1, min_amount: 0, required_approvals: 1 }] }],
   },
 ];

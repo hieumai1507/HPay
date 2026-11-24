@@ -17,25 +17,25 @@ export default function WorkflowDetailPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
 
   if (isLoading || !instance) {
-    return <div className="p-10 text-center text-slate-500">Đang tải chi tiết workflow…</div>;
+    return <div className="p-10 text-center text-slate-500">Loading...</div>;
   }
 
   const handleAction = async (action: 'retry' | 'compensate') => {
     if (decideMutation.isPending || !canAct) return;
     if (!reason.trim()) {
-      alert('Vui lòng nhập lý do thao tác (bắt buộc).');
+      alert('Please enter a reason for this action (required).');
       return;
     }
     try {
       await decideMutation.mutateAsync({ id: instance.id, action, reason: reason.trim() });
       setFeedback(
         action === 'retry'
-          ? '✅ Đã phát lệnh Retry thành công! Hệ thống sẽ thử lại bước hiện tại.'
-          : '↩ Đã phát lệnh Bồi hoàn (compensate) thành công! Các bút toán trước đã được đảo.',
+          ? '✅ Retry command sent. The system will retry the current step.'
+          : '↩ Compensate command sent. Earlier ledger entries have been reversed.',
       );
       setReason('');
     } catch (e: unknown) {
-      alert(`Lỗi: ${e instanceof Error ? e.message : String(e)}`);
+      alert(`Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -56,7 +56,7 @@ export default function WorkflowDetailPage() {
           </button>
           <h2 className="text-base font-bold text-slate-900">{instance.id} · {instance.definitionId}</h2>
           <span className="bg-rose-50 text-rose-600 text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {instance.status.toUpperCase()} {failedStep ? `tại ${failedStep.name}` : ''}
+            {instance.status.toUpperCase()} {failedStep ? `at ${failedStep.name}` : ''}
           </span>
         </div>
 
@@ -68,7 +68,7 @@ export default function WorkflowDetailPage() {
             title={canAct ? undefined : NO_PERMISSION_REASON}
             className="h-9 px-4 rounded-lg bg-brand text-white font-semibold text-xs cursor-pointer hover:bg-brand-600 shadow-xs"
           >
-            ⟳ Retry {failedStep?.name || 'bước'}
+            ⟳ Retry {failedStep?.name || 'step'}
           </button>
           <button
             type="button"
@@ -77,7 +77,7 @@ export default function WorkflowDetailPage() {
             title={canAct ? undefined : NO_PERMISSION_REASON}
             className="h-9 px-4 rounded-lg bg-white border border-rose-600 text-rose-600 font-semibold text-xs cursor-pointer hover:bg-rose-50"
           >
-            Force fail + bồi hoàn
+            Force fail + compensate
           </button>
         </div>
       </div>
@@ -96,22 +96,22 @@ export default function WorkflowDetailPage() {
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <div className="text-xs text-slate-500">Giao dịch</div>
+                <div className="text-xs text-slate-500">Transaction</div>
                 <div className="font-mono font-semibold text-slate-900">{instance.txnRef || '—'}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Số tiền</div>
+                <div className="text-xs text-slate-500">Amount</div>
                 <div className="font-mono font-bold text-slate-900 text-base">
-                  {instance.amount ? `${instance.amount.toLocaleString('vi-VN')} ₫` : '—'}
+                  {instance.amount ? `${instance.amount.toLocaleString('en-US')} ₫` : '—'}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Loại workflow</div>
+                <div className="text-xs text-slate-500">Workflow type</div>
                 <div className="font-semibold text-xs text-slate-800">{instance.definitionId}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Bắt đầu</div>
-                <div className="font-medium text-xs text-slate-800">{new Date(instance.createdAt).toLocaleTimeString('vi-VN')}</div>
+                <div className="text-xs text-slate-500">Started</div>
+                <div className="font-medium text-xs text-slate-800">{new Date(instance.createdAt).toLocaleTimeString('en-GB')}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500">Context</div>
@@ -143,9 +143,9 @@ export default function WorkflowDetailPage() {
 
           {/* Action Control Card */}
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
-            <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-1 uppercase">HÀNH ĐỘNG KHẢ DỤNG</div>
+            <div className="text-[11px] font-bold text-slate-500 tracking-wider mb-1 uppercase">AVAILABLE ACTIONS</div>
             <div className="text-xs text-slate-500 mb-3">
-              Theo state machine, instance <b>{instance.status}</b> tại bước có <b>on_failure: compensate</b>:
+              By the state machine, instance <b>{instance.status}</b> is at a step with <b>on_failure: compensate</b>:
             </div>
 
             <div className="flex flex-col gap-2.5">
@@ -156,7 +156,7 @@ export default function WorkflowDetailPage() {
             title={canAct ? undefined : NO_PERMISSION_REASON}
                 className="h-10.5 w-full rounded-lg bg-brand text-white font-semibold text-sm cursor-pointer hover:bg-brand-600 shadow-xs"
               >
-                ⟳ Retry {failedStep?.name || 'bước'}
+                ⟳ Retry {failedStep?.name || 'step'}
               </button>
               <button
                 type="button"
@@ -165,17 +165,17 @@ export default function WorkflowDetailPage() {
             title={canAct ? undefined : NO_PERMISSION_REASON}
                 className="h-10.5 w-full rounded-lg bg-rose-50 border border-rose-600 text-rose-600 font-semibold text-sm cursor-pointer hover:bg-rose-100 transition-colors"
               >
-                ↩ Bồi hoàn ngay (đảo bút toán)
+                ↩ Compensate now (reverse entries)
               </button>
             </div>
 
             <div className="mt-3.5">
-              <label htmlFor="reason-textarea" className="text-xs text-slate-500 block mb-1">Lý do thao tác (bắt buộc):</label>
+              <label htmlFor="reason-textarea" className="text-xs text-slate-500 block mb-1">Reason for this action (required):</label>
               <textarea
                 id="reason-textarea"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Vd: Đã xử lý ví bị khóa, cho phép retry..."
+                placeholder="e.g. Locked wallet resolved, retry allowed..."
                 className="w-full min-h-[70px] rounded-lg border border-slate-200 p-2.5 text-xs font-sans focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
             </div>

@@ -75,10 +75,10 @@ export default function FraudPage() {
 
   const handleQuickClear = async (flag: FraudFlagItem) => {
     if (resolveMutation.isPending) return;
-    if (!window.confirm(`Xác nhận đánh dấu an toàn cho flag ${flag.flagNo}?`)) return;
+    if (!window.confirm(`Mark flag ${flag.flagNo} as safe?`)) return;
     setActionError(null);
     try {
-      await resolveMutation.mutateAsync({ id: flag.id, action: 'clear', reason: 'Quyết định đánh dấu an toàn từ Admin Ops' });
+      await resolveMutation.mutateAsync({ id: flag.id, action: 'clear', reason: 'Marked safe by Admin Ops' });
       refetch();
     } catch (e: unknown) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -133,11 +133,11 @@ export default function FraudPage() {
         },
       }),
       columnHelper.accessor('txnRef', {
-        header: 'Giao dịch',
+        header: 'Transaction',
         cell: (info) => <span className="font-mono">{info.getValue()}</span>,
       }),
       columnHelper.accessor('amount', {
-        header: 'Số tiền',
+        header: 'Amount',
         cell: (info) => <span className="font-mono font-medium">{formatVnd(info.getValue())}</span>,
       }),
       columnHelper.accessor('userName', {
@@ -145,7 +145,7 @@ export default function FraudPage() {
         cell: (info) => <span>{info.getValue() ?? '—'}</span>,
       }),
       columnHelper.accessor('createdAt', {
-        header: 'Tuổi',
+        header: 'Age',
         cell: (info) => {
           const isSlaWarning = info.row.original.status === 'open' && info.row.original.score >= 80;
           return (
@@ -156,7 +156,7 @@ export default function FraudPage() {
         },
       }),
       columnHelper.accessor('status', {
-        header: 'Trạng thái',
+        header: 'Status',
         cell: (info) => renderStatusBadge(info.getValue()),
       }),
     ],
@@ -182,9 +182,9 @@ export default function FraudPage() {
       {/* Header Bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-slate-900">Giám sát gian lận (TanStack Table v8)</h2>
+          <h2 className="text-lg font-bold text-slate-900">Fraud monitoring (TanStack Table v8)</h2>
           <span className="bg-rose-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {flags.filter((f) => f.status === 'open').length} mở
+            {flags.filter((f) => f.status === 'open').length} open
           </span>
         </div>
 
@@ -194,10 +194,10 @@ export default function FraudPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            <option value="open">Status: Mở</option>
-            <option value="cleared">Status: Đã clear</option>
-            <option value="confirmed">Status: Đã khóa</option>
-            <option value="all">Status: Tất cả</option>
+            <option value="open">Status: Open</option>
+            <option value="cleared">Status: Cleared</option>
+            <option value="confirmed">Status: Blocked</option>
+            <option value="all">Status: All</option>
           </select>
 
           <select
@@ -205,7 +205,7 @@ export default function FraudPage() {
             onChange={(e) => setRuleFilter(e.target.value)}
             className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            <option value="all">Rule: Tất cả</option>
+            <option value="all">Rule: All</option>
             <option value="VELOCITY_5MIN">VELOCITY_5MIN</option>
             <option value="AMOUNT_SPIKE">AMOUNT_SPIKE</option>
             <option value="NEW_DEVICE">NEW_DEVICE</option>
@@ -218,12 +218,12 @@ export default function FraudPage() {
               disabled={!canResolve || resolveMutation.isPending}
               title={canResolve ? undefined : NO_PERMISSION_REASON}
               onClick={async () => {
-                if (!window.confirm(`Đánh dấu an toàn cho ${selectedIds.length} flags?`)) return;
+                if (!window.confirm(`Mark ${selectedIds.length} flags as safe?`)) return;
                 setActionError(null);
                 const failed: string[] = [];
                 for (const id of selectedIds) {
                   try {
-                    await resolveMutation.mutateAsync({ id, action: 'clear', reason: 'Quyết định đánh dấu an toàn từ Admin Ops' });
+                    await resolveMutation.mutateAsync({ id, action: 'clear', reason: 'Marked safe by Admin Ops' });
                   } catch {
                     failed.push(id);
                   }
@@ -243,7 +243,7 @@ export default function FraudPage() {
             onClick={() => refetch()}
             className="h-9 px-3.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 cursor-pointer hover:bg-slate-50 transition-colors"
           >
-            ⟳ Làm mới
+            ⟳ Refresh
           </button>
         </div>
       </div>
@@ -262,14 +262,14 @@ export default function FraudPage() {
           table={table}
           isLoading={isLoading}
           totalCount={total}
-          emptyMessage="Không có cờ cảnh báo gian lận nào"
+          emptyMessage="No fraud flags"
         />
 
         {/* Selected Flag Detail Card */}
         {activeDetailFlag && (
           <div className="bg-white rounded-xl p-4.5 border-l-4 border-l-rose-600 border border-slate-200 shadow-xs">
             <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-              CHI TIẾT FLAG {activeDetailFlag.flagNo} — GIẢI THÍCH
+              FLAG {activeDetailFlag.flagNo} DETAILS — EXPLANATION
             </div>
 
             <div className="flex gap-6 items-center flex-wrap">
@@ -285,7 +285,7 @@ export default function FraudPage() {
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-brand text-xs">◆</span>
                       <span className="text-sm text-slate-800">
-                        <b>AI nhận định:</b> {activeDetailFlag.aiAnalysis}
+                        <b>AI assessment:</b> {activeDetailFlag.aiAnalysis}
                       </span>
                     </div>
                   )}
@@ -302,7 +302,7 @@ export default function FraudPage() {
                       title={canResolve ? undefined : NO_PERMISSION_REASON}
                       className="h-9.5 rounded-lg border border-emerald-600 bg-white text-emerald-700 font-semibold text-xs cursor-pointer flex items-center justify-center hover:bg-emerald-50 transition-colors"
                     >
-                      ✓ Đánh dấu an toàn
+                      ✓ Mark as safe
                     </button>
                     <button
                       type="button"
@@ -311,12 +311,12 @@ export default function FraudPage() {
                       title={canResolve ? undefined : NO_PERMISSION_REASON}
                       className="h-9.5 rounded-lg border-none bg-rose-600 text-white font-semibold text-xs cursor-pointer flex items-center justify-center hover:bg-rose-700 transition-colors shadow-xs"
                     >
-                      🔒 Xác nhận gian lận — chọn hệ quả…
+                      🔒 Confirm fraud — choose consequence…
                     </button>
                   </>
                 ) : (
                   <div className="text-xs text-slate-500 italic">
-                    Flag này đã được xử lý ({activeDetailFlag.status})
+                    This flag has been handled ({activeDetailFlag.status})
                   </div>
                 )}
               </div>
@@ -337,7 +337,7 @@ export default function FraudPage() {
 
 function calculateAge(isoString: string): string {
   const diffMinutes = Math.floor((Date.now() - new Date(isoString).getTime()) / 60000);
-  if (diffMinutes < 1) return 'vừa xong';
+  if (diffMinutes < 1) return 'just now';
   if (diffMinutes < 60) return `${diffMinutes}m`;
   const hours = Math.floor(diffMinutes / 60);
   if (hours < 24) return `${hours}h`;
@@ -347,11 +347,11 @@ function calculateAge(isoString: string): string {
 function renderStatusBadge(status: FraudFlagItem['status']) {
   switch (status) {
     case 'open':
-      return <Badge tone="warning">Mở</Badge>;
+      return <Badge tone="warning">Open</Badge>;
     case 'cleared':
-      return <Badge tone="success">Đã clear</Badge>;
+      return <Badge tone="success">Cleared</Badge>;
     case 'confirmed':
-      return <Badge tone="danger">Đã khóa</Badge>;
+      return <Badge tone="danger">Blocked</Badge>;
     default:
       return <Badge tone="neutral">{status}</Badge>;
   }

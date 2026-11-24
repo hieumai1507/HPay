@@ -60,23 +60,23 @@ export default function MyTasksPage() {
   function submit(action: 'approve' | 'reject') {
     if (!selected) return;
     if (reason.trim().length < MIN_REASON) {
-      toast(`Lý do phải có ít nhất ${MIN_REASON} ký tự (ghi vào audit log).`, 'error');
+      toast(`Reason must be at least ${MIN_REASON} characters (recorded in the audit log).`, 'error');
       return;
     }
     decide.mutate(
       { id: selected.id, action, reason: reason.trim() },
       {
         onSuccess: () => {
-          toast(action === 'approve' ? 'Đã phê duyệt lệnh.' : 'Đã từ chối lệnh.', 'success');
+          toast(action === 'approve' ? 'Order approved.' : 'Order rejected.', 'success');
           close();
         },
         onError: (err) => {
           if (err instanceof ApiError && err.status === 409) {
-            toast('Lệnh đã được xử lý ở nơi khác — danh sách vừa được cập nhật.', 'info');
+            toast('This order was handled elsewhere — the list has been updated.', 'info');
             close();
             return;
           }
-          toast(err instanceof ApiError ? err.message : 'Có lỗi xảy ra.', 'error');
+          toast(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.', 'error');
         },
       }
     );
@@ -85,38 +85,38 @@ export default function MyTasksPage() {
   const columns = useMemo(
     () => [
       columnHelper.accessor('subjectType', {
-        header: 'Loại lệnh',
+        header: 'Order type',
         cell: (info) => (
           <Badge tone={subjectTone(info.getValue())}>{info.getValue()}</Badge>
         ),
       }),
       columnHelper.accessor('refCode', {
-        header: 'Mã giao dịch',
+        header: 'Transaction code',
         cell: (info) => (
           <span className="font-mono text-slate-600">{info.getValue() || '—'}</span>
         ),
       }),
       columnHelper.accessor('amount', {
-        header: 'Số tiền',
+        header: 'Amount',
         cell: (info) => (
           <span className="tabular-nums font-semibold">{formatTaskAmount(info.getValue())}</span>
         ),
       }),
       columnHelper.accessor('reason', {
-        header: 'Lý do yêu cầu',
+        header: 'Request reason',
         cell: (info) => (
-          <span className="text-slate-700">{info.getValue() || 'Không ghi chú'}</span>
+          <span className="text-slate-700">{info.getValue() || 'No note'}</span>
         ),
       }),
       columnHelper.accessor('currentLevel', {
-        header: 'Cấp duyệt',
+        header: 'Approval level',
         cell: (info) => `L${info.getValue()}`,
       }),
       columnHelper.accessor('expiresAt', {
-        header: 'Hết hạn',
+        header: 'Expires',
         cell: (info) => (
           <span className="text-slate-500">
-            {new Date(info.getValue()).toLocaleString('vi-VN')}
+            {new Date(info.getValue()).toLocaleString('en-GB')}
           </span>
         ),
       }),
@@ -133,10 +133,10 @@ export default function MyTasksPage() {
               }}
               className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:opacity-90 cursor-pointer"
             >
-              Xử lý
+              Process
             </button>
           ) : (
-            <span className="text-xs text-slate-400">Chỉ xem</span>
+            <span className="text-xs text-slate-400">View only</span>
           ),
       }),
     ],
@@ -157,10 +157,10 @@ export default function MyTasksPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">My Tasks — Hộp duyệt</h1>
+        <h1 className="text-2xl font-bold text-slate-900">My Tasks — Approval inbox</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Các lệnh quản trị đang chờ bạn quyết định: bút toán đảo, khoá tài khoản, đổi chính sách.
-          Mọi quyết định đều ghi kèm lý do vào audit log.
+          Admin orders awaiting your decision: reversals, account locks, policy changes.
+          Every decision is recorded with its reason in the audit log.
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export default function MyTasksPage() {
         table={table}
         isLoading={isLoading}
         totalCount={total}
-        emptyMessage="Không có lệnh nào đang chờ duyệt 🎉"
+        emptyMessage="No orders awaiting approval 🎉"
       />
 
       {selected && (
@@ -177,23 +177,23 @@ export default function MyTasksPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 flex flex-col gap-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Xử lý lệnh <Badge tone={subjectTone(selected.subjectType)}>{selected.subjectType}</Badge>
+                Process order <Badge tone={subjectTone(selected.subjectType)}>{selected.subjectType}</Badge>
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {selected.refCode ? `Giao dịch ${selected.refCode} · ` : ''}
+                {selected.refCode ? `Transaction ${selected.refCode} · ` : ''}
                 {formatTaskAmount(selected.amount)}
               </p>
             </div>
 
             <label className="flex flex-col gap-1.5 text-sm">
               <span className="font-semibold text-slate-700">
-                Lý do quyết định <span className="text-rose-600">*</span>
+                Decision reason <span className="text-rose-600">*</span>
               </span>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                placeholder={`Tối thiểu ${MIN_REASON} ký tự — nội dung này vào audit log`}
+                placeholder={`At least ${MIN_REASON} characters — recorded in the audit log`}
                 className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-brand/40"
               />
               <span className="text-xs text-slate-400">{reason.trim().length}/{MIN_REASON}</span>
@@ -206,7 +206,7 @@ export default function MyTasksPage() {
                 disabled={decide.isPending}
                 className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
-                Huỷ
+                Cancel
               </button>
               <button
                 type="button"
@@ -214,7 +214,7 @@ export default function MyTasksPage() {
                 disabled={decide.isPending}
                 className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer"
               >
-                Từ chối
+                Reject
               </button>
               <button
                 type="button"
@@ -222,7 +222,7 @@ export default function MyTasksPage() {
                 disabled={decide.isPending}
                 className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:opacity-90 disabled:opacity-50 cursor-pointer"
               >
-                Phê duyệt
+                Approve
               </button>
             </div>
           </div>
