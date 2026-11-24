@@ -39,11 +39,11 @@ func postDisburse(r *gin.Engine, orgID uuid.UUID, body map[string]any, idemKey s
 
 func TestOrgDisbursementHTTP_Success(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 	r := orgDisburseRouter(t, e, f.MakerID)
 
 	w := postDisburse(r, f.OrgID, map[string]any{
-		"phone": f.ReceiverPhone, "amount": 1_000_000, "note": "http test",
+		"phone": f.ReceiverPhone, "amount": 4_000, "note": "http test",
 	}, uuid.NewString())
 
 	if w.Code != http.StatusCreated {
@@ -64,8 +64,8 @@ func TestOrgDisbursementHTTP_Success(t *testing.T) {
 	if body.RefCode == "" {
 		t.Fatal("ref_code must not be empty")
 	}
-	if body.Amount != 1_000_000 {
-		t.Fatalf("amount: want 1000000, got %d", body.Amount)
+	if body.Amount != 4_000 {
+		t.Fatalf("amount: want 4000, got %d", body.Amount)
 	}
 	if body.Total != body.Amount+body.Fee {
 		t.Fatalf("total: want amount+fee (%d), got %d", body.Amount+body.Fee, body.Total)
@@ -80,11 +80,11 @@ func TestOrgDisbursementHTTP_Success(t *testing.T) {
 
 func TestOrgDisbursementHTTP_MissingIdempotencyKey(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 	r := orgDisburseRouter(t, e, f.MakerID)
 
 	w := postDisburse(r, f.OrgID, map[string]any{
-		"phone": f.ReceiverPhone, "amount": 1_000_000,
+		"phone": f.ReceiverPhone, "amount": 4_000,
 	}, "")
 
 	if w.Code != http.StatusBadRequest {
@@ -103,12 +103,12 @@ func TestOrgDisbursementHTTP_MissingIdempotencyKey(t *testing.T) {
 
 func TestOrgDisbursementHTTP_ForbiddenRole(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 	// Checker, not maker, tries to create a disbursement.
 	r := orgDisburseRouter(t, e, f.Checkers[0])
 
 	w := postDisburse(r, f.OrgID, map[string]any{
-		"phone": f.ReceiverPhone, "amount": 1_000_000,
+		"phone": f.ReceiverPhone, "amount": 4_000,
 	}, uuid.NewString())
 
 	if w.Code != http.StatusForbidden {
@@ -127,10 +127,10 @@ func TestOrgDisbursementHTTP_ForbiddenRole(t *testing.T) {
 
 func TestOrgDisbursementHTTP_IdempotentReplay(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 	r := orgDisburseRouter(t, e, f.MakerID)
 	key := uuid.NewString()
-	body := map[string]any{"phone": f.ReceiverPhone, "amount": 1_000_000, "note": "replay"}
+	body := map[string]any{"phone": f.ReceiverPhone, "amount": 4_000, "note": "replay"}
 
 	first := postDisburse(r, f.OrgID, body, key)
 	if first.Code != http.StatusCreated {

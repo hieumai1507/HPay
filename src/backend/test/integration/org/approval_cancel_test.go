@@ -16,9 +16,9 @@ import (
 func TestApprovalCancel_MakerCancelsPending(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,8 +36,8 @@ func TestApprovalCancel_MakerCancelsPending(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "failed" {
 		t.Fatalf("txn: want failed, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 2_000_000 {
-		t.Fatalf("org wallet untouched: want 2000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 8_000 {
+		t.Fatalf("org wallet untouched: want 8000, got %d", got)
 	}
 	if net := e.TxnLedgerNet(t, res.RefCode, f.OrgWallet); net != 0 {
 		t.Fatal("no ledger entries expected on cancel")
@@ -49,9 +49,9 @@ func TestApprovalCancel_MakerCancelsPending(t *testing.T) {
 func TestApprovalCancel_CheckerCannotCancel(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,9 +71,9 @@ func TestApprovalCancel_CheckerCannotCancel(t *testing.T) {
 func TestApprovalCancel_OutsiderGetsNotFound(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,9 +91,9 @@ func TestApprovalCancel_OutsiderGetsNotFound(t *testing.T) {
 func TestApprovalCancel_AlreadyFinalizedRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

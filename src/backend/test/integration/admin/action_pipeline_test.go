@@ -19,14 +19,14 @@ import (
 func TestActionPipelineWiring_P2PCallsGateway(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	res, err := e.Svc.ExecuteEngineRequest(ctx, transfer.EngineRequestInput{
 		ServiceCode:   "P2P_TRANSFER",
 		SenderUserID:  senderID,
 		ReceiverPhone: receiverPhone,
-		Amount:        100_000,
+		Amount:        400,
 		Idempotency:   wallet.NewRefCode(),
 	})
 	if err != nil {
@@ -53,7 +53,7 @@ func TestActionPipelineWiring_P2PCallsGateway(t *testing.T) {
 func TestActionPipelineWiring_EmptyActionsStillCompletes(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 1_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 4_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	// MONEY_REQUEST: services.actions='[]' in the seed — ACTIONS_BEFORE_GL must
@@ -63,7 +63,7 @@ func TestActionPipelineWiring_EmptyActionsStillCompletes(t *testing.T) {
 		ServiceCode:   "MONEY_REQUEST",
 		SenderUserID:  senderID,
 		ReceiverPhone: receiverPhone,
-		Amount:        100_000,
+		Amount:        400,
 		Idempotency:   wallet.NewRefCode(),
 	})
 	if err != nil {

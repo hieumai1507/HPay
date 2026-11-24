@@ -33,9 +33,9 @@ func testLimitByKycTier(t *testing.T) {
 		ok     int64
 		tooBig int64
 	}{
-		{"OFFER_CUST_L0", 2_500_000, 2_500_001},
-		{"OFFER_CUST_L1", 62_500_000, 62_500_001},
-		{"OFFER_CUST_L2", 250_000_000, 250_000_001},
+		{"OFFER_CUST_L0", 10_000, 10_001},
+		{"OFFER_CUST_L1", 250_000, 250_001},
+		{"OFFER_CUST_L2", 1_000_000, 1_000_001},
 	}
 	for _, c := range cases {
 		e.SetOffer(t, u, c.offer)
@@ -55,10 +55,10 @@ func TestOfferLimits_NoOfferRowFallsBackToL0(t *testing.T) {
 	if e.OfferCodeOf(t, u) != "" {
 		t.Fatal("setup: a fresh user must have no offer row")
 	}
-	if err := e.GuardCheck(u, 2_500_000); err != nil {
+	if err := e.GuardCheck(u, 10_000); err != nil {
 		t.Fatalf("2.5M must pass at L0: %v", err)
 	}
-	if err := e.GuardCheck(u, 3_000_000); !errors.Is(err, offerguard.ErrLimitPerTxn) {
+	if err := e.GuardCheck(u, 12_000); !errors.Is(err, offerguard.ErrLimitPerTxn) {
 		t.Fatalf("3M must be refused at L0, got %v", err)
 	}
 }
@@ -167,7 +167,7 @@ func TestOfferLimits_InactiveOfferBlocksAndDoesNotFallBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer e.Pool.Exec(ctx, `UPDATE offers SET is_active=true WHERE code='OFFER_CUST_L1'`)
-	if err := e.GuardCheck(u, 1_000); !errors.Is(err, offerguard.ErrOfferInactive) {
+	if err := e.GuardCheck(u, 4); !errors.Is(err, offerguard.ErrOfferInactive) {
 		t.Fatalf("an inactive offer must block, got %v", err)
 	}
 }
@@ -195,8 +195,8 @@ func TestUsersMe_ReportsOfferLimits(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.TxnLimit != 62_500_000 || body.Offer.Code != "OFFER_CUST_L1" || body.Offer.PerTxn != 62_500_000 ||
-		body.Offer.DailyLimit != 125_000_000 || body.Offer.MonthlyLimit != 625_000_000 {
+	if body.TxnLimit != 250_000 || body.Offer.Code != "OFFER_CUST_L1" || body.Offer.PerTxn != 250_000 ||
+		body.Offer.DailyLimit != 500_000 || body.Offer.MonthlyLimit != 2_500_000 {
 		t.Fatalf("unexpected /users/me offer block: %s", w.Body.String())
 	}
 }
@@ -207,13 +207,59 @@ func TestOfferLimits_LegacyPathsUseTheOffer(t *testing.T) {
 	ctx := context.Background()
 	u, uw, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, u, "OFFER_CUST_L0")
-	if _, err := e.Wsvc.Topup(ctx, u, 3_000_000, uuid.NewString()); !errors.Is(err, wallet.ErrLimitExceeded) && !errors.Is(err, offerguard.ErrLimitPerTxn) {
+	if _, err := e.Wsvc.Topup(ctx, u, 12_000, uuid.NewString()); !errors.Is(err, wallet.ErrLimitExceeded) && !errors.Is(err, offerguard.ErrLimitPerTxn) {
 		t.Fatalf("L0 top-up above 2.5M must be refused, got %v", err)
 	}
 	e.SetOffer(t, u, "OFFER_CUST_L1")
-	if _, err := e.Wsvc.Topup(ctx, u, 3_000_000, uuid.NewString()); err != nil {
+	if _, err := e.Wsvc.Topup(ctx, u, 12_000, uuid.NewString()); err != nil {
 		t.Fatalf("L1 top-up of 3M must pass: %v", err)
 	}
 	_ = uw
 	_ = transfer.ErrReceiverNotFound
+}
+
+// AC-5 and AC-9: the seeded limits equal the conversion table of the spec (cents).
+func TestOfferLimits_SeededTableMatchesSpec(t *testing.T) {
+	e := testkit.NewEnv(t, "")
+	type row struct{ perTxn, daily, monthly, ceiling int64 }
+	want := map[string]row{
+		"OFFER_CUST_L0":     {10_000, 10_000, 100_000, 25_000},
+		"OFFER_CUST_L1":     {250_000, 500_000, 2_500_000, 1_000_000},
+		"OFFER_CUST_L2":     {1_000_000, 1_500_000, 10_000_000, 5_000_000},
+		"OFFER_BIZ_STARTER": {400_000, 2_000_000, 8_000_000, 4_000_000},
+	}
+	for code, w := range want {
+		var got row
+		err := e.Pool.QueryRow(context.Background(), `
+			SELECT os.max_amount_per_txn, os.daily_limit, os.monthly_limit, o.primary_pocket_max
+			FROM offers o JOIN offer_services os ON os.offer_id = o.id JOIN services s ON s.id = os.service_id
+			WHERE o.code = $1 AND s.code = 'P2P_TRANSFER'`, code).Scan(&got.perTxn, &got.daily, &got.monthly, &got.ceiling)
+		if err != nil {
+			t.Fatalf("%s: %v", code, err)
+		}
+		if got != w {
+			t.Errorf("%s: got %+v, want %+v", code, got, w)
+		}
+	}
+}
+
+// AC-5: the seeded auth bands are PIN below 8,000, OTP to 200,000, 2FA above.
+func TestOfferLimits_SeededAuthMatrix(t *testing.T) {
+	e := testkit.NewEnv(t, "")
+	u, _, _ := e.UserWithMoney(t, 0)
+	e.SetOffer(t, u, "OFFER_CUST_L2")
+	g := offerguard.New(e.Pool)
+	cases := []struct {
+		amount int64
+		want   string
+	}{{1, "pin"}, {7_999, "pin"}, {8_000, "otp"}, {200_000, "otp"}, {200_001, "2fa"}}
+	for _, c := range cases {
+		d, err := g.Check(context.Background(), u, "P2P_TRANSFER", "p2p", c.amount)
+		if err != nil {
+			t.Fatalf("%d: %v", c.amount, err)
+		}
+		if string(d.AuthMethod) != c.want {
+			t.Errorf("amount %d: auth %q, want %q", c.amount, d.AuthMethod, c.want)
+		}
+	}
 }

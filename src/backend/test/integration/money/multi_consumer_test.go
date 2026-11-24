@@ -36,12 +36,12 @@ func TestP1_ManyConsumersFinishEveryTransferOnce(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	const nTransfers = 40
-	sender, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	sender, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
 	refs := make([]string, 0, nTransfers)
 	for i := 0; i < nTransfers; i++ {
-		res, err := e.Svc.Transfer(ctx, sender, receiverPhone, 10_000, "p1", uuid.NewString())
+		res, err := e.Svc.Transfer(ctx, sender, receiverPhone, 40, "p1", uuid.NewString())
 		if err != nil {
 			t.Fatalf("transfer %d: %v", i, err)
 		}
@@ -73,8 +73,8 @@ func TestP1_ManyConsumersFinishEveryTransferOnce(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != int64(nTransfers)*10_000 {
-		t.Fatalf("receiver balance: want %d, got %d (money moved more or less than once)", nTransfers*10_000, got)
+	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != int64(nTransfers)*40 {
+		t.Fatalf("receiver balance: want %d, got %d (money moved more or less than once)", nTransfers*40, got)
 	}
 	var mismatched int
 	if err := e.Pool.QueryRow(ctx, `

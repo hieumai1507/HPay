@@ -17,11 +17,11 @@ import (
 func TestOrgDisbursementTwoTierEndToEnd(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1, 2}, []approval.Tier{
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1, 2}, []approval.Tier{
 		{Level: 1, RequiredApprovals: 1}, {Level: 2, RequiredApprovals: 1},
 	})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 5_000_000, "salary", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 20_000, "salary", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,11 +67,11 @@ func TestOrgDisbursementTwoTierEndToEnd(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("txn final status: want completed, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 5_000_000 {
-		t.Fatalf("org wallet: want 5000000 left, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 20_000 {
+		t.Fatalf("org wallet: want 20_000 left, got %d", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, f.ReceiverWallet); got != 5_000_000 {
-		t.Fatalf("receiver: want 5000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.ReceiverWallet); got != 20_000 {
+		t.Fatalf("receiver: want 20_000, got %d", got)
 	}
 
 	// Timeline shows the human gate as a completed step.
@@ -93,9 +93,9 @@ func TestOrgDisbursementTwoTierEndToEnd(t *testing.T) {
 func TestOrgDisbursementRejectFailsClean(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,8 +114,8 @@ func TestOrgDisbursementRejectFailsClean(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "failed" {
 		t.Fatalf("txn: want failed, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 2_000_000 {
-		t.Fatalf("org wallet untouched: want 2000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 8_000 {
+		t.Fatalf("org wallet untouched: want 8000, got %d", got)
 	}
 	if net := e.TxnLedgerNet(t, res.RefCode, f.OrgWallet); net != 0 {
 		t.Fatal("no ledger entries expected on reject")
@@ -128,9 +128,9 @@ func TestOrgDisbursementRejectFailsClean(t *testing.T) {
 func TestEdge_E08_CheckerRaceSingleFinalize(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 3_000_000, []int{1, 1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 12_000, []int{1, 1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "race", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "race", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,8 +187,8 @@ func TestEdge_E08_CheckerRaceSingleFinalize(t *testing.T) {
 		t.Fatalf("txn: want completed, got %s", got)
 	}
 	// Money moved exactly once.
-	if got := testutil.WalletBalance(t, e.Pool, f.ReceiverWallet); got != 1_000_000 {
-		t.Fatalf("receiver: want 1000000 exactly once, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.ReceiverWallet); got != 4_000 {
+		t.Fatalf("receiver: want 4000 exactly once, got %d", got)
 	}
 }
 
@@ -198,9 +198,9 @@ func TestEdge_E08_CheckerRaceSingleFinalize(t *testing.T) {
 func TestEdge_E09_PolicySnapshotSurvivesPolicyChange(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1, 2}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1, 2}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	resA, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "under v1", uuid.NewString())
+	resA, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "under v1", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestEdge_E09_PolicySnapshotSurvivesPolicyChange(t *testing.T) {
 	}
 
 	// A NEW disbursement snapshots v2 and needs the second tier.
-	resB, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "under v2", uuid.NewString())
+	resB, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "under v2", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,9 +251,9 @@ func TestEdge_E09_PolicySnapshotSurvivesPolicyChange(t *testing.T) {
 func TestEdge_E10_ExpiredApprovalFailsClean(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "expire me", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "expire me", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,8 +290,8 @@ func TestEdge_E10_ExpiredApprovalFailsClean(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "failed" {
 		t.Fatalf("txn: want failed, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 2_000_000 {
-		t.Fatalf("org wallet untouched: want 2000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, f.OrgWallet); got != 8_000 {
+		t.Fatalf("org wallet untouched: want 8000, got %d", got)
 	}
 	if net := e.TxnLedgerNet(t, res.RefCode, f.OrgWallet); net != 0 {
 		t.Fatal("no ledger entries expected on expiry")
@@ -315,11 +315,11 @@ func TestEdge_E10_ExpiredApprovalFailsClean(t *testing.T) {
 func TestApprovalEligibility(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1, 2}, []approval.Tier{
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1, 2}, []approval.Tier{
 		{Level: 1, RequiredApprovals: 1}, {Level: 2, RequiredApprovals: 1},
 	})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,8 +340,8 @@ func TestApprovalEligibility(t *testing.T) {
 		t.Fatalf("L2 at tier 1: want ErrWrongLevel, got %v", err)
 	}
 	// No matching policy → maker gets an immediate error on a NEW org.
-	f2 := testkit.NewOrgFixture(t, e, 1_000_000, []int{1}, nil) // no policy installed
-	if _, err := e.Osvc.CreateDisbursement(ctx, f2.MakerID, f2.OrgID, f2.ReceiverPhone, 500_000, "", uuid.NewString()); !testkit.ErrIs(err, approval.ErrNoPolicy) {
+	f2 := testkit.NewOrgFixture(t, e, 4_000, []int{1}, nil) // no policy installed
+	if _, err := e.Osvc.CreateDisbursement(ctx, f2.MakerID, f2.OrgID, f2.ReceiverPhone, 2_000, "", uuid.NewString()); !testkit.ErrIs(err, approval.ErrNoPolicy) {
 		t.Fatalf("no policy: want ErrNoPolicy, got %v", err)
 	}
 }
@@ -351,7 +351,7 @@ func TestIntegration_ListUserOrgs(t *testing.T) {
 	ctx := context.Background()
 
 	// Create org with 10M funding
-	f := testkit.NewOrgFixture(t, e, 10_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 40_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
 	// 1. Admin checks their list
 	orgsAdmin, err := e.Osvc.ListUserOrganizations(ctx, f.AdminID)
@@ -367,8 +367,8 @@ func TestIntegration_ListUserOrgs(t *testing.T) {
 	if orgsAdmin[0].Role != "admin" {
 		t.Fatalf("Admin role: want admin, got %s", orgsAdmin[0].Role)
 	}
-	if orgsAdmin[0].Balance != 10_000_000 {
-		t.Fatalf("Admin org balance: want 10000000, got %d", orgsAdmin[0].Balance)
+	if orgsAdmin[0].Balance != 40_000 {
+		t.Fatalf("Admin org balance: want 40_000, got %d", orgsAdmin[0].Balance)
 	}
 
 	// 2. Maker checks their list

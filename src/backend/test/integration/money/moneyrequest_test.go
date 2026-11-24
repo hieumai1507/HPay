@@ -20,9 +20,9 @@ func TestMoneyRequestPayEndToEnd(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	requesterID, requesterWallet, _ := e.UserWithMoney(t, 0)
-	payerID, payerWallet, payerPhone := e.UserWithMoney(t, 2_000_000)
+	payerID, payerWallet, payerPhone := e.UserWithMoney(t, 8_000)
 
-	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 200_000, "dinner", uuid.NewString())
+	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 800, "dinner", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,19 +34,19 @@ func TestMoneyRequestPayEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pay: %v", err)
 	}
-	if res.Amount != 200_000 {
-		t.Fatalf("amount: want 200000, got %d", res.Amount)
+	if res.Amount != 800 {
+		t.Fatalf("amount: want 800, got %d", res.Amount)
 	}
 	e.Drain(t)
 
 	if got := e.TxnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("txn: want completed, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, payerWallet); got != 2_000_000-res.Total {
-		t.Fatalf("payer balance: want %d, got %d", 2_000_000-res.Total, got)
+	if got := testutil.WalletBalance(t, e.Pool, payerWallet); got != 8_000-res.Total {
+		t.Fatalf("payer balance: want %d, got %d", 8_000-res.Total, got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, requesterWallet); got != 200_000 {
-		t.Fatalf("requester balance: want 200000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, requesterWallet); got != 800 {
+		t.Fatalf("requester balance: want 800, got %d", got)
 	}
 
 	d, err := e.Msvc.DetailFor(ctx, requesterID, req.ID)
@@ -71,11 +71,11 @@ func TestSplitBillThreeWay(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	requesterID, _, _ := e.UserWithMoney(t, 0)
-	p1ID, _, p1Phone := e.UserWithMoney(t, 500_000)
-	p2ID, _, p2Phone := e.UserWithMoney(t, 500_000)
-	p3ID, _, p3Phone := e.UserWithMoney(t, 500_000)
+	p1ID, _, p1Phone := e.UserWithMoney(t, 2_000)
+	p2ID, _, p2Phone := e.UserWithMoney(t, 2_000)
+	p3ID, _, p3Phone := e.UserWithMoney(t, 2_000)
 
-	split, err := e.Msvc.CreateSplit(ctx, requesterID, []string{p1Phone, p2Phone, p3Phone}, 300_000, "trip", nil, uuid.NewString())
+	split, err := e.Msvc.CreateSplit(ctx, requesterID, []string{p1Phone, p2Phone, p3Phone}, 1_200, "trip", nil, uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +86,8 @@ func TestSplitBillThreeWay(t *testing.T) {
 	for _, r := range split.Requests {
 		sum += r.Amount
 	}
-	if sum != 300_000 {
-		t.Fatalf("split amounts sum to %d, want 300000", sum)
+	if sum != 1_200 {
+		t.Fatalf("split amounts sum to %d, want 1200", sum)
 	}
 
 	if _, err := e.Msvc.Pay(ctx, p1ID, split.Requests[0].ID, uuid.NewString()); err != nil {
@@ -132,7 +132,7 @@ func TestMoneyRequestCancelAndActorGuards(t *testing.T) {
 	payerID, _, payerPhone := e.UserWithMoney(t, 0)
 	outsiderID, _, _ := e.UserWithMoney(t, 0)
 
-	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 50_000, "", uuid.NewString())
+	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 200, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,9 +166,9 @@ func TestEdge_E19_ExpiryRacePay(t *testing.T) {
 
 	t.Run("payer_loses_before_sweeper_runs", func(t *testing.T) {
 		requesterID, _, _ := e.UserWithMoney(t, 0)
-		payerID, _, payerPhone := e.UserWithMoney(t, 500_000)
+		payerID, _, payerPhone := e.UserWithMoney(t, 2_000)
 
-		req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 100_000, "", uuid.NewString())
+		req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 400, "", uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,9 +192,9 @@ func TestEdge_E19_ExpiryRacePay(t *testing.T) {
 
 	t.Run("pay_vs_sweeper_concurrent", func(t *testing.T) {
 		requesterID, _, _ := e.UserWithMoney(t, 0)
-		payerID, _, payerPhone := e.UserWithMoney(t, 500_000)
+		payerID, _, payerPhone := e.UserWithMoney(t, 2_000)
 
-		req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 100_000, "", uuid.NewString())
+		req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 400, "", uuid.NewString())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -252,10 +252,10 @@ func TestMoneyRequestRemind(t *testing.T) {
 	ctx := context.Background()
 
 	requesterID, _, _ := e.UserWithMoney(t, 0)
-	payerID, _, payerPhone := e.UserWithMoney(t, 500_000)
+	payerID, _, payerPhone := e.UserWithMoney(t, 2_000)
 	outsiderID, _, _ := e.UserWithMoney(t, 0)
 
-	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 100_000, "trip", uuid.NewString())
+	req, err := e.Msvc.Create(ctx, requesterID, payerPhone, 400, "trip", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

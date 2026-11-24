@@ -49,16 +49,16 @@ func TestFraudBlocksHighRisk(t *testing.T) {
 	// verified tier moves the user to offer L1 (62.5M per transaction); fund via topup so the
 	// funding row is type=topup and never pollutes the p2p average/velocity.
 	verifyKYC(t, e, senderID)
-	if _, err := e.Wsvc.Topup(ctx, senderID, 50_000_000, uuid.NewString()); err != nil {
+	if _, err := e.Wsvc.Topup(ctx, senderID, 200_000, uuid.NewString()); err != nil {
 		t.Fatal(err)
 	}
 	_, histWallet, _ := e.UserWithMoney(t, 0)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
 	// 4 recent small transfers -> velocity(30); low average so a big amount spikes.
-	insertP2PHistory(t, e, senderID, senderWallet, histWallet, 4, 100_000)
+	insertP2PHistory(t, e, senderID, senderWallet, histWallet, 4, 400)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 20_000_000, "big", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 80_000, "big", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,13 +88,13 @@ func TestFraudFlagsGreyZone(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	senderID, senderWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, senderID, senderWallet, 5_000_000)
+	testkit.Fund(t, e.Pool, senderID, senderWallet, 20_000)
 	_, histWallet, _ := e.UserWithMoney(t, 0)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
-	insertP2PHistory(t, e, senderID, senderWallet, histWallet, 4, 200_000) // velocity 30
+	insertP2PHistory(t, e, senderID, senderWallet, histWallet, 4, 800) // velocity 30
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 200_000, "grey", uuid.NewString()) // + new receiver 20 = 50
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 800, "grey", uuid.NewString()) // + new receiver 20 = 50
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,8 +103,8 @@ func TestFraudFlagsGreyZone(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("flagged (not blocked) txn must complete, got %s", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 200_000 {
-		t.Fatalf("receiver: want 200000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 800 {
+		t.Fatalf("receiver: want 800, got %d", got)
 	}
 
 	// Flag exists with open status; the mock advisory merges asynchronously.

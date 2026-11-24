@@ -29,15 +29,15 @@ import (
 func TestIdempotency_Transfer_ReplaySameUserSamePayload(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	receiverID, _, _ := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
-	first, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 100_000, "lunch", key)
+	first, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 400, "lunch", key)
 	if err != nil {
 		t.Fatalf("first: %v", err)
 	}
-	second, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 100_000, "lunch", key)
+	second, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 400, "lunch", key)
 	if err != nil {
 		t.Fatalf("replay: %v", err)
 	}
@@ -58,18 +58,18 @@ func TestIdempotency_Transfer_ReplaySameUserSamePayload(t *testing.T) {
 func TestIdempotency_Transfer_SameKeyDifferentPayloadRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 8_000)
 	receiverID, _, _ := e.UserWithMoney(t, 0)
 	otherID, _, _ := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
-	if _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 100_000, "a", key); err != nil {
+	if _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 400, "a", key); err != nil {
 		t.Fatalf("first: %v", err)
 	}
 	cases := map[string]func() error{
-		"amount":   func() error { _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 200_000, "a", key); return err },
-		"receiver": func() error { _, err := e.Svc.TransferToUser(ctx, senderID, otherID, 100_000, "a", key); return err },
-		"note":     func() error { _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 100_000, "b", key); return err },
+		"amount":   func() error { _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 800, "a", key); return err },
+		"receiver": func() error { _, err := e.Svc.TransferToUser(ctx, senderID, otherID, 400, "a", key); return err },
+		"note":     func() error { _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 400, "b", key); return err },
 	}
 	for name, call := range cases {
 		if err := call(); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
@@ -89,25 +89,25 @@ func TestIdempotency_TwoUsersSameKeyAreIndependent(t *testing.T) {
 	b, bWallet, _ := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
-	ra, err := e.Wsvc.Topup(ctx, a, 300_000, key)
+	ra, err := e.Wsvc.Topup(ctx, a, 1_200, key)
 	if err != nil {
 		t.Fatalf("A: %v", err)
 	}
-	rb, err := e.Wsvc.Topup(ctx, b, 700_000, key) // different payload, same key, other user
+	rb, err := e.Wsvc.Topup(ctx, b, 2_800, key) // different payload, same key, other user
 	if err != nil {
 		t.Fatalf("B must not collide with A's key: %v", err)
 	}
-	if rb.Duplicate || rb.RefCode == ra.RefCode || rb.Amount != 700_000 {
+	if rb.Duplicate || rb.RefCode == ra.RefCode || rb.Amount != 2_800 {
 		t.Fatalf("B received A's transaction: A=%+v B=%+v", ra, rb)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, aWallet); got != 300_000 {
+	if got := testutil.WalletBalance(t, e.Pool, aWallet); got != 1_200 {
 		t.Fatalf("A balance %d", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, bWallet); got != 700_000 {
+	if got := testutil.WalletBalance(t, e.Pool, bWallet); got != 2_800 {
 		t.Fatalf("B balance %d", got)
 	}
 	// each user still replays their own
-	ra2, err := e.Wsvc.Topup(ctx, a, 300_000, key)
+	ra2, err := e.Wsvc.Topup(ctx, a, 1_200, key)
 	if err != nil || !ra2.Duplicate || ra2.RefCode != ra.RefCode {
 		t.Fatalf("A replay: %+v %v", ra2, err)
 	}
@@ -118,22 +118,22 @@ func TestIdempotency_TwoUsersSameKeyAreIndependent(t *testing.T) {
 func TestIdempotency_MissingKeyRejectedInServices(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 8_000)
 	receiverID, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	if _, err := e.Svc.ExecuteEngineRequest(ctx, transferEngineInput(senderID, receiverPhone, "")); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
 		t.Fatalf("engine: want ErrIdempotencyKeyRequired, got %v", err)
 	}
-	if _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 1_000, "", ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
+	if _, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 4, "", ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
 		t.Fatalf("transfer: want ErrIdempotencyKeyRequired, got %v", err)
 	}
-	if _, err := e.Wsvc.Topup(ctx, senderID, 1_000, ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
+	if _, err := e.Wsvc.Topup(ctx, senderID, 4, ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
 		t.Fatalf("topup: want ErrIdempotencyKeyRequired, got %v", err)
 	}
-	if _, err := e.Msvc.Create(ctx, senderID, receiverPhone, 1_000, "", ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
+	if _, err := e.Msvc.Create(ctx, senderID, receiverPhone, 4, "", ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
 		t.Fatalf("money request create: want ErrIdempotencyKeyRequired, got %v", err)
 	}
-	if _, err := e.Msvc.CreateSplit(ctx, senderID, []string{receiverPhone}, 1_000, "", nil, ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
+	if _, err := e.Msvc.CreateSplit(ctx, senderID, []string{receiverPhone}, 4, "", nil, ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
 		t.Fatalf("split: want ErrIdempotencyKeyRequired, got %v", err)
 	}
 	if _, err := e.Msvc.Pay(ctx, senderID, uuid.New(), ""); !errors.Is(err, wallet.ErrIdempotencyKeyRequired) {
@@ -145,7 +145,7 @@ func TestIdempotency_MissingKeyRejectedInServices(t *testing.T) {
 func TestIdempotency_ConcurrentSameKeyOneTransaction(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, senderWallet, _ := e.UserWithMoney(t, 1_500_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 6_000)
 	receiverID, _, _ := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
@@ -158,7 +158,7 @@ func TestIdempotency_ConcurrentSameKeyOneTransaction(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			r, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 100_000, "race", key)
+			r, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 400, "race", key)
 			results[i], totals[i], errs[i] = r.RefCode, r.Total, err
 		}(i)
 	}
@@ -182,17 +182,17 @@ func TestIdempotency_ConcurrentSameKeyOneTransaction(t *testing.T) {
 
 func transferEngineInput(sender uuid.UUID, phone, key string) transfer.EngineRequestInput {
 	return transfer.EngineRequestInput{ServiceCode: "P2P_TRANSFER", SenderUserID: sender,
-		ReceiverPhone: phone, Amount: 1_000, Idempotency: key}
+		ReceiverPhone: phone, Amount: 4, Idempotency: key}
 }
 
 // TC-IDM-006: engine path (HTTP) - replay, 409 on a different payload, other user unaffected.
 func TestIdempotency_EngineHTTP_ReplayConflictAndIsolation(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	a, _, _ := e.UserWithMoney(t, 1_500_000)
-	b, _, _ := e.UserWithMoney(t, 1_500_000)
+	a, _, _ := e.UserWithMoney(t, 6_000)
+	b, _, _ := e.UserWithMoney(t, 6_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
-	body := map[string]any{"service_code": "P2P_TRANSFER", "amount": 100_000, "receiver_phone": receiverPhone}
+	body := map[string]any{"service_code": "P2P_TRANSFER", "amount": 400, "receiver_phone": receiverPhone}
 
 	w1 := postTransactionRequest(transactionRequestRouter(t, e, a), body, key)
 	if w1.Code != http.StatusOK {
@@ -205,14 +205,14 @@ func TestIdempotency_EngineHTTP_ReplayConflictAndIsolation(t *testing.T) {
 
 	// different payload, same user + key -> 409
 	w2 := postTransactionRequest(transactionRequestRouter(t, e, a),
-		map[string]any{"service_code": "P2P_TRANSFER", "amount": 200_000, "receiver_phone": receiverPhone}, key)
+		map[string]any{"service_code": "P2P_TRANSFER", "amount": 800, "receiver_phone": receiverPhone}, key)
 	if w2.Code != http.StatusConflict || !bytes.Contains(w2.Body.Bytes(), []byte("ERR_IDEMPOTENCY_KEY_REUSED")) {
 		t.Fatalf("different payload: want 409 ERR_IDEMPOTENCY_KEY_REUSED, got %d %s", w2.Code, w2.Body)
 	}
 
 	// another user with the same key -> independent transaction, not A's
 	wb := postTransactionRequest(transactionRequestRouter(t, e, b),
-		map[string]any{"service_code": "P2P_TRANSFER", "amount": 300_000, "receiver_phone": receiverPhone}, key)
+		map[string]any{"service_code": "P2P_TRANSFER", "amount": 1_200, "receiver_phone": receiverPhone}, key)
 	if wb.Code != http.StatusOK {
 		t.Fatalf("B with A's key: want 200, got %d %s", wb.Code, wb.Body)
 	}
@@ -221,7 +221,7 @@ func TestIdempotency_EngineHTTP_ReplayConflictAndIsolation(t *testing.T) {
 		Amount  int64  `json:"amount"`
 	}
 	_ = json.Unmarshal(wb.Body.Bytes(), &rb)
-	if rb.RefCode == r1.RefCode || rb.Amount != 300_000 {
+	if rb.RefCode == r1.RefCode || rb.Amount != 1_200 {
 		t.Fatalf("B got A's transaction: A=%s B=%+v", r1.RefCode, rb)
 	}
 }
@@ -235,11 +235,11 @@ func TestIdempotency_MoneyRequestCreate(t *testing.T) {
 	_, _, payerPhone := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
-	first, err := e.Msvc.Create(ctx, requester, payerPhone, 150_000, "dinner", key)
+	first, err := e.Msvc.Create(ctx, requester, payerPhone, 600, "dinner", key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := e.Msvc.Create(ctx, requester, payerPhone, 150_000, "dinner", key)
+	again, err := e.Msvc.Create(ctx, requester, payerPhone, 600, "dinner", key)
 	if err != nil || again.ID != first.ID {
 		t.Fatalf("replay must return the same request: %+v %v", again, err)
 	}
@@ -248,11 +248,11 @@ func TestIdempotency_MoneyRequestCreate(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("want 1 money request, got %d", n)
 	}
-	if _, err := e.Msvc.Create(ctx, requester, payerPhone, 999_000, "dinner", key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
+	if _, err := e.Msvc.Create(ctx, requester, payerPhone, 3_996, "dinner", key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
 		t.Fatalf("different amount: want ErrIdempotencyKeyReused, got %v", err)
 	}
 	// another requester, same key -> independent
-	o, err := e.Msvc.Create(ctx, other, payerPhone, 150_000, "dinner", key)
+	o, err := e.Msvc.Create(ctx, other, payerPhone, 600, "dinner", key)
 	if err != nil || o.ID == first.ID {
 		t.Fatalf("other user must get an independent request: %+v %v", o, err)
 	}
@@ -266,11 +266,11 @@ func TestIdempotency_MoneyRequestSplit(t *testing.T) {
 	_, _, p2 := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
 
-	first, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 300_000, "trip", nil, key)
+	first, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 1_200, "trip", nil, key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 300_000, "trip", nil, key)
+	again, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 1_200, "trip", nil, key)
 	if err != nil {
 		t.Fatalf("replay: %v", err)
 	}
@@ -282,10 +282,10 @@ func TestIdempotency_MoneyRequestSplit(t *testing.T) {
 	if n != 2 {
 		t.Fatalf("want 2 rows, got %d", n)
 	}
-	if _, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 400_000, "trip", nil, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
+	if _, err := e.Msvc.CreateSplit(ctx, requester, []string{p1, p2}, 1_600, "trip", nil, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
 		t.Fatalf("different total: want ErrIdempotencyKeyReused, got %v", err)
 	}
-	if _, err := e.Msvc.CreateSplit(ctx, requester, []string{p1}, 300_000, "trip", nil, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
+	if _, err := e.Msvc.CreateSplit(ctx, requester, []string{p1}, 1_200, "trip", nil, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
 		t.Fatalf("different payers: want ErrIdempotencyKeyReused, got %v", err)
 	}
 }
@@ -295,12 +295,12 @@ func TestIdempotency_MoneyRequestPay(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	requester, _, _ := e.UserWithMoney(t, 0)
-	payer, _, payerPhone := e.UserWithMoney(t, 1_500_000)
-	r1, err := e.Msvc.Create(ctx, requester, payerPhone, 100_000, "one", uuid.NewString())
+	payer, _, payerPhone := e.UserWithMoney(t, 6_000)
+	r1, err := e.Msvc.Create(ctx, requester, payerPhone, 400, "one", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2, err := e.Msvc.Create(ctx, requester, payerPhone, 100_000, "two", uuid.NewString())
+	r2, err := e.Msvc.Create(ctx, requester, payerPhone, 400, "two", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,13 +331,13 @@ func TestIdempotency_Topup_DifferentAmountRejected(t *testing.T) {
 	ctx := context.Background()
 	u, w, _ := e.UserWithMoney(t, 0)
 	key := uuid.NewString()
-	if _, err := e.Wsvc.Topup(ctx, u, 100_000, key); err != nil {
+	if _, err := e.Wsvc.Topup(ctx, u, 400, key); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.Wsvc.Topup(ctx, u, 200_000, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
+	if _, err := e.Wsvc.Topup(ctx, u, 800, key); !errors.Is(err, wallet.ErrIdempotencyKeyReused) {
 		t.Fatalf("want ErrIdempotencyKeyReused, got %v", err)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, w); got != 100_000 {
+	if got := testutil.WalletBalance(t, e.Pool, w); got != 400 {
 		t.Fatalf("balance %d", got)
 	}
 }

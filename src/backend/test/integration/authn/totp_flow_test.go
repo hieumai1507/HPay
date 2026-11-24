@@ -17,7 +17,7 @@ import (
 	"github.com/hieumai1507/hpay-backend/test/testkit"
 )
 
-const bigAmount = 60_000_000
+const bigAmount = 240_000
 
 // twoFactorSender funds a user (L2 offer, PIN set), returns the user, receiver phone and receiver wallet.
 func twoFactorSender(t *testing.T, e *testkit.Env) (uuid.UUID, string, uuid.UUID) {
@@ -25,7 +25,7 @@ func twoFactorSender(t *testing.T, e *testkit.Env) (uuid.UUID, string, uuid.UUID
 	sender, sw, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L2")
 	for i := 0; i < 2; i++ {
-		testkit.Fund(t, e.Pool, sender, sw, 40_000_000)
+		testkit.Fund(t, e.Pool, sender, sw, 160_000)
 	}
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, rw, rcv := e.UserWithMoney(t, 0)
@@ -156,11 +156,11 @@ func TestRequest_TwoFactorBandRefusedWithoutEnrolment(t *testing.T) {
 // TC-2FA-014
 func TestConfirm_PINBandIgnoresTOTP(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, sw, _ := e.UserWithMoney(t, 2_000_000)
+	sender, sw, _ := e.UserWithMoney(t, 8_000)
 	_ = sw
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, _, rcv := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcv, 100_000)
+	res := e.RequestP2P(t, sender, rcv, 400)
 	if res.AuthRequired != "pin" {
 		t.Fatalf("setup: want the pin band, got %q", res.AuthRequired)
 	}
@@ -186,7 +186,7 @@ func TestConfirm_TwoFactorAcceptsRecoveryCodeOnce(t *testing.T) {
 	}
 	e.Drain(t)
 	// a second large transaction (L2 cap allows it after more funding)
-	testkit.Fund(t, e.Pool, sender, mainWallet(t, e, sender), 70_000_000)
+	testkit.Fund(t, e.Pool, sender, mainWallet(t, e, sender), 280_000)
 	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	second, err := request2FA(e, sender, rcv)
 	if err != nil {

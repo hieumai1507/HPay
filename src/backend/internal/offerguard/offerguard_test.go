@@ -80,12 +80,12 @@ type offerLimits struct {
 
 func defaultLimits() offerLimits {
 	return offerLimits{
-		enabled: true, min: 0, perTxn: 10_000_000, daily: 20_000_000, monthly: 100_000_000,
+		enabled: true, min: 0, perTxn: 40_000, daily: 80_000, monthly: 400_000,
 		interval: 0,
 		tiers: []authTier{
-			{min: 0, max: 2_000_000, method: "pin"},
-			{min: 2_000_000, max: 5_000_000, method: "otp"},
-			{min: 5_000_000, max: 0, method: "2fa"}, // 0 => NULL ceiling
+			{min: 0, max: 8_000, method: "pin"},
+			{min: 8_000, max: 20_000, method: "otp"},
+			{min: 20_000, max: 0, method: "2fa"}, // 0 => NULL ceiling
 		},
 	}
 }
@@ -101,9 +101,9 @@ func TestAuthMatrix_FromDB(t *testing.T) {
 		amount int64
 		want   string
 	}{
-		{1_000_000, "pin"},
-		{3_000_000, "otp"},
-		{9_000_000, "2fa"},
+		{4_000, "pin"},
+		{12_000, "otp"},
+		{36_000, "2fa"},
 	}
 	for _, tc := range cases {
 		got, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, tc.amount)
@@ -125,7 +125,7 @@ func TestOfferGuard_LimitPerTxn(t *testing.T) {
 	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 10_000_001); !errors.Is(err, offerguard.ErrLimitPerTxn) {
 		t.Fatalf("over per-txn limit: err = %v, want ErrLimitPerTxn", err)
 	}
-	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 10_000_000); err != nil {
+	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 40_000); err != nil {
 		t.Fatalf("at per-txn limit should pass, got %v", err)
 	}
 }
@@ -138,7 +138,7 @@ func TestOfferGuard_ServiceDisabled(t *testing.T) {
 	userID := setupOffer(t, pool, "P2P_TRANSFER", lim)
 	g := offerguard.New(pool)
 
-	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 1_000); !errors.Is(err, offerguard.ErrServiceDisabled) {
+	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 4); !errors.Is(err, offerguard.ErrServiceDisabled) {
 		t.Fatalf("err = %v, want ErrServiceDisabled", err)
 	}
 }
@@ -147,7 +147,7 @@ func TestOfferGuard_ServiceDisabled(t *testing.T) {
 func TestOfferGuard_BelowMinimum(t *testing.T) {
 	pool := testutil.PoolFromEnv(t)
 	lim := defaultLimits()
-	lim.min = 50_000
+	lim.min = 200
 	userID := setupOffer(t, pool, "P2P_TRANSFER", lim)
 	g := offerguard.New(pool)
 
@@ -162,7 +162,7 @@ func TestOfferGuard_UnknownServiceRefused(t *testing.T) {
 	userID := setupOffer(t, pool, "P2P_TRANSFER", defaultLimits())
 	g := offerguard.New(pool)
 
-	if _, err := g.Check(context.Background(), userID, "NO_SUCH_SERVICE", store.TxnTypeP2p, 1_000); !errors.Is(err, offerguard.ErrServiceNotInOffer) {
+	if _, err := g.Check(context.Background(), userID, "NO_SUCH_SERVICE", store.TxnTypeP2p, 4); !errors.Is(err, offerguard.ErrServiceNotInOffer) {
 		t.Fatalf("err = %v, want ErrServiceNotInOffer", err)
 	}
 }

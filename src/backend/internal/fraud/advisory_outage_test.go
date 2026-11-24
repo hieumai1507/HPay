@@ -97,7 +97,7 @@ func TestAdvisoryOutage_NeverChangesTheDecision(t *testing.T) {
 	for name, adv := range cases {
 		t.Run(name, func(t *testing.T) {
 			// grey zone: velocity 30 + new receiver 20 = 50 -> flagged, money proceeds
-			h, txnID, _ := fraudTxn(t, 200_000, 4, 200_000)
+			h, txnID, _ := fraudTxn(t, 800, 4, 800)
 			done := make(chan struct{})
 			h.advisorOverride, h.advisoryDone = adv, func() { close(done) }
 			out, err := runStep(h, txnID)
@@ -125,7 +125,7 @@ func TestAdvisoryOutage_NeverChangesTheDecision(t *testing.T) {
 // A blocked transaction stays blocked when the advisor is down.
 func TestAdvisoryOutage_BlockedStaysBlocked(t *testing.T) {
 	// velocity + spike + new receiver >= 85
-	h, txnID, _ := fraudTxn(t, 20_000_000, 4, 100_000)
+	h, txnID, _ := fraudTxn(t, 80_000, 4, 400)
 	done := make(chan struct{})
 	h.advisorOverride, h.advisoryDone = stubAdvisor{err: errors.New("down")}, func() { close(done) }
 	if _, err := runStep(h, txnID); !errors.Is(err, ErrBlocked) {
@@ -139,7 +139,7 @@ func TestAdvisoryOutage_BlockedStaysBlocked(t *testing.T) {
 
 // The step returns while the advisor is still hanging: the payment does not wait for the LLM.
 func TestAdvisoryOutage_StepDoesNotWaitForAdvisor(t *testing.T) {
-	h, txnID, _ := fraudTxn(t, 200_000, 4, 200_000)
+	h, txnID, _ := fraudTxn(t, 800, 4, 800)
 	release := make(chan struct{})
 	started := make(chan struct{}, 1)
 	done := make(chan struct{})
@@ -163,7 +163,7 @@ func TestAdvisoryOutage_StepDoesNotWaitForAdvisor(t *testing.T) {
 
 // A rule-side failure is retryable (the step fails closed, nothing passes silently).
 func TestRuleSideFailureIsRetryableNotAPass(t *testing.T) {
-	h, _, _ := fraudTxn(t, 200_000, 0, 0)
+	h, _, _ := fraudTxn(t, 800, 0, 0)
 	_, err := runStep(h, uuid.New()) // transaction does not exist
 	var re workflow.RetryableError
 	if !errors.As(err, &re) {

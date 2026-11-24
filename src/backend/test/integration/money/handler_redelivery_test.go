@@ -35,7 +35,7 @@ type redeliveryScenario struct {
 // processingTxn inserts a funded sender, a receiver and a 'processing' p2p transaction.
 func processingTxn(t *testing.T, e *testkit.Env, amount int64) (txnID, sender, senderWallet, receiverWallet uuid.UUID, refCode string) {
 	t.Helper()
-	sender, senderWallet, _ = e.UserWithMoney(t, 2_000_000)
+	sender, senderWallet, _ = e.UserWithMoney(t, 8_000)
 	_, receiverWallet, _ = e.UserWithMoney(t, 0)
 	refCode = "G19" + uuid.NewString()[:10]
 	if err := e.Pool.QueryRow(context.Background(), `
@@ -78,7 +78,7 @@ func baseInput(txnID uuid.UUID, step string, ctxMap map[string]any) workflow.Ste
 func redeliveryScenarios() []redeliveryScenario {
 	simpleTxn := func(step string) func(t *testing.T, e *testkit.Env) redeliveryFixture {
 		return func(t *testing.T, e *testkit.Env) redeliveryFixture {
-			txnID, _, sw, rw, _ := processingTxn(t, e, 123_000)
+			txnID, _, sw, rw, _ := processingTxn(t, e, 492)
 			return redeliveryFixture{in: baseInput(txnID, step, nil), snapshot: txnSnapshot(e, txnID, sw, rw)}
 		}
 	}
@@ -88,13 +88,13 @@ func redeliveryScenarios() []redeliveryScenario {
 		{"confirmer", simpleTxn("CONFIRM")},
 		{"fraud", func(t *testing.T, e *testkit.Env) redeliveryFixture {
 			// velocity 30 + new receiver 20 = 50: the grey zone, a flag is written and money proceeds.
-			txnID, sender, sw, rw, _ := processingTxn(t, e, 200_000)
+			txnID, sender, sw, rw, _ := processingTxn(t, e, 800)
 			_, histWallet, _ := e.UserWithMoney(t, 0)
-			insertP2PHistory(t, e, sender, sw, histWallet, 4, 200_000)
+			insertP2PHistory(t, e, sender, sw, histWallet, 4, 800)
 			return redeliveryFixture{in: baseInput(txnID, "FRAUD_CHECK", nil), snapshot: txnSnapshot(e, txnID, sw, rw)}
 		}},
 		{"round_up", func(t *testing.T, e *testkit.Env) redeliveryFixture {
-			txnID, sender, sw, rw, _ := processingTxn(t, e, 123_000)
+			txnID, sender, sw, rw, _ := processingTxn(t, e, 492)
 			vaultID := newVault(t, e, sender, "G19 round-up")
 			setRoundUpTarget(t, e, sender, vaultID, true)
 			snap := txnSnapshot(e, txnID, sw, rw)
@@ -103,7 +103,7 @@ func redeliveryScenarios() []redeliveryScenario {
 			}}
 		}},
 		{"action_pipeline", func(t *testing.T, e *testkit.Env) redeliveryFixture {
-			txnID, _, sw, rw, ref := processingTxn(t, e, 123_000)
+			txnID, _, sw, rw, ref := processingTxn(t, e, 492)
 			code := "SVC_G19_" + strings.ToUpper(strings.ReplaceAll(uuid.NewString()[:8], "-", ""))
 			if _, err := e.Pool.Exec(context.Background(), `
 				INSERT INTO services (code, name, category, status, action_priority, actions)

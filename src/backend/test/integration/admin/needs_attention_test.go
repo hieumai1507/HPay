@@ -41,7 +41,7 @@ func parkReversal(t *testing.T, rig *testkit.AdminRig) (reqID uuid.UUID, ref str
 	t.Helper()
 	e := rig.E
 	ctx := context.Background()
-	ref, _, _, _, _ = e.CompletedTransfer(t, 123_000)
+	ref, _, _, _, _ = e.CompletedTransfer(t, 1_234)
 	cr, err := e.Revsvc.CreateRequest(ctx, e.SeedAdminID(t), ref, "receiver spent it")
 	if err != nil {
 		t.Fatal(err)
@@ -84,7 +84,7 @@ func TestAttention_ApprovalsFilterNeedsManual(t *testing.T) {
 	parked, ref := parkReversal(t, rig)
 
 	// a still-pending request must not show up under needs_manual
-	pendingRef, _, _, _, _ := rig.E.CompletedTransfer(t, 55_000)
+	pendingRef, _, _, _, _ := rig.E.CompletedTransfer(t, 220)
 	pend, err := rig.E.Revsvc.CreateRequest(context.Background(), rig.E.SeedAdminID(t), pendingRef, "still pending")
 	if err != nil {
 		t.Fatal(err)
@@ -98,8 +98,8 @@ func TestAttention_ApprovalsFilterNeedsManual(t *testing.T) {
 	if _, bad := rows[pend.RequestID.String()]; bad {
 		t.Errorf("pending request %s must not be listed under needs_manual", pend.RequestID)
 	}
-	if row["ref_code"] != ref || row["amount"].(float64) != 123_000 {
-		t.Errorf("row money facts: ref=%v amount=%v, want %s / 123000", row["ref_code"], row["amount"], ref)
+	if row["ref_code"] != ref || row["amount"].(float64) != 1_234 {
+		t.Errorf("row money facts: ref=%v amount=%v, want %s / 1234", row["ref_code"], row["amount"], ref)
 	}
 	if row["reason"] != "receiver balance too low" {
 		t.Errorf("row reason = %v, want the audit reason", row["reason"])

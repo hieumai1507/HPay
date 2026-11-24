@@ -20,10 +20,10 @@ import (
 func TestConfirm_OtherUsersTransactionIsNotFound(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	owner, _, _ := e.UserWithMoney(t, 2_000_000)
+	owner, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
 	stranger, _, _ := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, owner, rcvPhone, 100_000)
+	res := e.RequestP2P(t, owner, rcvPhone, 400)
 
 	_, errOther := e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{TransactionID: res.TransactionID, SenderUserID: stranger, PIN: testkit.ValidPIN})
 	_, errMissing := e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{TransactionID: uuid.New(), SenderUserID: stranger, PIN: testkit.ValidPIN})
@@ -39,9 +39,9 @@ func TestConfirm_OtherUsersTransactionIsNotFound(t *testing.T) {
 // TC-AUT-002: a request that needs a PIN does not move money or start the workflow.
 func TestRequest_PinTransferWaitsForAuth(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, sw, _ := e.UserWithMoney(t, 2_000_000)
+	sender, sw, _ := e.UserWithMoney(t, 8_000)
 	_, rw, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 	e.Drain(t)
 
 	if res.AuthRequired != "pin" {
@@ -61,7 +61,7 @@ func TestRequest_PinTransferWaitsForAuth(t *testing.T) {
 	if entries != 0 {
 		t.Fatalf("ledger entries before authentication = %d, want 0", entries)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, sw); got != 2_000_000 {
+	if got := testutil.WalletBalance(t, e.Pool, sw); got != 8_000 {
 		t.Errorf("sender balance changed to %d", got)
 	}
 	if got := testutil.WalletBalance(t, e.Pool, rw); got != 0 {
@@ -73,10 +73,10 @@ func TestRequest_PinTransferWaitsForAuth(t *testing.T) {
 func TestConfirm_WrongPinDoesNotStartWorkflow(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, sw, _ := e.UserWithMoney(t, 2_000_000)
+	sender, sw, _ := e.UserWithMoney(t, 8_000)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, rw, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 
 	for _, pin := range []string{"908172", ""} {
 		_, err := e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{TransactionID: res.TransactionID, SenderUserID: sender, PIN: pin})
@@ -102,11 +102,11 @@ func TestConfirm_WrongPinDoesNotStartWorkflow(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("after confirm: status %q, want completed (response status %q)", got, out.Status)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, rw); got != 100_000 {
-		t.Errorf("receiver balance = %d, want 100000", got)
+	if got := testutil.WalletBalance(t, e.Pool, rw); got != 400 {
+		t.Errorf("receiver balance = %d, want 400", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, sw); got != 2_000_000-100_000-res.Fee {
-		t.Errorf("sender balance = %d, want %d", got, 2_000_000-100_000-res.Fee)
+	if got := testutil.WalletBalance(t, e.Pool, sw); got != 8_000-400-res.Fee {
+		t.Errorf("sender balance = %d, want %d", got, 8_000-400-res.Fee)
 	}
 
 	// TC-AUT-013: confirming again returns the state and does not start a second workflow.
@@ -117,8 +117,8 @@ func TestConfirm_WrongPinDoesNotStartWorkflow(t *testing.T) {
 	if n := e.InstanceCount(t, res.TransactionID); n != 1 {
 		t.Fatalf("workflow instances after a second confirm = %d, want 1", n)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, rw); got != 100_000 {
-		t.Errorf("receiver balance after second confirm = %d, want 100000", got)
+	if got := testutil.WalletBalance(t, e.Pool, rw); got != 400 {
+		t.Errorf("receiver balance after second confirm = %d, want 400", got)
 	}
 }
 
@@ -126,10 +126,10 @@ func TestConfirm_WrongPinDoesNotStartWorkflow(t *testing.T) {
 func TestConfirm_ConcurrentStartsWorkflowOnce(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, rw, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 
 	const workers = 8
 	var wg sync.WaitGroup
@@ -154,17 +154,17 @@ func TestConfirm_ConcurrentStartsWorkflowOnce(t *testing.T) {
 	if n := e.InstanceCount(t, res.TransactionID); n != 1 {
 		t.Fatalf("workflow instances = %d, want exactly 1", n)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, rw); got != 100_000 {
-		t.Errorf("receiver balance = %d, want 100000 (moved once)", got)
+	if got := testutil.WalletBalance(t, e.Pool, rw); got != 400 {
+		t.Errorf("receiver balance = %d, want 400 (moved once)", got)
 	}
 }
 
 // TC-AUT-006: a user without a PIN cannot confirm a pin transaction.
 func TestConfirm_NoPinSet(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 	_, err := e.Svc.ExecuteEngineConfirm(context.Background(), transfer.EngineConfirmInput{TransactionID: res.TransactionID, SenderUserID: sender, PIN: testkit.ValidPIN})
 	if !errors.Is(err, auth.ErrPINNotSet) {
 		t.Fatalf("want ErrPINNotSet, got %v", err)
@@ -178,10 +178,10 @@ func TestConfirm_NoPinSet(t *testing.T) {
 func TestConfirm_LockoutRefusesCorrectPin(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 	for i := 0; i < 5; i++ {
 		_, _ = e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{TransactionID: res.TransactionID, SenderUserID: sender, PIN: "908172"})
 	}
@@ -203,14 +203,14 @@ func TestRequest_TwoFactorBandIsRefused(t *testing.T) {
 	sender, sw, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L2") // 60M is above the 2fa threshold and under the L2 cap
 	for i := 0; i < 2; i++ {
-		testkit.Fund(t, e.Pool, sender, sw, 40_000_000)
+		testkit.Fund(t, e.Pool, sender, sw, 160_000)
 	}
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
 	// funding posts p2p rows initiated by the sender, which the interval throttle would count
 	testkit.AgeUserTransactions(t, e, sender, "1 hour")
 	_, err := e.Svc.ExecuteEngineRequest(context.Background(), transfer.EngineRequestInput{
 		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: rcvPhone,
-		Amount: 60_000_000, Idempotency: wallet.NewRefCode(),
+		Amount: 240_000, Idempotency: wallet.NewRefCode(),
 	})
 	if !errors.Is(err, auth.ErrTOTPNotEnrolled) {
 		t.Fatalf("a request that needs 2fa without an enrolled factor must be refused with ErrTOTPNotEnrolled, got %v", err)
@@ -221,9 +221,9 @@ func TestRequest_TwoFactorBandIsRefused(t *testing.T) {
 func TestAwaitingAuth_ExpiresWithoutMovingMoney(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, sw, _ := e.UserWithMoney(t, 2_000_000)
+	sender, sw, _ := e.UserWithMoney(t, 8_000)
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
-	res := e.RequestP2P(t, sender, rcvPhone, 100_000)
+	res := e.RequestP2P(t, sender, rcvPhone, 400)
 	if _, err := e.Pool.Exec(ctx, `UPDATE transactions SET created_at = now() - interval '11 minutes' WHERE id=$1`, res.TransactionID); err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestAwaitingAuth_ExpiresWithoutMovingMoney(t *testing.T) {
 	if reason != "auth_expired" {
 		t.Errorf("failure_reason = %q, want auth_expired", reason)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, sw); got != 2_000_000 {
+	if got := testutil.WalletBalance(t, e.Pool, sw); got != 8_000 {
 		t.Errorf("sender balance changed to %d", got)
 	}
 	// a confirm after expiry must not resurrect it
@@ -259,11 +259,11 @@ func TestAwaitingAuth_ExpiresWithoutMovingMoney(t *testing.T) {
 func TestOfferGuard_AwaitingAuthDoesNotConsumeQuota(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 1_000_000)
+	sender, _, _ := e.UserWithMoney(t, 4_000)
 	_, _, rcvPhone := e.UserWithMoney(t, 0)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	for i := 0; i < 3; i++ {
-		_ = e.RequestP2P(t, sender, rcvPhone, 100_000)
+		_ = e.RequestP2P(t, sender, rcvPhone, 400)
 		// the interval throttle would reject an immediate second attempt; age the previous row
 		testkit.AgeUserTransactions(t, e, sender, "1 minute")
 	}

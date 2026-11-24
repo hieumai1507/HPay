@@ -21,22 +21,22 @@ func TestEdge_E01_IdempotentTopup(t *testing.T) {
 	svc := wallet.NewService(pool)
 	key := uuid.NewString()
 
-	first, err := svc.Topup(ctx, userID, 500_000, key)
+	first, err := svc.Topup(ctx, userID, 2_000, key)
 	if err != nil {
 		t.Fatalf("first topup: %v", err)
 	}
 	if first.Duplicate {
 		t.Fatal("first call must not be duplicate")
 	}
-	second, err := svc.Topup(ctx, userID, 500_000, key)
+	second, err := svc.Topup(ctx, userID, 2_000, key)
 	if err != nil {
 		t.Fatalf("second topup: %v", err)
 	}
 	if !second.Duplicate || second.RefCode != first.RefCode {
 		t.Fatalf("second call must return the SAME transaction: %+v vs %+v", second, first)
 	}
-	if got := testutil.WalletBalance(t, pool, walletID); got != 500_000 {
-		t.Fatalf("balance credited more than once: want 500000, got %d", got)
+	if got := testutil.WalletBalance(t, pool, walletID); got != 2_000 {
+		t.Fatalf("balance credited more than once: want 2000, got %d", got)
 	}
 	if testutil.WalletBalance(t, pool, walletID) != testutil.LedgerSum(t, pool, walletID) {
 		t.Fatal("balance != ledger sum")
@@ -52,7 +52,7 @@ func TestEdge_E15_DuplicateBankCallback(t *testing.T) {
 	userID, walletID := testutil.NewUserWithWallet(t, pool)
 	svc := wallet.NewService(pool)
 
-	pending, err := svc.CreatePendingTopup(ctx, userID, 750_000, uuid.NewString())
+	pending, err := svc.CreatePendingTopup(ctx, userID, 3_000, uuid.NewString())
 	if err != nil {
 		t.Fatalf("create pending topup: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestEdge_E15_DuplicateBankCallback(t *testing.T) {
 		t.Fatalf("no money before the callback: got %d", got)
 	}
 
-	first, err := svc.BankCallback(ctx, pending.RefCode, 750_000, "BANK-REF-1")
+	first, err := svc.BankCallback(ctx, pending.RefCode, 3_000, "BANK-REF-1")
 	if err != nil {
 		t.Fatalf("first callback: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestEdge_E15_DuplicateBankCallback(t *testing.T) {
 		t.Fatalf("first callback must complete the topup: %+v", first)
 	}
 
-	second, err := svc.BankCallback(ctx, pending.RefCode, 750_000, "BANK-REF-1-RETRY")
+	second, err := svc.BankCallback(ctx, pending.RefCode, 3_000, "BANK-REF-1-RETRY")
 	if err != nil {
 		t.Fatalf("second callback: %v", err)
 	}
@@ -79,8 +79,8 @@ func TestEdge_E15_DuplicateBankCallback(t *testing.T) {
 		t.Fatalf("second callback must be flagged duplicate: %+v", second)
 	}
 
-	if got := testutil.WalletBalance(t, pool, walletID); got != 750_000 {
-		t.Fatalf("credited more than once: want 750000, got %d", got)
+	if got := testutil.WalletBalance(t, pool, walletID); got != 3_000 {
+		t.Fatalf("credited more than once: want 3000, got %d", got)
 	}
 	if testutil.WalletBalance(t, pool, walletID) != testutil.LedgerSum(t, pool, walletID) {
 		t.Fatal("balance != ledger sum")
@@ -106,14 +106,14 @@ func TestEdge_E15_DuplicateBankCallback(t *testing.T) {
 	}
 
 	// Amount mismatch on a pending topup: no money moves, statement still booked.
-	p2, err := svc.CreatePendingTopup(ctx, userID, 100_000, uuid.NewString())
+	p2, err := svc.CreatePendingTopup(ctx, userID, 400, uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.BankCallback(ctx, p2.RefCode, 999_999, "BANK-BAD"); !testkit.ErrIs(err, wallet.ErrCallbackAmountMismatch) {
 		t.Fatalf("want ErrCallbackAmountMismatch, got %v", err)
 	}
-	if got := testutil.WalletBalance(t, pool, walletID); got != 750_000 {
+	if got := testutil.WalletBalance(t, pool, walletID); got != 3_000 {
 		t.Fatalf("mismatched callback must move no money: got %d", got)
 	}
 }

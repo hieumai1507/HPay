@@ -67,7 +67,7 @@ func TestEdge_E16_ReconCutoffNoFalseMismatch(t *testing.T) {
 	nextDay := day.AddDate(0, 0, 1)
 
 	ref := mkTopup(t, e, w, 500_000, day.Add(23*time.Hour+59*time.Minute+30*time.Second))
-	mkStatement(t, e, ref, 500_000, nextDay) // statement slipped to the next day
+	mkStatement(t, e, ref, 2_000, nextDay) // statement slipped to the next day
 
 	if _, err := e.Rsvc.RunForDate(ctx, day); err != nil {
 		t.Fatalf("run day D: %v", err)
@@ -102,14 +102,14 @@ func TestReconFourCategoriesAndIdempotent(t *testing.T) {
 	day := uniqueReconDay().Add(12 * time.Hour)
 
 	refMatch := mkTopup(t, e, w, 100_000, day.Add(9*time.Hour))
-	mkStatement(t, e, refMatch, 100_000, day)
+	mkStatement(t, e, refMatch, 400, day)
 
 	refMismatch := mkTopup(t, e, w, 200_000, day.Add(10*time.Hour))
-	mkStatement(t, e, refMismatch, 199_000, day) // amount differs
+	mkStatement(t, e, refMismatch, 796, day) // amount differs
 
 	mkTopup(t, e, w, 300_000, day.Add(11*time.Hour)) // no statement -> missing_external
 
-	mkStatement(t, e, "MPX-orphan-"+uuid.NewString()[:6], 400_000, day) // no txn -> missing_internal
+	mkStatement(t, e, "MPX-orphan-"+uuid.NewString()[:6], 1_600, day) // no txn -> missing_internal
 
 	runID, err := e.Rsvc.RunForDate(ctx, day)
 	if err != nil {

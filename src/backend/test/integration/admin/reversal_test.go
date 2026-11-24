@@ -19,13 +19,13 @@ func TestReversalEndToEnd(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	senderID, senderWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, senderID, senderWallet, 3_000_000)
+	testkit.Fund(t, e.Pool, senderID, senderWallet, 12_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 	feeWallet := seedSystemWalletID(t, e, "SYSTEM_FEE")
 
 	senderBefore := testutil.WalletBalance(t, e.Pool, senderWallet)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_000_000, "to reverse", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 4_000, "to reverse", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestReversalGuards(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
 	senderID, senderWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, senderID, senderWallet, 2_000_000)
+	testkit.Fund(t, e.Pool, senderID, senderWallet, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	adminA := e.SeedAdminID(t)
@@ -123,7 +123,7 @@ func TestReversalGuards(t *testing.T) {
 		t.Fatalf("unknown ref: want ErrTxnNotFound, got %v", err)
 	}
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 500_000, "reject me", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 2_000, "reject me", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
