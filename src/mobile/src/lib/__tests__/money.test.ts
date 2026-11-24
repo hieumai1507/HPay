@@ -25,17 +25,17 @@ describe('TestEdge_M06_Money_BigIntOnly', () => {
   it('formats thousands separators live while typing', () => {
     expect(formatAmountWhileTyping('1')).toBe('1');
     expect(formatAmountWhileTyping('12')).toBe('12');
-    expect(formatAmountWhileTyping('1234')).toBe('1.234');
-    expect(formatAmountWhileTyping('1234567')).toBe('1.234.567');
-    expect(formatAmountWhileTyping('01234')).toBe('1.234'); // leading zero stripped
+    expect(formatAmountWhileTyping('1234')).toBe('1,234');
+    expect(formatAmountWhileTyping('1234567')).toBe('1,234,567');
+    expect(formatAmountWhileTyping('01234')).toBe('1,234'); // leading zero stripped
     expect(formatAmountWhileTyping('')).toBe('');
   });
 
   it('formats a BigInt amount for read-only display with VND sign', () => {
-    expect(formatAmountDisplay(1234567n)).toBe('1.234.567');
+    expect(formatAmountDisplay(1234567n)).toBe('1,234,567');
     expect(formatAmountDisplay(0n)).toBe('0');
-    expect(formatAmountDisplay(-50000n)).toBe('-50.000');
-    expect(formatAmountVND(1234567n)).toBe('1.234.567 ₫');
+    expect(formatAmountDisplay(-50000n)).toBe('-50,000');
+    expect(formatAmountVND(1234567n)).toBe('1,234,567 ₫');
   });
 
   it('returns null for empty input instead of coercing to 0 via Number', () => {
