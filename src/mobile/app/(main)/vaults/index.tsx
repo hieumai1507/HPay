@@ -37,7 +37,7 @@ export default function VaultsScreen() {
     guard.run(async () => {
       const name = label.trim();
       if (!name) {
-        Alert.alert('Thiếu tên hũ', 'Đặt tên cho hũ tiết kiệm của bạn.');
+        Alert.alert('Vault name missing', 'Give your Vault a name.');
         return;
       }
       // The goal is optional; when given it must be a valid bounded amount (C-01).
@@ -45,7 +45,7 @@ export default function VaultsScreen() {
       if (target.trim()) {
         const parsed = parseAmountStrict(target);
         if (!parsed.ok) {
-          Alert.alert('Mục tiêu không hợp lệ', 'Nhập số tiền hợp lệ hoặc để trống.');
+          Alert.alert('Invalid goal', 'Enter a valid amount or leave it empty.');
           return;
         }
         targetAmount = parsed.value;
@@ -56,7 +56,7 @@ export default function VaultsScreen() {
         setTarget('');
         setCreating(false);
       } catch (e) {
-        Alert.alert('Không tạo được hũ', describeError(e));
+        Alert.alert('Could not create Vault', describeError(e));
       }
     });
 
@@ -78,7 +78,7 @@ export default function VaultsScreen() {
             {item.round_up_target && (
               <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: color.brand[50] }}>
                 <Text className="text-[10px] font-bold" style={{ color: color.brand[600] }}>
-                  Làm tròn
+                  Round up
                 </Text>
               </View>
             )}
@@ -94,7 +94,7 @@ export default function VaultsScreen() {
               <View className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: color.brand[400] }} />
             </View>
             <Text className="text-xs text-slate-500 mt-1">
-              {pct}% của mục tiêu {formatAmountVND(BigInt(item.target_amount ?? 0))}
+              {pct}% of goal {formatAmountVND(BigInt(item.target_amount ?? 0))}
             </Text>
           </View>
         )}
@@ -108,17 +108,17 @@ export default function VaultsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8} className="pr-3">
           <Ionicons name="arrow-back" size={22} color={color.neutral[500]} />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Hũ tiết kiệm</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Vaults</Text>
       </View>
 
       {/* Hero: total saved across every pocket */}
       <View className="mx-4 mb-4 rounded-2xl p-5" style={{ backgroundColor: color.brand[600] }}>
-        <Text className="text-white/80 text-xs">Tổng để dành</Text>
+        <Text className="text-white/80 text-xs">Total saved</Text>
         <Text className="text-white text-3xl font-bold tabular-nums mt-1">
           {formatAmountVND(total)}
         </Text>
         <Text className="text-white/70 text-xs mt-1">
-          {(vaults ?? []).length} hũ · tiền vẫn nằm trong ví của bạn
+          {(vaults ?? []).length} Vaults · your money stays in your Wallet
         </Text>
       </View>
 
@@ -134,8 +134,8 @@ export default function VaultsScreen() {
           onRefresh={refetch}
           ListEmptyComponent={
             <EmptyState
-              title="Chưa có hũ nào"
-              subtitle="Tạo một hũ để dành riêng cho mục tiêu của bạn."
+              title="No Vaults yet"
+              subtitle="Create a Vault to set money aside for a goal."
             />
           }
         />
@@ -144,18 +144,18 @@ export default function VaultsScreen() {
       {/* Create */}
       {creating ? (
         <View className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-800 p-4 rounded-t-2xl border-t border-slate-200 dark:border-slate-700">
-          <Text className="font-bold text-slate-900 dark:text-white mb-2">Hũ mới</Text>
+          <Text className="font-bold text-slate-900 dark:text-white mb-2">New Vault</Text>
           <TextInput
             value={label}
             onChangeText={setLabel}
-            placeholder="Tên hũ (vd: Du lịch Đà Lạt)"
+            placeholder="Vault name (e.g. Da Lat trip)"
             maxLength={60}
             className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 mb-2 text-slate-900 dark:text-white"
           />
           <TextInput
             value={target}
             onChangeText={setTarget}
-            placeholder="Mục tiêu (tuỳ chọn)"
+            placeholder="Goal (optional)"
             keyboardType="number-pad"
             className="border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 mb-3 text-slate-900 dark:text-white"
           />
@@ -164,7 +164,7 @@ export default function VaultsScreen() {
               onPress={() => setCreating(false)}
               className="flex-1 items-center py-3 rounded-xl border border-slate-200 dark:border-slate-600"
             >
-              <Text className="font-semibold text-slate-700 dark:text-slate-200">Huỷ</Text>
+              <Text className="font-semibold text-slate-700 dark:text-slate-200">Cancel</Text>
             </Pressable>
             <Pressable
               onPress={submitCreate}
@@ -172,7 +172,7 @@ export default function VaultsScreen() {
               className="flex-1 items-center py-3 rounded-xl"
               style={{ backgroundColor: color.brand[600], opacity: guard.isPending ? 0.6 : 1 }}
             >
-              <Text className="font-bold text-white">Tạo hũ</Text>
+              <Text className="font-bold text-white">Create Vault</Text>
             </Pressable>
           </View>
         </View>

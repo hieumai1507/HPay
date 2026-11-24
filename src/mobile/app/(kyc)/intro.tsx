@@ -26,7 +26,7 @@ export default function KycIntroScreen() {
         <Pressable onPress={handleSkip} style={styles.backButton} accessibilityLabel="Back">
           <Text style={styles.backIcon}>←</Text>
         </Pressable>
-        <Text style={styles.navTitle}>Xác minh danh tính</Text>
+        <Text style={styles.navTitle}>Identity verification (KYC)</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -34,9 +34,9 @@ export default function KycIntroScreen() {
       <View style={styles.heroCard}>
         <Text style={styles.heroEmoji}>🪪</Text>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Mở khóa toàn bộ tính năng</Text>
+          <Text style={styles.heroTitle}>Unlock all features</Text>
           <Text style={styles.heroDesc}>
-            Xác minh 1 lần duy nhất — nâng hạn mức giao dịch lên 100 triệu ₫/ngày.
+            Verify once to raise your transaction limit to 100,000,000 ₫/day.
           </Text>
         </View>
       </View>
@@ -48,8 +48,8 @@ export default function KycIntroScreen() {
             <Text style={styles.stepBadgeText}>1</Text>
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Chụp CMND/CCCD</Text>
-            <Text style={styles.stepDesc}>Chụp mặt trước rõ nét, đủ 4 góc, không bị lóa sáng.</Text>
+            <Text style={styles.stepTitle}>Photograph your ID card</Text>
+            <Text style={styles.stepDesc}>Take a sharp photo of the front with all 4 corners visible and no glare.</Text>
           </View>
         </View>
 
@@ -58,8 +58,8 @@ export default function KycIntroScreen() {
             <Text style={styles.stepBadgeText}>2</Text>
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Chụp ảnh selfie</Text>
-            <Text style={styles.stepDesc}>Giữ khuôn mặt nằm trong khung hình oval định sẵn.</Text>
+            <Text style={styles.stepTitle}>Take a selfie</Text>
+            <Text style={styles.stepDesc}>Keep your face inside the oval frame.</Text>
           </View>
         </View>
       </View>
@@ -68,22 +68,22 @@ export default function KycIntroScreen() {
       <View style={styles.tipsContainer}>
         <View style={styles.tipRow}>
           <Text style={styles.tipCheck}>✓</Text>
-          <Text style={styles.tipText}>Tìm nơi đủ ánh sáng, tránh ngược sáng.</Text>
+          <Text style={styles.tipText}>Find a well-lit spot and avoid backlight.</Text>
         </View>
         <View style={styles.tipRow}>
           <Text style={styles.tipCheck}>✓</Text>
-          <Text style={styles.tipText}>Không đeo kính râm, khẩu trang khi chụp selfie.</Text>
+          <Text style={styles.tipText}>Do not wear sunglasses or a mask for the selfie.</Text>
         </View>
         <View style={styles.tipRow}>
           <Text style={styles.tipCheck}>✓</Text>
-          <Text style={styles.tipText}>Ảnh giấy tờ không bị lóa hoặc mất góc.</Text>
+          <Text style={styles.tipText}>Make sure the ID photo has no glare and no cut-off corners.</Text>
         </View>
       </View>
 
       {/* Footer Buttons */}
       <View style={styles.footer}>
-        <Button label="Bắt đầu xác minh" onPress={handleStart} style={styles.button} />
-        <Button label="Để sau" variant="ghost" onPress={handleSkip} style={styles.button} />
+        <Button label="Start verification" onPress={handleStart} style={styles.button} />
+        <Button label="Later" variant="ghost" onPress={handleSkip} style={styles.button} />
       </View>
     </ScrollView>
   );

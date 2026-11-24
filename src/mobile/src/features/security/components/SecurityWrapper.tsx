@@ -94,9 +94,9 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
     const res = await runUnlockAttempt(
       () =>
         LocalAuthentication.authenticateAsync({
-          promptMessage: 'Xác minh vân tay hoặc khuôn mặt để mở khóa',
-          fallbackLabel: 'Dùng mật mã thiết bị',
-          cancelLabel: 'Hủy',
+          promptMessage: 'Use your fingerprint or face to unlock',
+          fallbackLabel: 'Use device passcode',
+          cancelLabel: 'Cancel',
         }),
       failedAttempts.current,
     );
@@ -125,14 +125,14 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
           <View style={styles.lockIconCircle}>
             <Text style={styles.lockEmoji}>🔒</Text>
           </View>
-          <Text style={styles.lockTitle}>Ứng dụng đã khóa</Text>
-          <Text style={styles.lockSubtitle}>Xác thực để mở khóa ứng dụng</Text>
+          <Text style={styles.lockTitle}>App locked</Text>
+          <Text style={styles.lockSubtitle}>Authenticate to unlock the app</Text>
         </View>
 
         {/* Unlock error with shake animation */}
         <Animated.View style={[styles.pinWrapper, { transform: [{ translateX: shakeAnim }] }]}>
           {unlockError && (
-            <Text style={styles.pinErrorText}>Xác thực không thành công. Vui lòng thử lại.</Text>
+            <Text style={styles.pinErrorText}>Authentication failed. Please try again.</Text>
           )}
         </Animated.View>
 
@@ -140,11 +140,11 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
           {hasDeviceAuth ? (
             <Pressable onPress={triggerUnlock} style={styles.biometricBtn} accessibilityRole="button">
               <Text style={styles.biometricIcon}>🧬</Text>
-              <Text style={styles.biometricBtnText}>Mở khóa</Text>
+              <Text style={styles.biometricBtnText}>Unlock</Text>
             </Pressable>
           ) : (
             <Text style={styles.biometricHint}>
-              Thiết bị chưa cài sinh trắc học hoặc mã khóa màn hình. Vui lòng đăng xuất và đăng nhập lại.
+              This device has no biometrics or screen lock set up. Please log out and log in again.
             </Text>
           )}
         </View>      </View>
@@ -157,7 +157,7 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
       {isRooted && (
         <View style={styles.rootWarnBanner}>
           <Text style={styles.rootWarnText}>
-            ⚠️ Thiết bị của bạn đã bị root/jailbreak. Hãy cẩn trọng khi thực hiện giao dịch!
+            ⚠️ Your device is rooted/jailbroken. Be careful when making transactions.
           </Text>
         </View>
       )}
@@ -171,7 +171,7 @@ export function SecurityWrapper({ children }: { children: React.ReactNode }) {
           <View style={styles.privacyLogoContainer}>
             <LogoMark size={72} />
             <Text style={styles.privacyMaskText}>HPay</Text>
-            <Text style={styles.privacyMaskSub}>Kết nối tài chính an toàn</Text>
+            <Text style={styles.privacyMaskSub}>Secure financial connection</Text>
           </View>
         </View>
       )}

@@ -7,25 +7,25 @@ import { z } from 'zod';
 // Permissive Vietnamese phone validation (accepts 9 digits without 0, or 10 digits with 0)
 export const phoneValidationSchema = z
   .string()
-  .regex(/^(0?[35789]\d{8})$/, 'Số điện thoại không hợp lệ (ví dụ: 867587497)');
+  .regex(/^(0?[35789]\d{8})$/, 'Invalid phone number (e.g. 867587497)');
 
 export const loginSchema = z.object({
   phone: phoneValidationSchema,
-  password: z.string().min(1, 'Mật khẩu không được để trống'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 export const registerSchema = z.object({
   fullName: z
     .string()
-    .min(2, 'Họ tên phải có ít nhất 2 ký tự')
-    .max(120, 'Họ tên quá dài'),
+    .min(2, 'Full name must be at least 2 characters')
+    .max(120, 'Full name is too long'),
   phone: phoneValidationSchema,
   password: z
     .string()
-    .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
-    .max(72, 'Mật khẩu không được quá 72 ký tự'),
+    .min(8, 'Password must be at least 8 characters')
+    .max(72, 'Password must be at most 72 characters'),
   agree: z.boolean().refine((val) => val === true, {
-    message: 'Bạn phải đồng ý với điều khoản sử dụng',
+    message: 'You must accept the terms of use',
   }),
 });
 

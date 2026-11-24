@@ -5,16 +5,16 @@ import { SplitAvatarStack } from '../SplitAvatarStack';
 describe('SplitAvatarStack (docs ui-design-spec.html §8, mockup screen 29)', () => {
   const participants = [
     { id: '1', name: 'Minh Anh', paid: true },
-    { id: '2', name: 'Thảo Linh', paid: true },
-    { id: '3', name: 'Quốc Bảo', paid: false },
+    { id: '2', name: 'Thao Linh', paid: true },
+    { id: '3', name: 'Quoc Bao', paid: false },
   ];
 
   it('shows collected/total amount and paid count', async () => {
     await render(
       <SplitAvatarStack participants={participants} collectedAmount={420_000n} totalAmount={630_000n} />
     );
-    expect(screen.getByText('Đã thu 420.000 ₫ / 630.000 ₫')).toBeTruthy();
-    expect(screen.getByText('2/3 người đã trả')).toBeTruthy();
+    expect(screen.getByText('Collected 420,000 ₫ / 630,000 ₫')).toBeTruthy();
+    expect(screen.getByText('2/3 paid')).toBeTruthy();
   });
 
   it('renders initials for every participant', async () => {
@@ -46,6 +46,6 @@ describe('SplitAvatarStack (docs ui-design-spec.html §8, mockup screen 29)', ()
         expiresAt={inTwoHours}
       />
     );
-    expect(screen.getByText('2/3 người đã trả · còn 2 giờ')).toBeTruthy();
+    expect(screen.getByText('2/3 paid · 2h left')).toBeTruthy();
   });
 });

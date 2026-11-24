@@ -4,7 +4,7 @@ import { Button } from './Button';
 
 export function Skeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <View className="p-4 gap-4" accessibilityLabel="Đang tải">
+    <View className="p-4 gap-4" accessibilityLabel="Loading...">
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700" />
@@ -33,7 +33,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
     <View className="items-center justify-center p-8 gap-3">
       <Text className="text-4xl">⚠️</Text>
       <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200 text-center">{message}</Text>
-      {onRetry ? <Button variant="secondary" label="Thử lại" onPress={onRetry} /> : null}
+      {onRetry ? <Button variant="secondary" label="Try again" onPress={onRetry} /> : null}
     </View>
   );
 }
