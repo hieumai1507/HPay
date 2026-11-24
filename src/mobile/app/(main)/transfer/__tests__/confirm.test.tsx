@@ -9,10 +9,15 @@ import TransferConfirmScreen from '../confirm';
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({
-  router: { replace: (...a: unknown[]) => mockReplace(...a), push: (...a: unknown[]) => mockPush(...a), back: jest.fn() },
-  useLocalSearchParams: () => ({ phone: '0912345678', maskedName: 'A B', amount: '100000', note: '' }),
-}));
+jest.mock('expo-router', () => {
+  const router = { replace: (...a: unknown[]) => mockReplace(...a), push: (...a: unknown[]) => mockPush(...a), back: jest.fn() };
+  return {
+    router,
+    // usePin() links its prompt to the reset flow through the hook form of the router.
+    useRouter: () => router,
+    useLocalSearchParams: () => ({ phone: '0912345678', maskedName: 'A B', amount: '100000', note: '' }),
+  };
+});
 jest.mock('@/src/api/client', () => ({ apiRequest: jest.fn() }));
 jest.mock('@/src/features/wallet/recent-contacts', () => ({
   useRecentContacts: () => ({ contacts: [{ phone: '0912345678' }], add: jest.fn() }),
