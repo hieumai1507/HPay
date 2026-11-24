@@ -65,7 +65,14 @@ func NewRouter(d Deps) *gin.Engine {
 	// issuer, engine, fee service and KYC storage (role=all runs them all).
 	issuer := auth.NewJWTIssuer(d.Cfg.JWTSecret, "user")
 	authSvc := auth.NewService(d.Pool, issuer, d.Log, d.Cfg.Env)
-	authSvc.Wire(d.Cfg.TOTPKey, auth.SenderConfig{
+	pins, pepperErr := auth.PepperSetFromConfig(d.Cfg)
+	if pepperErr != nil {
+		// Load has already validated the pepper; this only fails for a Config built by hand.
+		// Leave the service without one: PIN hashing and verification then fail closed.
+		d.Log.Error("PIN pepper unusable; PIN checks will fail closed", "err", pepperErr)
+		pins = nil
+	}
+	authSvc.Wire(d.Cfg.TOTPKey, pins, auth.SenderConfig{
 		Env: d.Cfg.Env, Provider: d.Cfg.SenderProvider,
 		Twilio: auth.TwilioConfig{AccountSID: d.Cfg.TwilioAccountSID, APIKey: d.Cfg.TwilioAPIKey, APISecret: d.Cfg.TwilioAPISecret, From: d.Cfg.TwilioFrom},
 	})

@@ -1,4 +1,4 @@
-﻿---
+---
 title: P2P load test baseline and the improvements it points to
 type: quality
 status: measured
@@ -69,3 +69,21 @@ Reading: removing the single consumer helps latency a little, but intake is stil
 
 ## Funding deadlock (P6, found and fixed)
 The 40P01 seen in parallel test runs was not only a test artefact. 24 concurrent top-ups plus 24 transfers on the shared SYSTEM_CASH_IN wallet deadlocked every time (test TestFunding_ConcurrentTopupsNeverDeadlock, red before the fix). Cause: inserting a transaction row takes a KEY SHARE lock on its wallets through the foreign keys, and GetWalletsForUpdate used FOR UPDATE, which conflicts with KEY SHARE; two postings each held KEY SHARE on the system wallet and waited for the other's row lock. The id ordering in ledger.Post was already right. Fix: FOR NO KEY UPDATE in GetWalletsForUpdate (a balance change never touches a key column; postings still exclude each other). Test is green 3 of 3 runs and the full suite passes on a fresh database.
+
+## After the PIN pepper and the lighter PIN cost (ADR-0018, run 2026-11-25)
+Same settings as the baseline: 200 users, 50 workers, 60 s, a fresh migrated database, `TEST_DB_MAX_CONNS=40`, container limited to 4 CPUs, a private Redis (a shared Redis let other consumers take stream events and gave a void first run: 0 completed). Both columns below were run back to back by the assistant on the same laptop (Docker Desktop, 12 CPUs, 4 given to the container): "before" is the commit before the change (m=64 MiB, t=3, p=2, no pepper), "after" is the commit with the change (HMAC pepper, m=19 MiB, t=2, p=1). Only the PIN hashing differs.
+
+| Metric | Before (same laptop) | After |
+|---|---|---|
+| Accepted (request + PIN confirm) | 571 ok, 0 failed, 8.9 req/s | 2100 ok, 0 failed, 34.5 req/s |
+| Request + confirm latency p50 / p95 / p99 | 5.2 s / 7.3 s / 9.4 s | 1.4 s / 1.9 s / 2.4 s |
+| Completed | 571, 0 failed, 7.5/s | 2088, 12 failed, 19.4/s |
+| End to end p50 / p95 / p99 | 43.7 / 66.9 / 69.0 s | 67.2 / 70.3 / 71.1 s |
+| Ledger mismatches | 0 | 0 (money before minus after equals the fees, 2,088,000) |
+
+Reading it, and its limits:
+- Intake rose about 3.9 times, which matches the expectation in ADR-0018 that the PIN check was the intake bottleneck. Latency of request plus confirm fell by about 3.7 times at p50.
+- End-to-end time did NOT improve; it got longer. With four times more transfers accepted in the same minute, the workflow (about 19 completed per second) became the limit and the backlog queued behind it. This run shows that the next limit is the workflow, not the PIN hash. Do not read the longer end-to-end time as a regression of the hashing.
+- The 12 failed transfers were not investigated in this run. In the earlier runs recorded above, a few failures came from the fraud rules when 200 users pay each other very quickly; that is the likely cause here but is not verified.
+- Numbers come from one laptop in Docker, one run per column. Run-to-run noise is large (the owner's first run and the assistant's earlier runs above differ by more than a factor of two on end-to-end latency), so only the direction and the order of magnitude are reliable. Not measured: the owner's machine, a second run of each column, memory use, CPU use, and the cost of the one-time rewrite of legacy hashes (it happens once per user, on top of one verification).
+- Not a security result: the lighter cost makes a guess cheaper for an attacker who also holds the pepper (ADR-0018, "What a database-only leak reveals").

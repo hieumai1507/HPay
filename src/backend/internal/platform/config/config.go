@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -82,6 +83,12 @@ type Config struct {
 	// TOTPKey is the 32-byte AES-256 key that protects TOTP secrets at rest (ADR-0017). Required
 	// (TOTP_ENCRYPTION_KEY, base64) outside dev and ci; dev and ci get a fixed test key.
 	TOTPKey []byte
+	// PINPepper is the 32-byte key that is mixed into every transaction PIN hash (ADR-0018). Required
+	// (PIN_PEPPER, base64) outside dev and ci; dev and ci get a fixed test value. PINPepperID names it
+	// inside each stored hash; PINPepperOld lists retired keys that may still verify while hashes use them.
+	PINPepper    []byte
+	PINPepperID  string
+	PINPepperOld []PINPepperKey
 	// OfferGuardDisabled is true only when OFFERGUARD_ENABLED=false, which removes every offer limit.
 	// Load refuses that outside dev and ci.
 	OfferGuardDisabled bool
@@ -91,6 +98,16 @@ type Config struct {
 	TwilioAPIKey     string
 	TwilioAPISecret  string
 	TwilioFrom       string
+}
+
+// DevPINPepper is the fixed pepper used in dev and ci only (exactly 32 bytes). It is public, so
+// production and demo refuse it. Tests use it through testkit.
+const DevPINPepper = "dev-only-pin-pepper-0123456789ab"
+
+// PINPepperKey is a retired pepper kept for verification only.
+type PINPepperKey struct {
+	ID  string
+	Key []byte
 }
 
 // IsDev is true only for APP_ENV=dev: the single environment that may return
@@ -178,6 +195,11 @@ func Load(role string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.TOTPKey = key
+	pepper, pepperID, pepperOld, err := loadPINPepper(os.Getenv("PIN_PEPPER"), os.Getenv("PIN_PEPPER_ID"), os.Getenv("PIN_PEPPER_OLD"), cfg.requiresStrongSecrets())
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.PINPepper, cfg.PINPepperID, cfg.PINPepperOld = pepper, pepperID, pepperOld
 	cfg.OfferGuardDisabled = os.Getenv("OFFERGUARD_ENABLED") == "false"
 	if cfg.OfferGuardDisabled && cfg.requiresStrongSecrets() {
 		return Config{}, fmt.Errorf("OFFERGUARD_ENABLED=false switches off every offer limit and is only allowed when APP_ENV is dev or ci (APP_ENV=%s)", cfg.Env)
@@ -219,6 +241,75 @@ func loadTOTPKey(raw string, required bool) ([]byte, error) {
 		return nil, fmt.Errorf("TOTP_ENCRYPTION_KEY must decode to exactly 32 bytes, got %d", len(key))
 	}
 	return key, nil
+}
+
+var pepperIDPattern = regexp.MustCompile(`^[a-z0-9-]{1,16}$`)
+
+// decodePepper decodes one base64 pepper of exactly 32 bytes. name only labels the error: an
+// error never contains the value it rejected.
+func decodePepper(name, raw string, required bool) ([]byte, error) {
+	key, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s is not valid base64", name)
+	}
+	if len(key) != 32 {
+		return nil, fmt.Errorf("%s must decode to exactly 32 bytes, got %d", name, len(key))
+	}
+	if required && string(key) == DevPINPepper {
+		return nil, fmt.Errorf("%s is the public dev and test value; set a random key (openssl rand -base64 32) when APP_ENV is not dev or ci", name)
+	}
+	return key, nil
+}
+
+// loadPINPepper reads PIN_PEPPER (base64, 32 bytes), PIN_PEPPER_ID (default p1) and PIN_PEPPER_OLD
+// ("id:base64,id2:base64"). Outside dev and ci the pepper is required; dev and ci get a fixed test
+// value. Nothing here ever puts a key value into an error.
+func loadPINPepper(raw, id, old string, required bool) ([]byte, string, []PINPepperKey, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		id = "p1"
+	}
+	if !pepperIDPattern.MatchString(id) {
+		return nil, "", nil, fmt.Errorf("PIN_PEPPER_ID must match [a-z0-9-]{1,16}")
+	}
+	var key []byte
+	raw = strings.TrimSpace(raw)
+	switch {
+	case raw != "":
+		var err error
+		if key, err = decodePepper("PIN_PEPPER", raw, required); err != nil {
+			return nil, "", nil, err
+		}
+	case required:
+		return nil, "", nil, fmt.Errorf("PIN_PEPPER is required (base64, 32 bytes) when APP_ENV is not dev or ci")
+	default:
+		key = []byte(DevPINPepper)
+	}
+	var olds []PINPepperKey
+	if strings.TrimSpace(old) != "" {
+		seen := map[string]bool{id: true}
+		for _, entry := range strings.Split(old, ",") {
+			entry = strings.TrimSpace(entry)
+			oid, val, ok := strings.Cut(entry, ":")
+			oid = strings.TrimSpace(oid)
+			if !ok || oid == "" || strings.TrimSpace(val) == "" {
+				return nil, "", nil, fmt.Errorf("PIN_PEPPER_OLD entries must look like id:base64, separated by commas")
+			}
+			if !pepperIDPattern.MatchString(oid) {
+				return nil, "", nil, fmt.Errorf("PIN_PEPPER_OLD key id must match [a-z0-9-]{1,16}")
+			}
+			if seen[oid] {
+				return nil, "", nil, fmt.Errorf("PIN_PEPPER_OLD repeats key id %q (ids must be unique, and different from PIN_PEPPER_ID)", oid)
+			}
+			seen[oid] = true
+			k, err := decodePepper("PIN_PEPPER_OLD key "+oid, strings.TrimSpace(val), required)
+			if err != nil {
+				return nil, "", nil, err
+			}
+			olds = append(olds, PINPepperKey{ID: oid, Key: k})
+		}
+	}
+	return key, id, olds, nil
 }
 
 func isValidEnv(e string) bool {

@@ -48,6 +48,8 @@ type Service struct {
 	sender Sender
 	// totpKey protects TOTP secrets at rest (ADR-0017); 32 bytes.
 	totpKey []byte
+	// pins holds the PIN pepper keys (ADR-0018); nil means PIN hashing fails closed.
+	pins *PepperSet
 }
 
 func NewService(pool *pgxpool.Pool, jwtIssuer *JWTIssuer, log *slog.Logger, env string) *Service {

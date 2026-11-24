@@ -33,7 +33,8 @@ Boundaries: (1) client to API (untrusted input, JWT); (2) API to data stores (tr
 
 | Layer | Mechanism | Where |
 |-------|-----------|-------|
-| Passwords | argon2id (`golang.org/x/crypto/argon2`, m=64MiB, t=3, p=2 in the seeded hash) | `internal/auth` |
+| Passwords | argon2id (`golang.org/x/crypto/argon2`, m=64MiB, t=3, p=2 in the seeded hash), no pepper | `internal/auth` |
+| Transaction PIN storage | argon2id(HMAC-SHA256(pepper, pin)), m=19456 KiB, t=2, p=1, key id in the hash; pepper in `PIN_PEPPER`, never in the database; legacy hashes rewritten on the next successful check (ADR-0018, BR-AUTH-46 to 52, `runbooks/pin-pepper.md`) | `internal/auth/pin_pepper.go` |
 | User access token | JWT, audience `user`, TTL 15 minutes (`AccessTokenTTL`), signed with `JWT_SECRET` | `RequireAuth` |
 | Refresh | rotating refresh tokens with reuse detection (`ErrTokenReused` revokes the family); mobile keeps the access token in memory and the refresh token in SecureStore | `auth` |
 | Admin token | JWT audience `admin`, same `JWT_SECRET`, no refresh; stored in `sessionStorage` by the admin app | `RequireAdmin(adminIssuer)` |

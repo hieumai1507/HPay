@@ -21,6 +21,9 @@ func base(t *testing.T) {
 	t.Setenv("MOCK_BANK_SECRET", "a-strong-mock-bank-secret-value-1234")
 	t.Setenv("REDIS_ADDR", "localhost:6379")
 	t.Setenv("STORAGE_PROVIDER", "local")
+	t.Setenv("PIN_PEPPER", "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=") // required outside dev and ci (ADR-0018)
+	t.Setenv("PIN_PEPPER_ID", "")
+	t.Setenv("PIN_PEPPER_OLD", "")
 }
 
 // TC-ENV-001

@@ -143,9 +143,10 @@ func (s *Service) PhoneOf() PhoneLookup {
 	}
 }
 
-// Wire applies the configuration to a Service: the TOTP encryption key and the code delivery
-// channel. Used by the server and the router so both behave the same.
-func (s *Service) Wire(totpKey []byte, c SenderConfig) {
+// Wire applies the configuration to a Service: the TOTP encryption key, the PIN pepper and the code
+// delivery channel. Used by the server and the router so both behave the same.
+func (s *Service) Wire(totpKey []byte, pins *PepperSet, c SenderConfig) {
 	s.SetTOTPKey(totpKey)
+	s.SetPINPepper(pins)
 	s.UseSender(NewSenderFromConfig(c, s.log, s.PhoneOf()))
 }

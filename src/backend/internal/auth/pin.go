@@ -84,14 +84,15 @@ func (s *Service) ChangePIN(ctx context.Context, userID uuid.UUID, currentPIN, n
 	if err := ValidatePIN(newPIN); err != nil {
 		return err
 	}
-	if err := s.VerifyPIN(ctx, userID, currentPIN); err != nil {
+	// no rehash here: storePIN writes a fresh hash right after
+	if err := s.verifyPIN(ctx, userID, currentPIN, false); err != nil {
 		return err
 	}
 	return s.storePIN(ctx, userID, newPIN, "pin.changed")
 }
 
 func (s *Service) storePIN(ctx context.Context, userID uuid.UUID, pin, action string) error {
-	h, err := HashPassword(pin)
+	h, err := s.pins.HashPIN(pin)
 	if err != nil {
 		return err
 	}
@@ -105,20 +106,34 @@ func (s *Service) storePIN(ctx context.Context, userID uuid.UUID, pin, action st
 // VerifyPIN checks the PIN for a signed-in user. It is the only function that
 // compares a PIN; callers must not read pin_hash themselves.
 func (s *Service) VerifyPIN(ctx context.Context, userID uuid.UUID, pin string) error {
+	return s.verifyPIN(ctx, userID, pin, true)
+}
+
+// verifyPIN is VerifyPIN; rehash says whether a successful check may upgrade the stored hash.
+func (s *Service) verifyPIN(ctx context.Context, userID uuid.UUID, pin string, rehash bool) error {
+	if s.pins == nil {
+		return ErrPepperNotConfigured // fail closed: never verify a PIN without the pepper set
+	}
 	st, err := s.q.GetUserPINState(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			s.pins.BurnWork() // same cost as a real check: no timing oracle for unknown users
 			return ErrPINNotSet
 		}
 		return err
 	}
 	if !st.PinHash.Valid || st.PinHash.String == "" {
+		s.pins.BurnWork()
 		return ErrPINNotSet
 	}
 	if st.PinLockedUntil.Valid && st.PinLockedUntil.Time.After(time.Now()) {
 		return ErrPINLocked // refused even for the correct PIN
 	}
-	if VerifyPassword(st.PinHash.String, pin) != nil {
+	if verr := s.pins.VerifyPINHash(st.PinHash.String, pin); verr != nil {
+		if errors.Is(verr, ErrUnknownPepperID) || errors.Is(verr, errMalformedHash) {
+			// The client sees an ordinary wrong PIN. The log names the key id only.
+			s.log.Warn("PIN hash is unusable", "user", userID, "reason", verr.Error())
+		}
 		res, err := s.q.RecordPINFailure(ctx, userID)
 		if err != nil {
 			return err
@@ -135,7 +150,23 @@ func (s *Service) VerifyPIN(ctx context.Context, userID uuid.UUID, pin string) e
 			return err
 		}
 	}
+	if rehash && s.pins.NeedsRehash(st.PinHash.String) {
+		s.upgradePINHash(ctx, userID, st.PinHash.String, pin)
+	}
 	return nil
+}
+
+// upgradePINHash moves a verified legacy, old-key or old-parameter hash to the current format
+// (ADR-0018). A failure is logged and ignored: the PIN was right, so the payment goes on.
+func (s *Service) upgradePINHash(ctx context.Context, userID uuid.UUID, oldHash, pin string) {
+	wrote, err := s.rehashPIN(ctx, userID, oldHash, pin)
+	if err != nil {
+		s.log.Warn("PIN hash upgrade failed", "user", userID)
+		return
+	}
+	if wrote {
+		s.log.Debug("PIN hash upgraded", "user", userID, "key", s.pins.CurrentID())
+	}
 }
 
 // auditPIN writes a trail entry that never contains the PIN or a hash.

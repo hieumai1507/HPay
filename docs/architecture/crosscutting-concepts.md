@@ -60,6 +60,9 @@ Codes (OTP) and notices to the account holder leave the system only through the 
 
 ### Second factor: TOTP (ADR-0017)
 The 2fa band of the offer auth matrix needs the PIN and a TOTP code. TOTP (RFC 6238) is built in `internal/auth`: the secret is AES-256-GCM encrypted at rest with `TOTP_ENCRYPTION_KEY`, shown once at enrolment, and a code is accepted once (the time step is claimed with a guarded UPDATE). The confirm step asks the `transfer.Authenticator` for the factor, so a further factor (a device-bound biometric, which the mobile app would supply) is a new implementation, not a change to the flow.
+### PIN storage: pepper and key ids (ADR-0018)
+The transaction PIN is stored as `argon2id(HMAC-SHA256(pepper, pin))` with m=19456 KiB, t=2, p=1 and the pepper key id inside the hash (`$argon2id$v=19$m=19456,t=2,p=1,k=<id>$salt$hash`). The pepper comes only from configuration (`PIN_PEPPER`, `PIN_PEPPER_ID`, `PIN_PEPPER_OLD`), never from the database. Legacy hashes (raw PIN, login-grade parameters) keep verifying and are rewritten by the next successful check with a guarded UPDATE. Every argon2 derivation, for passwords and PINs, goes through one CPU-count semaphore in `auth/password.go`. The login password is unchanged. Operations: `../runbooks/pin-pepper.md`.
+
 ## 7. Logging
 
 `log/slog` JSON to stdout (`platform/logger/logger.go`); level Debug with source in `dev`, Info otherwise. Access log per request (`router.go:235-247`): request_id, method, route template, status, duration; `X-Request-Id` is accepted from the client or generated and echoed. Policy (comment in logger.go): never log passwords, OTP, tokens, full phones, balances at info or above. Gap: no metrics or tracing; `/healthz` reports Postgres and Redis (503 when degraded).

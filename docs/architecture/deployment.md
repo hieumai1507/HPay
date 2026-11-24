@@ -30,6 +30,7 @@ Services: `postgres` (postgres:16-alpine, user/password/db `HPay`, port 5432, he
 | `STORAGE_PROVIDER` | `local` | `cloudinary` requires `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` |
 | `MOCK_BANK_SECRET` | `dev-mock-bank-secret` in `dev` and `ci` only | required and non-default in `demo` and `production` (the route is not mounted in `production`) |
 | `DEFAULT_OFFER_CODE` | `OFFER_CUST_L0` | read in `offerguard.go:55`; offer used when a user has no `user_offers` row |
+| `PIN_PEPPER`, `PIN_PEPPER_ID`, `PIN_PEPPER_OLD` | dev and ci public test value, id `p1`, no old keys | base64 of 32 bytes; **required** outside `dev` and `ci`; HMAC key mixed into every transaction PIN hash (ADR-0018). Keep it out of the database, database backups and the `DATABASE_URL` secret; losing it means a mass PIN reset. `runbooks/pin-pepper.md` |
 | `TOTP_ENCRYPTION_KEY` | dev and ci test key | base64 of 32 bytes; **required** outside `dev` and `ci`; AES-256-GCM key for TOTP secrets (ADR-0017). Losing it makes every stored secret unreadable |
 | `SENDER_PROVIDER` | empty | `twilio` or empty. Empty: log-only outside production, refusing in `production` and `demo` (ADR-0016) |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY`, `TWILIO_API_SECRET`, `TWILIO_FROM` | none | required when `SENDER_PROVIDER=twilio` (ADR-0017) |

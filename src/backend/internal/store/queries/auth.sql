@@ -71,6 +71,12 @@ UPDATE users
 SET pin_hash = $2, pin_failed_attempts = 0, pin_locked_until = NULL, updated_at = now()
 WHERE id = $1;
 
+-- name: RehashUserPIN :execrows
+-- ADR-0018: storage upgrade after a successful verification. Guarded by the hash that was verified,
+-- so a PIN change or reset that happened meanwhile is never overwritten. Touches no counter, no
+-- pin_reset_at and no updated_at.
+UPDATE users SET pin_hash = sqlc.arg(new_hash) WHERE id = sqlc.arg(id) AND pin_hash = sqlc.arg(old_hash);
+
 -- name: RecordPINFailure :one
 -- Atomic increment. If an earlier lock has expired the count restarts at 1. The
 -- fifth consecutive failure locks PIN use for 15 minutes.
