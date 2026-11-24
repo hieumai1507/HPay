@@ -339,7 +339,7 @@ BE-C1 (ledger posting guard), BE-C2 (server-side PIN gate), BE-H1 (idempotency p
 | G11 | Compliance review per jurisdiction for the limit table | numbers come from third-party blogs, not regulation | legal review |
 | G12 | No admin UI or alert for `needs_manual` approvals or `compensation_failed` instances | parked money cases are invisible | admin feature run |
 | G13 | Admin cannot edit offers (no write route); offers change only by migration | operations | feature run |
-| G14 | Pre-existing lint errors: admin 6, mobile 3 | quality gate | fix or baseline |
+| G14 | DONE 2026-11-24: lint warnings fixed at the cause (admin 6 -> 0: memoised `rows`/`flags`/`offers`, KYC detail key handler via latest-handler ref; mobile 8 warnings -> 0: unused imports/vars removed, receiver effect depends on stable `mutate`). Admin lint now enforced in admin-ci (job lint-unit); mobile has no CI workflow | quality gate | done |
 | G15 | Fraud LLM advisory is fire-and-forget; rule errors are retryable (fail-closed verified) but there is no test for an advisor outage | regression guard | add a test |
 | G16 | Wave 5 content fixes still open: mockups state old KYC numbers, `docs/reference/api.md` section on unreachable endpoints needs a status note | knowledge-base accuracy | docs pass |
 | G17 | Key rotation (Neon, Cloudinary, JWT) postponed by the owner; the local `.env` JWT secret is the public placeholder | secrets | owner, when ready |

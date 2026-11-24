@@ -38,7 +38,7 @@ export default function KYCDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState('');
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data]);
   const idx = useMemo(() => rows.findIndex((r) => r.id === id), [rows, id]);
   const item = idx >= 0 ? rows[idx] : undefined;
   const canReview = can('kyc.review') && tab === 'manual';
@@ -74,21 +74,27 @@ export default function KYCDetailPage() {
     );
   };
 
+  // Latest-handler ref so the key listener calls current closures without re-subscribing.
+  const handlers = useRef({ goSibling, decide });
+  useEffect(() => {
+    handlers.current = { goSibling, decide };
+  });
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || rejectOpen) return;
       if (e.key === 'j' || e.key === 'J') {
         e.preventDefault();
-        goSibling(1);
+        handlers.current.goSibling(1);
       }
       if (e.key === 'k' || e.key === 'K') {
         e.preventDefault();
-        goSibling(-1);
+        handlers.current.goSibling(-1);
       }
       if ((e.key === 'a' || e.key === 'A') && canReview) {
         e.preventDefault();
-        decide('approve');
+        handlers.current.decide('approve');
       }
       if ((e.key === 'r' || e.key === 'R') && canReview) {
         e.preventDefault();
@@ -97,7 +103,7 @@ export default function KYCDetailPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [idx, data, rejectOpen, canReview]);
+  }, [rejectOpen, canReview]);
 
   if (isPending) return <div className="text-slate-500 p-6">Đang tải…</div>;
   if (!item)

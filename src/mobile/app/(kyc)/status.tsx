@@ -1,20 +1,18 @@
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
-import { Text, View, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import { Text, View, ActivityIndicator, ScrollView } from 'react-native';
 
 import { useKYCStatus } from '@/src/queries';
 import { useSessionStore } from '@/src/stores/session';
 import { Button } from '@/src/ui/Button';
 import { StatusBadge } from '@/src/ui/StatusBadge';
 
-import type { components } from '@/src/api/schema';
-
 export default function KycStatusScreen() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const accessToken = useSessionStore((s) => s.accessToken);
 
-  const { data, isLoading, isError, refetch } = useKYCStatus();
+  const { data, isLoading } = useKYCStatus();
 
   const kycStatus = data?.kyc_status ?? 'pending';
   const reasons = data?.latest_request?.ai_reasons || null;
