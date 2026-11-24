@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useRequestDetail, useDeclineRequest, useCancelRequest, useRemindRequest, useMe } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { color } from '@/src/ui/tokens';
 import { SplitAvatarStack } from '@/src/ui';
 
@@ -158,7 +158,7 @@ export default function RequestDetailScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         <View className="bg-white dark:bg-slate-800 rounded-xl p-5 items-center border border-slate-100 dark:border-slate-700 shadow-xs">
-          <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountVND(BigInt(req.amount))}</Text>
+          <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(req.amount))}</Text>
           <View className={`px-3 py-1 rounded-md mt-2 ${badge.bg}`}>
             <Text className="text-xs font-bold" style={{ color: badge.color }}>{badge.text}</Text>
           </View>
@@ -213,7 +213,7 @@ export default function RequestDetailScreen() {
                   <View key={sib.id} className="flex-row items-center justify-between w-full py-3 border-b border-slate-100 dark:border-slate-700">
                     <View className="gap-1">
                       <Text className="text-sm font-semibold text-slate-900 dark:text-white">{sib.payer_name}</Text>
-                      <Text className="text-xs text-slate-500">{formatAmountVND(BigInt(sib.amount))}</Text>
+                      <Text className="text-xs text-slate-500">{formatAmountUSD(BigInt(sib.amount))}</Text>
                     </View>
                     {canRemind ? (
                       <Pressable

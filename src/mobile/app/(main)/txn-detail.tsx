@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTimelineQuery, useTxnDetail } from '@/src/queries';
 import { describeError } from '@/src/lib/errors';
+import { formatAmountUSD } from '@/src/lib/money';
 import {
   AmountDisplay,
   ErrorState,
@@ -81,7 +82,7 @@ export default function TxnDetailScreen() {
             )}
             {q.data.counterparty_phone && <Row label="Phone number" value={q.data.counterparty_phone} />}
             {q.data.fee > 0 && (
-              <Row label="Fee" value={`${new Intl.NumberFormat('en-US').format(q.data.fee)} ₫`} />
+              <Row label="Fee" value={formatAmountUSD(BigInt(q.data.fee))} />
             )}
             {q.data.note ? <Row label="Note" value={q.data.note} /> : null}
             <Row label="Time" value={new Date(q.data.created_at).toLocaleString('en-GB')} />

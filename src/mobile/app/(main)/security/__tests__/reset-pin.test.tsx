@@ -48,7 +48,7 @@ describe('Reset PIN screen', () => {
     mockApi.mockResolvedValueOnce({ status: 'pin_reset' });
     fillStep2();
     await pressAsync(screen.getByLabelText('Reset PIN'));
-    await waitFor(() => expect(screen.getByText(/limited to 2,500,000/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/limited to \$100\.00/)).toBeTruthy());
     expect(mockApi).toHaveBeenNthCalledWith(2, '/v1/me/pin/reset/confirm', {
       method: 'POST',
       body: { code: CODE, new_pin: NEW_PIN },

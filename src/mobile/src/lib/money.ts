@@ -1,35 +1,40 @@
 /**
- * Money is always int64 minor units (VND dong — there is no sub-dong unit).
- * Every parse/format path here goes through BigInt. Never introduce a `Number(...)`
- * or `parseInt(...)` call on an amount string — that's how float bugs get in (M06).
+ * Money is always int64 minor units: US cents (ADR-0019). Users type dollars; every
+ * parse/format path here goes through BigInt on digit strings. Never introduce a
+ * `Number(...)`, `parseInt(...)` or `parseFloat(...)` call on an amount string: that is how
+ * float bugs get in (M06, C-01).
  */
 
 const THOUSANDS_SEPARATOR = ',';
-const DIGITS_ONLY = /\d/g;
+const CENTS_PER_DOLLAR = 100n;
 
-/** Strips everything that isn't a digit — used on paste and on every keystroke. */
+/** Keeps only digits and dots; used on paste and on every keystroke. */
 export function sanitizeAmountInput(raw: string): string {
-  return (raw.match(DIGITS_ONLY) ?? []).join('');
-}
-
-/** Plain digits, or digits grouped in threes with ',' ("1,234,567"). Nothing else is an amount. */
-const AMOUNT_GRAMMAR = /^(?:\d+|\d{1,3}(?:,\d{3})+)$/;
-
-/** True when the text is non-empty after trimming spaces and an optional trailing dong sign. */
-function stripAmountDecorations(raw: string): string {
-  return raw.trim().replace(/\s*₫$/, '').trim();
+  return raw.replace(/[^\d.]/g, '');
 }
 
 /**
- * Parses a typed or formatted amount ("1234567" or "1,234,567", optional trailing "₫") into
- * minor units. Returns null for empty input AND for anything that is not a whole number
- * written with correct comma grouping: decimals, negatives, a Vietnamese "1.234.567",
- * misplaced separators, letters. Never throws.
+ * Dollars as typed: an integer part (plain digits, or digits grouped in threes with ',')
+ * and an optional '.' followed by one or two digits. Nothing else is an amount.
+ */
+const AMOUNT_GRAMMAR = /^(\d+|\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/;
+
+/** Trims spaces and an optional leading dollar sign. */
+function stripAmountDecorations(raw: string): string {
+  return raw.trim().replace(/^\$\s*/, '').trim();
+}
+
+/**
+ * Parses a typed or formatted dollar amount ("12", "12.5", "12.50", "1,234.56", optional
+ * leading "$") into cents. Returns null for empty input and for anything else: three
+ * decimals, "1.234.567", ".5", "12.", signs, letters, misplaced separators. Never throws.
  */
 export function parseAmountToBigInt(raw: string): bigint | null {
-  const text = stripAmountDecorations(raw);
-  if (!AMOUNT_GRAMMAR.test(text)) return null;
-  return BigInt(text.replace(/,/g, ''));
+  const match = AMOUNT_GRAMMAR.exec(stripAmountDecorations(raw));
+  if (!match) return null;
+  const dollars = BigInt(match[1].replace(/,/g, ''));
+  const cents = BigInt((match[2] ?? '').padEnd(2, '0'));
+  return dollars * CENTS_PER_DOLLAR + cents;
 }
 
 /** Inserts `,` every 3 digits from the right, e.g. "1234567" -> "1,234,567". */
@@ -45,46 +50,77 @@ function groupThousands(digits: string): string {
   return result;
 }
 
-/** Live-formats what the user is typing into an AmountInput (digits only, grouped). */
+/**
+ * Live-formats what the user is typing into an AmountInput. Always returns a valid prefix
+ * of an amount: grouped integer part, optionally a '.' and at most two decimals. A second
+ * dot and a third decimal are dropped; leading zeros are trimmed except before the point.
+ */
 export function formatAmountWhileTyping(raw: string): string {
-  const digits = sanitizeAmountInput(raw).replace(/^0+(?=\d)/, '');
-  if (digits.length === 0) return '';
-  return groupThousands(digits);
+  const cleaned = sanitizeAmountInput(raw);
+  if (cleaned.length === 0) return '';
+  const parts = cleaned.split('.');
+  const hasDot = parts.length > 1;
+  const intDigits = parts[0].replace(/^0+(?=\d)/, '');
+  const decimals = hasDot ? parts[1].slice(0, 2) : '';
+  if (intDigits === '' && !hasDot) return '';
+  const grouped = groupThousands(intDigits === '' ? '0' : intDigits);
+  return hasDot ? `${grouped}.${decimals}` : grouped;
 }
 
-/** Formats a minor-unit amount for read-only display, e.g. 1234567n -> "1,234,567". */
+/** Formats cents without a sign or symbol, e.g. 123456n -> "1,234.56" (magnitude only). */
 export function formatAmountDisplay(value: bigint): string {
-  const negative = value < 0n;
-  const digits = (negative ? -value : value).toString();
-  const grouped = groupThousands(digits);
-  return negative ? `-${grouped}` : grouped;
+  const magnitude = value < 0n ? -value : value;
+  const dollars = magnitude / CENTS_PER_DOLLAR;
+  const cents = (magnitude % CENTS_PER_DOLLAR).toString().padStart(2, '0');
+  return `${groupThousands(dollars.toString())}.${cents}`;
 }
 
-/** Formats with the VND sign, e.g. 1234567n -> "1,234,567 ₫". */
-export function formatAmountVND(value: bigint): string {
-  return `${formatAmountDisplay(value)} ₫`;
+/** Formats cents as US dollars, e.g. 123456n -> "$1,234.56", -5n -> "-$0.05". */
+export function formatAmountUSD(value: bigint): string {
+  return `${value < 0n ? '-' : ''}$${formatAmountDisplay(value)}`;
 }
 
 /**
- * Upper bound for any single user-entered amount (C-01): 1,000,000,000 VND, the largest
- * per-transaction cap the backend applies (org disbursement). Everything below is far
- * under Number.MAX_SAFE_INTEGER, so API responses that arrive as JSON numbers stay exact.
+ * Upper bound for any single user-entered amount (C-01): 4,000,000 cents ($40,000.00),
+ * the largest per-transaction cap the backend applies (org disbursement). Far under
+ * Number.MAX_SAFE_INTEGER, so API responses that arrive as JSON numbers stay exact.
  */
-export const MAX_AMOUNT = 1_000_000_000n;
+export const MAX_AMOUNT = 4_000_000n;
 
 export type StrictAmount =
   | { ok: true; value: bigint }
   | { ok: false; reason: 'empty' | 'invalid' | 'not_positive' | 'too_large' };
 
-/** Parses user input into a positive bigint no larger than MAX_AMOUNT. Never uses Number. */
+function checkBounds(value: bigint): StrictAmount {
+  if (value <= 0n) return { ok: false, reason: 'not_positive' };
+  if (value > MAX_AMOUNT) return { ok: false, reason: 'too_large' };
+  return { ok: true, value };
+}
+
+/** Parses typed dollars into positive cents no larger than MAX_AMOUNT. Never uses Number. */
 export function parseAmountStrict(raw: string): StrictAmount {
   const value = parseAmountToBigInt(raw);
   if (value === null) {
     return { ok: false, reason: stripAmountDecorations(raw) === '' ? 'empty' : 'invalid' };
   }
-  if (value <= 0n) return { ok: false, reason: 'not_positive' };
-  if (value > MAX_AMOUNT) return { ok: false, reason: 'too_large' };
-  return { ok: true, value };
+  return checkBounds(value);
+}
+
+/**
+ * Route params and API values carry cents as a plain digit string. Returns null for
+ * anything that is not one (so a dollar string is never misread as cents).
+ */
+export function parseCentsParam(raw: string | undefined | null): bigint | null {
+  if (raw == null || !/^\d+$/.test(raw)) return null;
+  return BigInt(raw);
+}
+
+/** Same bounds as parseAmountStrict, for a cents digit string. */
+export function parseCentsStrict(raw: string | undefined | null): StrictAmount {
+  if (raw == null || raw.trim() === '') return { ok: false, reason: 'empty' };
+  const value = parseCentsParam(raw);
+  if (value === null) return { ok: false, reason: 'invalid' };
+  return checkBounds(value);
 }
 
 /** Whole-number percentage of `part` in `whole`, clamped to 0..100, computed in bigint. */

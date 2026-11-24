@@ -2,13 +2,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { parseAmountToBigInt } from '@/src/lib/money';
+import { parseCentsParam } from '@/src/lib/money';
 import { AmountDisplay, Button, color, space, type } from '@/src/ui';
 
 /** Topup is synchronous — reaching this screen means the money is already credited. */
 export default function TopupResultScreen() {
   const { refCode, amount } = useLocalSearchParams<{ refCode: string; amount: string }>();
-  const value = parseAmountToBigInt(amount ?? '') ?? 0n;
+  const value = parseCentsParam(amount) ?? 0n;
 
   return (
     <SafeAreaView style={styles.safe}>

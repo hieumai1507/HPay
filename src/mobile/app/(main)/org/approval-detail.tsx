@@ -15,7 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { apiRequest } from '@/src/api/client';
 import { useApprovalDetail, useApprovalInbox, useDecideApproval, approvalsKeys, type ApprovalSignature } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { describeError, isApiError } from '@/src/lib/errors';
 
 const STATUS_LABEL: Record<string, { text: string; className: string }> = {
@@ -86,7 +86,7 @@ function DecideResultView({ outcome, inboxCount }: { outcome: DecideOutcome; inb
       </Text>
       <Text className="text-sm text-slate-500 text-center leading-relaxed">
         {isLastSignature
-          ? `You are the final signature. We are transferring ${formatAmountVND(BigInt(outcome.amount))}; you and the maker will be notified when it completes.`
+          ? `You are the final signature. We are transferring ${formatAmountUSD(BigInt(outcome.amount))}; you and the maker will be notified when it completes.`
           : `Waiting for ${outcome.remaining} more approver(s).`}
       </Text>
       <View className={`px-3 py-1 rounded-full ${isLastSignature ? 'bg-cyan-50' : 'bg-amber-50'}`}>
@@ -269,7 +269,7 @@ export default function ApprovalDetailScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
           <View className="items-center py-3 gap-2">
-            <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.amount))}</Text>
+            <Text className="text-3xl font-extrabold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(data.amount))}</Text>
             <Text className="text-xs text-slate-500">{data.org_name}</Text>
             <View className={`px-3 py-1 rounded-full ${STATUS_LABEL[data.status]?.className ?? 'bg-slate-100'}`}>
               <Text className={`text-xs font-bold ${STATUS_LABEL[data.status]?.className ?? ''}`}>
@@ -286,7 +286,7 @@ export default function ApprovalDetailScreen() {
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
               <Text className="text-xs font-semibold text-slate-500">Fee</Text>
-              <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountVND(BigInt(data.fee))}</Text>
+              <Text className="text-sm font-medium text-slate-900 dark:text-white">{formatAmountUSD(BigInt(data.fee))}</Text>
             </View>
             <View className="flex-row justify-between items-center py-3.5 border-t border-slate-100 dark:border-slate-700">
               <Text className="text-xs font-semibold text-slate-500">Current approval level</Text>

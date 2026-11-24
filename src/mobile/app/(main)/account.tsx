@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { apiRequest } from '@/src/api/client';
 import { RESET_PIN_ROUTE, SET_PIN_ROUTE } from '@/src/features/security/pinErrors';
 import { useMe } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { useSecurityStore } from '@/src/stores/security';
 import { clearStoredRefreshToken, useSessionStore } from '@/src/stores/session';
 import { useOrgStore, type OrgItem } from '@/src/stores/org';
@@ -215,7 +215,7 @@ export default function AccountScreen() {
         <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">ACCOUNT</Text>
         <View className="flex-row items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800">
           <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Transaction limit</Text>
-          <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatAmountVND(BigInt(txn_limit))}</Text>
+          <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(txn_limit))}</Text>
         </View>
       </View>
 
