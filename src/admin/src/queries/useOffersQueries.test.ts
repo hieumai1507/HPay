@@ -40,7 +40,7 @@ describe('mapOfferService', () => {
     service_code: 'P2P_TRANSFER',
     service_name: 'P2P transfer',
     is_enabled: true,
-    max_amount_per_txn: 62_500_000,
+    max_amount_per_txn: 250_000,
     daily_limit: 125_000_000,
     monthly_limit: 625_000_000,
     interval_seconds: 0,
@@ -50,15 +50,15 @@ describe('mapOfferService', () => {
     const s = mapOfferService({
       ...row,
       auth_matrix: [
-        { min_amount: 0, max_amount: 2_000_000, auth_method: 'pin' },
-        { min_amount: 2_000_000, max_amount: 50_000_000, auth_method: 'otp' },
-        { min_amount: 50_000_000, max_amount: null, auth_method: '2fa' },
+        { min_amount: 0, max_amount: 8_000, auth_method: 'pin' },
+        { min_amount: 8_000, max_amount: 200_000, auth_method: 'otp' },
+        { min_amount: 200_000, max_amount: null, auth_method: '2fa' },
       ],
     });
     expect(s.serviceCode).toBe('P2P_TRANSFER');
     expect(s.dailyLimit).toBe(125_000_000);
     expect(s.authMatrix.map((m) => m.authMethod)).toEqual(['pin', 'otp', '2fa']);
-    expect(s.authMatrix[0]!.maxAmount).toBe(2_000_000);
+    expect(s.authMatrix[0]!.maxAmount).toBe(8_000);
     expect(s.authMatrix[2]!.maxAmount).toBeUndefined();
   });
 

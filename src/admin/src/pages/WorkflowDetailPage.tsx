@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useWorkflowDetail, useDecideWorkflow } from '@/queries';
 import { Timeline } from '@/ui';
 import { NO_PERMISSION_REASON } from '@/lib/access';
+import { formatUsd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 
 export default function WorkflowDetailPage() {
@@ -111,7 +112,7 @@ export default function WorkflowDetailPage() {
               <div>
                 <div className="text-xs text-slate-500">Amount</div>
                 <div className="font-mono font-bold text-slate-900 text-base">
-                  {instance.amount ? `${instance.amount.toLocaleString('en-US')} ₫` : '—'}
+                  {formatUsd(instance.amount)}
                 </div>
               </div>
               <div>

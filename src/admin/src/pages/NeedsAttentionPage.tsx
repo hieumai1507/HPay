@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { formatAge } from '@/lib/age';
-import { formatVnd } from '@/lib/money';
+import { formatUsd } from '@/lib/money';
 import { useAttentionSummary, useNeedsManualApprovals, useWorkflowInstances } from '@/queries';
 import { Badge, ErrorNotice, Table } from '@/ui';
 
@@ -47,7 +47,7 @@ export default function NeedsAttentionPage() {
             columns={[
               { key: 'type', header: 'Type', render: (r) => <Badge tone="danger">{r.subjectType}</Badge> },
               { key: 'ref', header: 'Ref code', render: (r) => <span className="font-mono">{r.refCode || '—'}</span> },
-              { key: 'amount', header: 'Amount', render: (r) => (r.amount ? formatVnd(r.amount) : '—') },
+              { key: 'amount', header: 'Amount', render: (r) => (r.amount ? formatUsd(r.amount) : '—') },
               { key: 'age', header: 'Age', render: (r) => formatAge(r.parkedAt) },
               { key: 'reason', header: 'Reason', render: (r) => r.reason || '—' },
               {
@@ -72,7 +72,7 @@ export default function NeedsAttentionPage() {
             columns={[
               { key: 'def', header: 'Workflow', render: (w) => <Badge tone="danger">{w.definitionId}</Badge> },
               { key: 'ref', header: 'Ref code', render: (w) => <span className="font-mono">{w.txnRef || '—'}</span> },
-              { key: 'amount', header: 'Amount', render: (w) => (w.amount ? formatVnd(w.amount) : '—') },
+              { key: 'amount', header: 'Amount', render: (w) => (w.amount ? formatUsd(w.amount) : '—') },
               { key: 'age', header: 'Age', render: (w) => formatAge(w.createdAt) },
               { key: 'reason', header: 'Reason', render: (w) => `Compensation failed at step ${w.currentStep || 'unknown'}` },
               {

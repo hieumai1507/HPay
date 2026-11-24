@@ -15,7 +15,7 @@ export interface OrgPolicy {
   name: string;
   version: number;
   isActive: boolean;
-  /** Smallest amount the policy applies to, in minor units. */
+  /** Smallest amount the policy applies to, in cents. */
   minAmount: number;
   /** Largest amount it applies to; null means no upper limit. */
   maxAmount: number | null;
