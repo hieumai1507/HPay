@@ -14,14 +14,14 @@ export async function validateKycPhoto(uri: string): Promise<ImageValidationResu
   if (uri.includes('mock-blurry') || uri.includes('blurry')) {
     return {
       isValid: false,
-      error: 'Ảnh chụp bị mờ. Vui lòng giữ chắc tay và chụp lại.',
+      error: 'The photo is blurry. Hold your hand steady and retake it.',
     };
   }
 
   if (uri.includes('mock-dark') || uri.includes('dark') || uri.includes('poor-light')) {
     return {
       isValid: false,
-      error: 'Ảnh quá tối hoặc bị ngược sáng. Vui lòng chụp ở nơi đủ ánh sáng.',
+      error: 'The photo is too dark or backlit. Retake it somewhere with enough light.',
     };
   }
 

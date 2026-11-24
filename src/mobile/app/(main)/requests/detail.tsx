@@ -38,11 +38,11 @@ export default function RequestDetailScreen() {
           <Pressable onPress={() => router.back()} className="p-1">
             <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </Pressable>
-          <Text className="text-lg font-bold text-slate-900 dark:text-white">Chi tiết yêu cầu</Text>
+          <Text className="text-lg font-bold text-slate-900 dark:text-white">Request details</Text>
           <View className="w-8" />
         </View>
         <View className="flex-1 items-center justify-center">
-          <Text className="text-base color-rose-600 font-semibold">Không thể tải chi tiết yêu cầu.</Text>
+          <Text className="text-base color-rose-600 font-semibold">Could not load request details.</Text>
         </View>
       </SafeAreaView>
     );
@@ -56,11 +56,11 @@ export default function RequestDetailScreen() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pending': return { text: 'Chờ thanh toán', color: color.warning[600], bg: 'bg-amber-50' };
-      case 'paid': return { text: 'Đã thanh toán', color: color.success[600], bg: 'bg-emerald-50' };
-      case 'declined': return { text: 'Đã từ chối', color: color.danger[600], bg: 'bg-rose-50' };
-      case 'canceled': return { text: 'Đã hủy', color: color.neutral[500], bg: 'bg-slate-100' };
-      case 'expired': return { text: 'Hết hạn', color: color.neutral[400], bg: 'bg-slate-100' };
+      case 'pending': return { text: 'Awaiting payment', color: color.warning[600], bg: 'bg-amber-50' };
+      case 'paid': return { text: 'Paid', color: color.success[600], bg: 'bg-emerald-50' };
+      case 'declined': return { text: 'Rejected', color: color.danger[600], bg: 'bg-rose-50' };
+      case 'canceled': return { text: 'Canceled', color: color.neutral[500], bg: 'bg-slate-100' };
+      case 'expired': return { text: 'Expired', color: color.neutral[400], bg: 'bg-slate-100' };
       default: return { text: status, color: color.neutral[500], bg: 'bg-slate-100' };
     }
   };
@@ -69,19 +69,19 @@ export default function RequestDetailScreen() {
 
   const handleDecline = () => {
     Alert.alert(
-      'Từ chối yêu cầu',
-      'Bạn có chắc chắn muốn từ chối yêu cầu thanh toán này không?',
+      'Reject request',
+      'Are you sure you want to reject this payment request?',
       [
-        { text: 'Quay lại', style: 'cancel' },
+        { text: 'Back', style: 'cancel' },
         {
-          text: 'Từ chối',
+          text: 'Reject',
           style: 'destructive',
           onPress: async () => {
             try {
               await declineMutation.mutateAsync(req.id);
-              Alert.alert('Thành công', 'Đã từ chối yêu cầu.');
+              Alert.alert('Success', 'Request rejected.');
             } catch (err: any) {
-              Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra.');
+              Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
             }
           },
         },
@@ -91,19 +91,19 @@ export default function RequestDetailScreen() {
 
   const handleCancel = () => {
     Alert.alert(
-      'Hủy yêu cầu',
-      'Bạn có chắc chắn muốn hủy yêu cầu xin tiền này không?',
+      'Cancel request',
+      'Are you sure you want to cancel this money request?',
       [
-        { text: 'Quay lại', style: 'cancel' },
+        { text: 'Back', style: 'cancel' },
         {
-          text: 'Hủy yêu cầu',
+          text: 'Cancel request',
           style: 'destructive',
           onPress: async () => {
             try {
               await cancelMutation.mutateAsync(req.id);
-              Alert.alert('Thành công', 'Đã hủy yêu cầu.');
+              Alert.alert('Success', 'Request canceled.');
             } catch (err: any) {
-              Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra.');
+              Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
             }
           },
         },
@@ -114,12 +114,12 @@ export default function RequestDetailScreen() {
   const handleRemind = async () => {
     try {
       await remindMutation.mutateAsync(req.id);
-      Alert.alert('Thành công', 'Đã gửi lời nhắc nợ tới payer.');
+      Alert.alert('Success', 'Reminder sent to the payer.');
     } catch (err: any) {
       if (err?.code === 'ERR_REMIND_TOO_SOON') {
-        Alert.alert('Nhắc nhợ quá nhanh', 'Bạn chỉ được nhắc nợ tối đa một lần mỗi 24 giờ.');
+        Alert.alert('Reminder sent too recently', 'You can send a reminder once every 24 hours.');
       } else {
-        Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra.');
+        Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
       }
     }
   };
@@ -128,12 +128,12 @@ export default function RequestDetailScreen() {
     setRemindingSiblingId(siblingId);
     try {
       await remindMutation.mutateAsync(siblingId);
-      Alert.alert('Thành công', `Đã gửi lời nhắc nợ tới ${siblingName}.`);
+      Alert.alert('Success', `Reminder sent to ${siblingName}.`);
     } catch (err: any) {
       if (err?.code === 'ERR_REMIND_TOO_SOON') {
-        Alert.alert('Nhắc nhợ quá nhanh', 'Người này chỉ được nhắc tối đa một lần mỗi 24 giờ.');
+        Alert.alert('Reminder sent too recently', 'You can remind this person once every 24 hours.');
       } else {
-        Alert.alert('Lỗi', err?.message || 'Có lỗi xảy ra.');
+        Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
       }
     } finally {
       setRemindingSiblingId(null);
@@ -142,7 +142,7 @@ export default function RequestDetailScreen() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleString('vi-VN');
+    return new Date(dateStr).toLocaleString('en-GB');
   };
 
   return (
@@ -152,7 +152,7 @@ export default function RequestDetailScreen() {
         <Pressable onPress={() => router.back()} className="p-1">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">Chi tiết yêu cầu</Text>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">Request details</Text>
         <View className="w-8" />
       </View>
 
@@ -166,28 +166,28 @@ export default function RequestDetailScreen() {
           <View className="h-px bg-slate-100 dark:bg-slate-700 w-full my-5" />
 
           <View className="flex-row justify-between w-full py-2">
-            <Text className="text-sm text-slate-400">Nội dung</Text>
-            <Text className="text-sm font-semibold text-slate-900 dark:text-white">{req.note || 'Không có ghi chú'}</Text>
+            <Text className="text-sm text-slate-400">Description</Text>
+            <Text className="text-sm font-semibold text-slate-900 dark:text-white">{req.note || 'No note'}</Text>
           </View>
 
           <View className="flex-row justify-between w-full py-2">
-            <Text className="text-sm text-slate-400">Người xin tiền</Text>
+            <Text className="text-sm text-slate-400">Requester</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{req.requester_name}</Text>
           </View>
 
           <View className="flex-row justify-between w-full py-2">
-            <Text className="text-sm text-slate-400">Người trả tiền</Text>
+            <Text className="text-sm text-slate-400">Payer</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{req.payer_name}</Text>
           </View>
 
           <View className="flex-row justify-between w-full py-2">
-            <Text className="text-sm text-slate-400">Hết hạn lúc</Text>
+            <Text className="text-sm text-slate-400">Expires at</Text>
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatDate(req.expires_at)}</Text>
           </View>
 
           {req.last_reminded_at ? (
             <View className="flex-row justify-between w-full py-2">
-              <Text className="text-sm text-slate-400">Nhắc nợ lần cuối</Text>
+              <Text className="text-sm text-slate-400">Last reminder</Text>
               <Text className="text-sm font-semibold text-slate-900 dark:text-white">{formatDate(req.last_reminded_at)}</Text>
             </View>
           ) : null}
@@ -205,7 +205,7 @@ export default function RequestDetailScreen() {
             />
 
             <View className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-100 dark:border-slate-700 shadow-xs">
-              <Text className="text-sm font-bold text-slate-900 dark:text-white self-start mb-4">Các thành viên trong nhóm chia hóa đơn</Text>
+              <Text className="text-sm font-bold text-slate-900 dark:text-white self-start mb-4">Split bill members</Text>
               {req.siblings.map((sib) => {
                 const sibBadge = getStatusLabel(sib.status);
                 const canRemind = isRequester && sib.status === 'pending';
@@ -226,7 +226,7 @@ export default function RequestDetailScreen() {
                         ) : (
                           <>
                             <Ionicons name="notifications-outline" size={12} color={color.brand[600]} />
-                            <Text className="text-xs font-bold text-brand">Nhắc</Text>
+                            <Text className="text-xs font-bold text-brand">Remind</Text>
                           </>
                         )}
                       </Pressable>
@@ -252,13 +252,13 @@ export default function RequestDetailScreen() {
                 disabled={declineMutation.isPending}
                 className="flex-1 h-12 rounded-xl bg-rose-50 items-center justify-center active:opacity-70"
               >
-                <Text className="color-rose-600 text-sm font-bold">Từ chối</Text>
+                <Text className="color-rose-600 text-sm font-bold">Reject</Text>
               </Pressable>
               <Pressable
                 onPress={() => router.push({ pathname: '/(main)/requests/pay', params: { id: req.id } })}
                 className="flex-2 h-12 rounded-xl bg-brand items-center justify-center active:bg-brand-600"
               >
-                <Text className="text-white text-sm font-bold">Thanh toán</Text>
+                <Text className="text-white text-sm font-bold">Pay</Text>
               </Pressable>
             </View>
           ) : isRequester ? (
@@ -268,7 +268,7 @@ export default function RequestDetailScreen() {
                 disabled={cancelMutation.isPending}
                 className="flex-1 h-12 rounded-xl bg-slate-100 items-center justify-center active:bg-slate-200"
               >
-                <Text className="text-slate-600 text-sm font-bold">Hủy yêu cầu</Text>
+                <Text className="text-slate-600 text-sm font-bold">Cancel request</Text>
               </Pressable>
               <Pressable
                 onPress={handleRemind}
@@ -278,7 +278,7 @@ export default function RequestDetailScreen() {
                 {remindMutation.isPending ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text className="text-white text-sm font-bold">Nhắc nợ</Text>
+                  <Text className="text-white text-sm font-bold">Remind</Text>
                 )}
               </Pressable>
             </View>

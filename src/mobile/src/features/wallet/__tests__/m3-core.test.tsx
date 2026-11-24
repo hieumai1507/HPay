@@ -15,9 +15,9 @@ import {
 } from '@/src/queries';
 
 describe('TestEdge_M01_DoubleTapTransfer_SingleRequest', () => {
-  it('a loading Button swallows further taps — second tap of "Chuyển tiền" cannot fire again', async () => {
+  it('a loading Button swallows further taps — second tap of "Transfer" cannot fire again', async () => {
     const onPress = jest.fn();
-    await render(<Button label="Chuyển tiền" loading onPress={onPress} />);
+    await render(<Button label="Transfer" loading onPress={onPress} />);
     fireEvent.press(screen.getByRole('button'));
     fireEvent.press(screen.getByRole('button'));
     expect(onPress).not.toHaveBeenCalled();
@@ -25,7 +25,7 @@ describe('TestEdge_M01_DoubleTapTransfer_SingleRequest', () => {
 
   it('a normal Button fires; combined with the stable idempotency key (M1 test) a replay is idempotent', async () => {
     const onPress = jest.fn();
-    await render(<Button label="Chuyển tiền" onPress={onPress} />);
+    await render(<Button label="Transfer" onPress={onPress} />);
     fireEvent.press(screen.getByRole('button'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -100,11 +100,11 @@ const baseTxn: TxnView = {
 describe('Test_TxnListItem_DirectionSign', () => {
   it('out txn shows − and neutral color; in txn shows + and success color', async () => {
     await render(<TxnListItem txn={baseTxn} />);
-    const out = screen.getByText(/−.*250\.000/);
+    const out = screen.getByText(/−.*250,000/);
     expect(out).toBeTruthy();
 
     await render(<TxnListItem txn={{ ...baseTxn, direction: 'in' }} />);
-    const inn = screen.getByText(/\+.*250\.000/);
+    const inn = screen.getByText(/\+.*250,000/);
     expect(inn).toBeTruthy();
   });
 
@@ -125,13 +125,13 @@ describe('Test_BalanceCard_HideToggle', () => {
       <BalanceCard balanceMinorUnits={1234567n} visible={false} onToggleVisible={onToggle} />,
     );
     expect(screen.getByText('••••••')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Hiện số dư'));
+    fireEvent.press(screen.getByLabelText('Show balance'));
     expect(onToggle).toHaveBeenCalledTimes(1);
 
     await render(
       <BalanceCard balanceMinorUnits={1234567n} visible onToggleVisible={onToggle} />,
     );
-    expect(screen.getByText(/1\.234\.567/)).toBeTruthy();
+    expect(screen.getByText(/1,234,567/)).toBeTruthy();
   });
 });
 
@@ -139,13 +139,13 @@ describe('Test_AmountInput_LiveFormatting', () => {
   it('groups thousands while typing and strips pasted junk', async () => {
     const onChange = jest.fn();
     await render(<AmountInput value="" onChangeValue={onChange} />);
-    const input = screen.getByLabelText('Số tiền');
+    const input = screen.getByLabelText('Amount');
 
     fireEvent.changeText(input, '1234567');
-    expect(onChange).toHaveBeenLastCalledWith('1.234.567');
+    expect(onChange).toHaveBeenLastCalledWith('1,234,567');
 
     fireEvent.changeText(input, '50,000 ₫');
-    expect(onChange).toHaveBeenLastCalledWith('50.000');
+    expect(onChange).toHaveBeenLastCalledWith('50,000');
   });
 });
 
@@ -155,14 +155,14 @@ describe('Test_FilterChips_ClientFilter', () => {
     await render(
       <FilterChips
         options={[
-          { value: 'all', label: 'Tất cả' },
-          { value: 'in', label: 'Tiền vào' },
+          { value: 'all', label: 'All' },
+          { value: 'in', label: 'Money in' },
         ]}
         selected="all"
         onSelect={onSelect}
       />,
     );
-    fireEvent.press(screen.getByText('Tiền vào'));
+    fireEvent.press(screen.getByText('Money in'));
     expect(onSelect).toHaveBeenCalledWith('in');
   });
 });

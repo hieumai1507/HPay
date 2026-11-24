@@ -15,17 +15,17 @@ import { formatAmountVND } from '@/src/lib/money';
 
 function timeAgo(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60)   return 'vừa xong';
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  return `${Math.floor(diff / 86400)} ngày trước`;
+  if (diff < 60)   return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+  return `${Math.floor(diff / 86400)} d ago`;
 }
 
 function timeLeft(iso: string): string {
   const diff = (new Date(iso).getTime() - Date.now()) / 1000;
-  if (diff <= 0) return 'Đã hết hạn';
-  if (diff < 3600) return `hết hạn sau ${Math.floor(diff / 60)} phút`;
-  return `hết hạn sau ${Math.floor(diff / 3600)} giờ`;
+  if (diff <= 0) return 'Expired';
+  if (diff < 3600) return `expires in ${Math.floor(diff / 60)} min`;
+  return `expires in ${Math.floor(diff / 3600)} h`;
 }
 
 function ApprovalCard({ item }: { item: ApprovalItem }) {
@@ -47,7 +47,7 @@ function ApprovalCard({ item }: { item: ApprovalItem }) {
         </View>
       </View>
       <Text className="text-xs text-slate-500 leading-relaxed mb-3">
-        Tạo bởi <Text className="font-bold text-slate-700 dark:text-slate-300">{item.maker_name}</Text>{' '}
+        Created by <Text className="font-bold text-slate-700 dark:text-slate-300">{item.maker_name}</Text>{' '}
         · {timeAgo(item.expires_at)} · {timeLeft(item.expires_at)}
       </Text>
       <View className="flex-row gap-2">
@@ -57,7 +57,7 @@ function ApprovalCard({ item }: { item: ApprovalItem }) {
             router.push({ pathname: '/(main)/org/approval-detail', params: { id: item.id } })
           }
         >
-          <Text className="text-sm font-bold text-white">Xem & duyệt</Text>
+          <Text className="text-sm font-bold text-white">Review & approve</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -74,7 +74,7 @@ export default function ApprovalsScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color="#0f172a" />
         </Pressable>
-        <Text className="text-base font-bold text-slate-900 dark:text-white">Chờ tôi duyệt</Text>
+        <Text className="text-base font-bold text-slate-900 dark:text-white">Awaiting my approval</Text>
         {items.length > 0 ? (
           <View className="bg-rose-600 min-w-[22px] h-5.5 rounded-full items-center justify-center px-1">
             <Text className="text-xs font-bold text-white">{items.length}</Text>
@@ -90,9 +90,9 @@ export default function ApprovalsScreen() {
         </View>
       ) : isError ? (
         <View className="flex-1 items-center justify-center gap-3">
-          <Text className="text-sm color-rose-600 font-semibold">Không thể tải danh sách duyệt.</Text>
+          <Text className="text-sm color-rose-600 font-semibold">Could not load approvals.</Text>
           <Pressable onPress={() => refetch()} className="px-5 py-2.5 bg-brand rounded-xl">
-            <Text className="text-white font-bold">Thử lại</Text>
+            <Text className="text-white font-bold">Try again</Text>
           </Pressable>
         </View>
       ) : (
@@ -103,8 +103,8 @@ export default function ApprovalsScreen() {
           {items.length === 0 ? (
             <View className="items-center gap-2.5 pt-20">
               <Text className="text-5xl">✅</Text>
-              <Text className="text-lg font-bold text-slate-900 dark:text-white">Không có lệnh nào chờ duyệt</Text>
-              <Text className="text-sm text-slate-500 text-center">Tất cả lệnh trong tầm của bạn đã được xử lý.</Text>
+              <Text className="text-lg font-bold text-slate-900 dark:text-white">No approvals pending</Text>
+              <Text className="text-sm text-slate-500 text-center">All requests within your scope have been handled.</Text>
             </View>
           ) : (
             items.map((item) => <ApprovalCard key={item.id} item={item} />)

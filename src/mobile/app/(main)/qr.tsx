@@ -56,8 +56,8 @@ export default function QRScreen() {
 
     const parsed = parseQRUrl(data);
     if (!parsed) {
-      Alert.alert('Lỗi mã QR', 'Mã QR không đúng định dạng HPay.', [
-        { text: 'Quét lại', onPress: () => setScanned(false) }
+      Alert.alert('QR code error', 'This QR code is not in HPay format.', [
+        { text: 'Scan again', onPress: () => setScanned(false) }
       ]);
       return;
     }
@@ -75,19 +75,19 @@ export default function QRScreen() {
           maskedName: res.name_masked,
           phone: res.phone_masked,
           amount: '',
-          note: 'Chuyển tiền qua QR',
+          note: 'Transfer via QR',
         },
       });
     } catch (err: any) {
-      Alert.alert('Không thể thanh toán QR', err?.message || 'Mã QR không hợp lệ hoặc đã hết hạn.', [
-        { text: 'Quét lại', onPress: () => setScanned(false) }
+      Alert.alert('Could not pay with QR', err?.message || 'The QR code is invalid or has expired.', [
+        { text: 'Scan again', onPress: () => setScanned(false) }
       ]);
     }
   };
 
   const handleMockScan = async () => {
     if (!myQrQuery.data) {
-      Alert.alert('Lỗi', 'Không có QR payload nào để mock.');
+      Alert.alert('Error', 'No QR payload to mock.');
       return;
     }
     const fakeData = `hpay://qr?payload=${myQrQuery.data.payload}&signature=${myQrQuery.data.signature}`;
@@ -106,7 +106,7 @@ export default function QRScreen() {
     if (myQrQuery.isError || !myQrQuery.data || !meQuery.data) {
       return (
         <View className="flex-1 items-center justify-center gap-3">
-          <Text className="text-sm color-rose-600">Không thể tải mã QR của bạn.</Text>
+          <Text className="text-sm color-rose-600">Could not load your QR code.</Text>
         </View>
       );
     }
@@ -118,8 +118,8 @@ export default function QRScreen() {
     return (
       <View className="flex-1 items-center justify-center p-6">
         <View className="bg-white dark:bg-slate-800 rounded-2xl p-6 items-center w-full border border-slate-200 dark:border-slate-700 shadow-sm">
-          <Text className="text-lg font-bold text-slate-900 dark:text-white mb-1">Mã QR thanh toán HPay</Text>
-          <Text className="text-xs text-slate-400 mb-6">Quét mã này để chuyển khoản cho tôi</Text>
+          <Text className="text-lg font-bold text-slate-900 dark:text-white mb-1">HPay payment QR code</Text>
+          <Text className="text-xs text-slate-400 mb-6">Scan this code to send me money</Text>
           
           <View className="p-4 rounded-xl border border-cyan-100 bg-white mb-5">
             <QRCode
@@ -142,7 +142,7 @@ export default function QRScreen() {
       return (
         <View className="flex-1 items-center justify-center gap-3">
           <ActivityIndicator size="large" color="#0E90A3" />
-          <Text className="text-sm text-slate-500">Đang yêu cầu quyền camera...</Text>
+          <Text className="text-sm text-slate-500">Requesting camera permission...</Text>
         </View>
       );
     }
@@ -160,8 +160,8 @@ export default function QRScreen() {
         ) : (
           <View className="flex-1 items-center justify-center bg-slate-900 gap-3 p-5">
             <Ionicons name="camera-reverse-outline" size={48} color="#94a3b8" />
-            <Text className="text-slate-400 text-base font-bold">[ CHẾ ĐỘ GIẢ LẬP CAMERA ]</Text>
-            <Text className="text-slate-500 text-xs text-center leading-relaxed">Không có quyền camera thực tế trên thiết bị giả lập này.</Text>
+            <Text className="text-slate-400 text-base font-bold">[ CAMERA SIMULATOR MODE ]</Text>
+            <Text className="text-slate-500 text-xs text-center leading-relaxed">No real camera access on this simulator.</Text>
             
             <Pressable onPress={handleMockScan} className="mt-4 bg-brand px-5 py-2.5 rounded-xl">
               <Text className="text-white text-sm font-bold">Simulate scanning own QR ⚡</Text>
@@ -170,13 +170,13 @@ export default function QRScreen() {
         )}
         <View className="absolute inset-0 justify-center items-center">
           <View className="w-60 h-60 border-2 border-cyan-400 rounded-2xl bg-transparent" />
-          <Text className="text-white text-xs font-semibold mt-6 bg-black/60 px-4 py-2 rounded-full overflow-hidden">Di chuyển camera vào khung hình để quét QR</Text>
+          <Text className="text-white text-xs font-semibold mt-6 bg-black/60 px-4 py-2 rounded-full overflow-hidden">Point the camera at a QR code to scan</Text>
         </View>
 
         {resolveMutation.isPending && (
           <View className="absolute inset-0 bg-black/70 justify-center items-center gap-3 z-20">
             <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text className="text-white text-sm font-semibold">Đang xác thực thông tin tài khoản...</Text>
+            <Text className="text-white text-sm font-semibold">Verifying Account details...</Text>
           </View>
         )}
       </View>
@@ -195,7 +195,7 @@ export default function QRScreen() {
             className={`flex-1 py-1.5 items-center rounded-md ${mode === 'my-qr' ? 'bg-white dark:bg-slate-800 shadow-xs' : ''}`}
           >
             <Text className={`text-xs font-semibold ${mode === 'my-qr' ? 'text-brand' : 'text-slate-500'}`}>
-              Nhận tiền
+              Receive money
             </Text>
           </Pressable>
           <Pressable
@@ -203,7 +203,7 @@ export default function QRScreen() {
             className={`flex-1 py-1.5 items-center rounded-md ${mode === 'scan' ? 'bg-white dark:bg-slate-800 shadow-xs' : ''}`}
           >
             <Text className={`text-xs font-semibold ${mode === 'scan' ? 'text-brand' : 'text-slate-500'}`}>
-              Quét mã
+              Scan
             </Text>
           </Pressable>
         </View>
