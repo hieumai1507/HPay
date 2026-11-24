@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/approval"
 	"github.com/hieumai1507/hpay-backend/internal/fraud"
 	"github.com/hieumai1507/hpay-backend/internal/product"
+	"github.com/hieumai1507/hpay-backend/internal/recon"
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
 )
 
@@ -207,6 +209,20 @@ func (h *AdminHandler) ReconGet(c *gin.Context) {
 		return
 	}
 	run, items, err := h.reconSvc.GetRun(c.Request.Context(), day)
+	if errors.Is(err, recon.ErrRunNotFound) {
+		// No run for this date is a normal answer (the page opens on today, before the nightly run), not an
+		// error: answer 200 with an empty result so the browser does not log a failed request.
+		c.JSON(http.StatusOK, gin.H{
+			"run":         nil,
+			"items":       []any{},
+			"report_url":  "",
+			"total":       0,
+			"page":        query.Page,
+			"limit":       query.Limit,
+			"total_pages": 1,
+		})
+		return
+	}
 	if err != nil {
 		respondErr(c, err)
 		return

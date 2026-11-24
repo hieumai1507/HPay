@@ -135,7 +135,7 @@ Login is public; everything else requires `RequireAdmin` (admin JWT, no role che
 | GET | /v1/admin/approvals | admin | | AdminApprovals | Reversal approval tasks; `status=pending` (default) or `status=needs_manual` (parked, G12; rows add `parked_at`, `reason` = why it was parked) |
 | POST | /v1/admin/approvals/:id/decide | admin | | AdminDecide | Finalize reversal approval |
 | POST | /v1/admin/recon/run | admin | | ReconRun | Run reconciliation for a date |
-| GET | /v1/admin/recon/runs/:date | admin | | ReconGet | Run result and signed report link |
+| GET | /v1/admin/recon/runs/:date | admin | recon.run | ReconGet | Run result and signed report link; 200 with `run: null` and no items when nothing has run for that date |
 | GET | /v1/admin/services | admin | | ListServices | Service catalog |
 | GET | /v1/admin/services/:id | admin | | GetService | One service |
 | PUT | /v1/admin/services/:id | admin | | UpdateServiceStatus | Change service status |

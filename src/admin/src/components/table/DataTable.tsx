@@ -6,6 +6,8 @@ interface DataTableProps<TData> {
   isLoading?: boolean;
   totalCount?: number;
   emptyMessage?: string;
+  /** Makes the whole row clickable. Buttons and links inside a row keep their own action. */
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData>({
@@ -13,6 +15,7 @@ export function DataTable<TData>({
   isLoading = false,
   totalCount,
   emptyMessage = 'Nothing here yet',
+  onRowClick,
 }: DataTableProps<TData>) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
@@ -56,7 +59,19 @@ export function DataTable<TData>({
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                <tr
+                  key={row.id}
+                  className={`hover:bg-slate-50/70 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={
+                    onRowClick
+                      ? (e) => {
+                          // A click on a button, link or field inside the row is that control's own action.
+                          if ((e.target as HTMLElement).closest('a, button, input, select, textarea, label')) return;
+                          onRowClick(row.original);
+                        }
+                      : undefined
+                  }
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 text-slate-800 align-middle">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

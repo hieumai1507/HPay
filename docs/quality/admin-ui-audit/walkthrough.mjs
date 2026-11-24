@@ -137,7 +137,7 @@ async function walk(browser, role, vp) {
       await page.goto(BASE + '/services');
       await page.waitForLoadState('networkidle').catch(() => {});
       const row = page.locator('table tbody tr').nth(i);
-      const btn = row.getByRole('button', { name: /Pipeline/ }).first();
+      const btn = row.getByRole('button', { name: /pipeline/i }).first();
       await btn.click().catch(() => {});
       const dlg = page.getByRole('dialog');
       if (!(await dlg.count())) { note(role, vp, '/services', 'no-dialog', 'row ' + i); continue; }

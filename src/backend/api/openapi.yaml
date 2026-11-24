@@ -1195,8 +1195,7 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: "#/components/parameters/ReconDate" }]
       responses:
-        "200": { description: "{run, items, report_url}" }
-        "404": { description: ERR_RECON_NOT_FOUND }
+        "200": { description: "{run, items, report_url}; when no run exists for the date: {run: null, items: [], total: 0}" }
 
   /v1/admin/ai/keys:
     get:

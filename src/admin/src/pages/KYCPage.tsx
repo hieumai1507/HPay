@@ -76,8 +76,7 @@ export default function KYCPage() {
         header: 'Full name',
         cell: (info) => (
           <span
-            className={`cursor-pointer ${rows[cursor]?.id === info.row.original.id ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}`}
-            onClick={() => openDetail(info.row.original)}
+            className={rows[cursor]?.id === info.row.original.id ? 'font-bold text-slate-900' : 'font-medium text-slate-800'}
           >
             {rows[cursor]?.id === info.row.original.id && <span className="text-brand">▸ </span>}
             {info.getValue()}
@@ -114,14 +113,10 @@ export default function KYCPage() {
       columnHelper.display({
         id: 'action',
         header: '',
-        cell: (info) => (
-          <span className="text-brand font-semibold hover:underline cursor-pointer" onClick={() => openDetail(info.row.original)}>
-            Open →
-          </span>
-        ),
+        cell: () => <span className="text-brand font-semibold hover:underline">Open →</span>,
       }),
     ],
-    [rows, cursor, openDetail]
+    [rows, cursor]
   );
 
   const table = useReactTable({
@@ -176,7 +171,7 @@ export default function KYCPage() {
           {error instanceof ApiError ? error.message : 'Something went wrong. Please try again.'}
         </div>
       ) : (
-        <DataTable table={table} isLoading={isPending} totalCount={total} emptyMessage="Nothing here yet" />
+        <DataTable table={table} isLoading={isPending} totalCount={total} emptyMessage="Nothing here yet" onRowClick={openDetail} />
       )}
     </div>
   );

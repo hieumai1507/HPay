@@ -82,7 +82,7 @@ Wire format (all errors): `{"code": "ERR_...", "message": "...", "request_id": "
 | ERR_ALREADY_REVERSED | 409 | Already reversed | reversal.ErrAlreadyReversed |
 | ERR_REVERSAL_PENDING | 409 | Reversal request already pending | reversal.ErrReversalPending |
 | ERR_RECON_ALREADY_RAN | 409 | Recon already ran for the date | recon.ErrAlreadyRan |
-| ERR_RECON_NOT_FOUND | 404 | Recon run not found | recon.ErrRunNotFound |
+| ERR_RECON_NOT_FOUND | 404 | Defined but no longer returned by `GET /v1/admin/recon/runs/:date` (a date with no run answers 200 with `run: null`); kept in the error table for other callers | recon.ErrRunNotFound |
 | ERR_CALLBACK_AMOUNT_MISMATCH | 422 | Mock bank callback amount differs | wallet.ErrCallbackAmountMismatch |
 | ERR_QR_INVALID | 400 | QR or receiver token invalid | qr.ErrQRInvalid, qr.ErrTokenInvalid |
 | ERR_QR_EXPIRED | 410 | QR or receiver token expired | qr.ErrQRExpired, qr.ErrTokenExpired |
