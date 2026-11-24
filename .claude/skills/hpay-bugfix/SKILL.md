@@ -28,6 +28,7 @@ Then state one of: **exact match** (an earlier record describes this; read its r
 - Use `systematic-debugging` for stages 1-2: no fix without root cause. Symptom patches are rejected in review.
 - Use `test-driven-development` for 3-4. Test cases are part of the fix, not optional: stage 3 adds the case, stage 5 records its result.
 - Money/auth/migration bugs: add a second regression test for concurrency or replay (double submit, redelivery, parallel requests), run with `-race`.
+- If the fix touches the money path, locking, the workflow engine or a hot path, run the load test before and after (`hpay-feature` stage 7 step 6) and keep the numbers in `docs/quality/performance/`; otherwise write "performance: not affected" in the bug record.
 - Before editing a symbol: GitNexus `impact` and report blast radius; before commit: `detect_changes`.
 - **3 failed fix attempts: stop and report** what was tried and learned. Still write the record (status `open`) with what was ruled out; that is valuable for the next attempt.
 - If the bug is really a missing business rule, switch to `hpay-feature` stage 1.

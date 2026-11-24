@@ -18,6 +18,8 @@ Run skill `fintech-review` against the diff. Any FAIL blocks.
 ode docs/guides/admin/check-guide.mjs must pass. A UI change with a stale guide, or marked 
 ot affected without a reason, is a **high** finding.
 
+6. **Performance.** If the diff touches the money path, locking, the workflow engine or a hot path (see `hpay-feature` stage 7 step 6), the verify note or bug record must hold before/after load-test numbers from `docs/quality/performance/` and a passing ledger integrity check. Missing numbers for such a change are a high finding; a regression without an explanation is a blocker.
+
 ## Step 2 - three independent reviewers (parallel, high effort)
 Spawn all three in ONE assistant turn so they run concurrently. Give each only the diff, the spec/plan path, and its brief. Reviewers are read-only (no edits).
 
