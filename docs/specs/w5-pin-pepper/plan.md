@@ -1,7 +1,7 @@
 ---
 title: Plan for the PIN pepper
 type: plan
-status: in-progress
+status: done
 last_verified: 2026-11-24
 spec: spec.md
 ---

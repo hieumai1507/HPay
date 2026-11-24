@@ -12,6 +12,7 @@ Structure follows three well-known ideas: Diataxis (explanation / reference / ho
 | **Business rules, state machines, invariants** of a part of the system | `domain/` (one page per bounded context: ledger, wallet, transfer-and-fees, workflow-engine, outbox-and-events, service-catalog, approval-maker-checker, organization, reversal, money-requests, identity-and-auth, kyc, fraud-and-recon, ai-integration) |
 | How it is built (context, building blocks, runtime flows, deployment, cross-cutting concepts, admin and mobile apps) | `architecture/` |
 | Exact facts: tables, endpoints, error codes, env vars, terms | `reference/` (data-model, api, error-codes, configuration, glossary) |
+| How to operate a secret or a recovery (PIN pepper: generate, rotate, lose, count) | `runbooks/` |
 | How to do a task (set up, run tests, add a migration/endpoint/step, debug a stuck transaction) | `guides/` |
 | The rules every change must respect | `constitution.md` (C-01..C-15; checked in every plan and review) |
 | Why a decision was made | `adr/` (immutable once accepted; `proposed` until the user approves the design; supersede instead of editing) |

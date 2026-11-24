@@ -77,3 +77,6 @@ No principle is weakened by C: secrets stay out of the repository and the databa
 
 ## Documentation to update
 `domain/identity-and-auth.md` (PIN hashing rules), `reference/configuration.md` (`PIN_PEPPER`, `PIN_PEPPER_ID`, `PIN_PEPPER_OLD`), `quality/performance/` (before and after run), `adr/README.md`, runbook for pepper rotation and loss.
+
+## Implemented
+Implemented on 2026-11-25 by the `hpay-feature` run `w5-pin-pepper` (`docs/specs/w5-pin-pepper/`), branch `worktree-agent-a4071c23d3b94bc65`, commits `e70ab8e` (red tests) and `4ec97b5` (implementation); the docs commit follows them. The decision above was built as written; the choices the ADR left open (parameter bounds, handling of a retired key id, no audit row for a rehash) are recorded in the spec. Runbook: `runbooks/pin-pepper.md`. Load test before and after: `quality/performance/2026-11-24-load-test-baseline.md`.

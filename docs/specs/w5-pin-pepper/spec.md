@@ -1,7 +1,7 @@
 ---
 title: PIN pepper and lighter argon2 cost (implementation of ADR-0018)
 type: spec
-status: in-progress
+status: done
 last_verified: 2026-11-24
 adr: ../../adr/0018-pin-pepper-and-hash-cost.md
 audit: [G25]

@@ -2,7 +2,7 @@
 title: Configuration and tooling
 type: reference
 status: verified-against-code
-last_verified: 2026-11-21
+last_verified: 2026-11-25
 code: [src/backend/internal/platform/config/config.go, src/backend/cmd/server/main.go, src/backend/cmd/seed/main.go, src/backend/docker-compose.yml, src/backend/Makefile, src/backend/Dockerfile, .github/workflows/backend-ci.yml, .github/workflows/admin-ci.yml]
 ---
 
@@ -29,6 +29,9 @@ Workers (role worker/all): outbox relay, workflow worker, recovery, approval swe
 |---|---|---|---|---|
 | APP_ENV | none | **yes** | no | One of `dev`, `ci`, `demo`, `production`. Missing or any other value stops startup with an error (ADR-0012). `dev` is the only environment that returns OTP codes in responses and loads `.env`; `production` uses the real outbound gateway, does not mount the mock bank route, adds HSTS and demands strong secrets |
 | TOTP_ENCRYPTION_KEY | dev/ci test key | yes outside dev and ci | **yes** | Base64 of 32 random bytes; AES-256-GCM key for TOTP secrets (ADR-0017). |
+| PIN_PEPPER | dev/ci public test value | yes outside dev and ci | **yes** | Base64 of 32 random bytes; mixed into every transaction PIN hash with HMAC-SHA256 (ADR-0018). Production and demo refuse a missing, malformed, wrong-length or dev-test value. Never store it in the database, in database backups or in the same secret file as `DATABASE_URL`. Losing it means a mass PIN reset. See `runbooks/pin-pepper.md`. |
+| PIN_PEPPER_ID | `p1` | no | no | Name of the current pepper, stored in each new hash as `k=<id>`. Pattern `[a-z0-9-]{1,16}`. Change it whenever `PIN_PEPPER` changes. |
+| PIN_PEPPER_OLD | empty | no | **yes** | Retired peppers that may still verify, `id:base64,id2:base64`. Ids unique and different from `PIN_PEPPER_ID`; a malformed, empty or repeated entry refuses startup. Remove an entry only when the count query shows no hash left under it. |
 | SENDER_PROVIDER | empty | no | no | `twilio` or empty. Empty: log-only outside production, refusing in production and demo (ADR-0016). |
 | TWILIO_ACCOUNT_SID, TWILIO_API_KEY, TWILIO_API_SECRET, TWILIO_FROM | none | when `SENDER_PROVIDER=twilio` | API_SECRET: **yes** | Twilio Programmable Messaging account, API key and sender number (E.164) (ADR-0017). |
 | HTTP_PORT | 8080 | no | no | Listen port (invalid int silently falls back to default) |
@@ -64,6 +67,7 @@ Only `dev` is special-cased in most places. Values other than `dev` behave as pr
 | platform/logger | `dev` uses the dev logger format, others the production format |
 | auth/service.go:199 and api/approval_handler.go:48 | `dev` only: OTP value returned in the challenge response (`otp_dev`) |
 | auth/sender.go:NewSender | `production` and `demo` use the refusing sender (every OTP and notice send fails with `ERR_OTP_DELIVERY_UNAVAILABLE`); other values use the log-only sender. A real provider is configured by a later ADR. |
+| config.go:loadPINPepper | `PIN_PEPPER` (base64, 32 bytes) is required unless `APP_ENV` is `dev` or `ci`; dev and ci get the fixed public value `DevPINPepper`, which production and demo refuse. Startup logs only the key id and the count of old keys. Errors never contain a key. |
 | config.go:loadTOTPKey | `TOTP_ENCRYPTION_KEY` (base64, 32 bytes) is required unless `APP_ENV` is `dev` or `ci`; dev and ci get a fixed test key. Losing the key makes every stored TOTP secret unreadable. |
 | cmd/server/main.go:117 | Action pipeline outbound gateway is the Mock gateway unless `APP_ENV == "production"`; the real HTTP gateway is only used for the literal `production`, which config comments do not list (`dev|ci|demo`) |
 | cmd/seed | Refuses `production` |
