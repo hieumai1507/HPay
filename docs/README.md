@@ -42,3 +42,7 @@ Structure follows three well-known ideas: Diataxis (explanation / reference / ho
 - Every rule or claim cites a file:line, constraint or test; unverified statements go under "Open questions", never in the body.
 - Describe what exists, not what is planned. Planned work lives in `specs/` and `planning/`.
 - Never present another product or company as the HPay specification.
+
+## For staff
+
+- [Admin user guide](guides/admin-user-guide.md) (illustrated, for back-office staff; send the self-contained [HTML copy](guides/admin-user-guide.html)) and its [writing rules](guides/admin/WRITING-RULES.md).
