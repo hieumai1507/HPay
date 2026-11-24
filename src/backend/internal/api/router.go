@@ -237,6 +237,7 @@ func NewRouter(d Deps) *gin.Engine {
 		adg.PUT("/services/:id", catalogP, adminH.UpdateServiceStatus)
 		adg.GET("/offers", anyP, adminH.ListOffers)
 		adg.GET("/offers/:id", anyP, adminH.GetOffer)
+		adg.GET("/attention/summary", workflowP, adminH.AttentionSummary) // G12, read-only
 		adg.GET("/workflows", workflowP, adminH.ListWorkflows)
 		adg.GET("/workflows/:id", workflowP, adminH.GetWorkflow)
 		adg.GET("/audit", anyP, adminH.ListAuditLogs)

@@ -289,3 +289,23 @@ func (s *Service) RecordAudit(ctx context.Context, actorID uuid.UUID, actorType,
 		Reason:    pgtype.Text{String: reason, Valid: reason != ""},
 	})
 }
+
+// AttentionSummary counts the parked money cases an operator must resolve by hand
+// (G12): approvals parked as needs_manual and workflow instances in compensation_failed.
+type AttentionSummary struct {
+	NeedsManualApprovals        int64 `json:"needs_manual_approvals"`
+	CompensationFailedWorkflows int64 `json:"compensation_failed_workflows"`
+	Total                       int64 `json:"total"`
+}
+
+func (s *Service) AttentionSummary(ctx context.Context) (AttentionSummary, error) {
+	r, err := s.q.CountAttentionItems(ctx)
+	if err != nil {
+		return AttentionSummary{}, err
+	}
+	return AttentionSummary{
+		NeedsManualApprovals:        r.NeedsManualApprovals,
+		CompensationFailedWorkflows: r.CompensationFailedWorkflows,
+		Total:                       r.NeedsManualApprovals + r.CompensationFailedWorkflows,
+	}, nil
+}

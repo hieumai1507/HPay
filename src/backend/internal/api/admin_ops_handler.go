@@ -122,11 +122,18 @@ func (h *AdminHandler) AdminApprovals(c *gin.Context) {
 	if st == "" {
 		st = c.Query("status")
 	}
-	if st != "" && st != "pending" {
-		respondValidation(c, "only status=pending is supported")
+	if st != "" && st != "pending" && st != "needs_manual" {
+		respondValidation(c, "only status=pending or status=needs_manual is supported")
 		return
 	}
-	rows, total, err := h.aprSvc.AdminInbox(c.Request.Context(), query.ToFilter())
+	var rows any
+	var total int64
+	var err error
+	if st == "needs_manual" {
+		rows, total, err = h.aprSvc.AdminNeedsManual(c.Request.Context(), query.ToFilter())
+	} else {
+		rows, total, err = h.aprSvc.AdminInbox(c.Request.Context(), query.ToFilter())
+	}
 	if err != nil {
 		respondErr(c, err)
 		return
@@ -407,6 +414,16 @@ func (h *AdminHandler) ListWorkflows(c *gin.Context) {
 		"limit":       query.Limit,
 		"total_pages": query.TotalPages(total),
 	})
+}
+
+// AttentionSummary is the read-only count behind the admin alert badge (G12).
+func (h *AdminHandler) AttentionSummary(c *gin.Context) {
+	s, err := h.productSvc.AttentionSummary(c.Request.Context())
+	if err != nil {
+		respondErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, s)
 }
 
 func (h *AdminHandler) GetWorkflow(c *gin.Context) {
