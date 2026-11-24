@@ -1,4 +1,4 @@
-package workflow
+﻿package workflow
 
 import (
 	"context"
@@ -63,16 +63,27 @@ func (w *Worker) Run(ctx context.Context) {
 	if n < 1 {
 		n = DefaultConsumers
 	}
+	// Every consumer parks in a blocking XREADGROUP, which holds one pooled
+	// connection. Leave at least half the pool for XADD/XACK and the rest of
+	// the app, or the relay starves (seen in E17 on a 2-CPU runner).
+	if pool := w.rdb.Options().PoolSize; pool > 0 {
+		if limit := pool / 4; n > limit { // two loops per consumer, half the pool
+			n = max(1, limit)
+		}
+	}
+	var steps []string
 	for _, name := range w.reg.Names() {
 		stream := StepStream(name)
 		w.ensureGroup(ctx, stream, groupWorkers)
-		for i := 0; i < n; i++ {
-			go w.consumeLoop(ctx, stream, groupWorkers, fmt.Sprintf("%s-%d", consumerName, i), w.processStepMessage)
-		}
+		steps = append(steps, stream)
 	}
 	w.ensureGroup(ctx, EventsStream, groupEngine)
 	for i := 0; i < n; i++ {
-		go w.consumeLoop(ctx, EventsStream, groupEngine, fmt.Sprintf("%s-%d", consumerName, i), w.processResultMessage)
+		name := fmt.Sprintf("%s-%d", consumerName, i)
+		// One call reads every step stream, so connections grow with the
+		// consumer count, not with consumers x handlers.
+		go w.consumeLoop(ctx, steps, groupWorkers, name, w.processStepMessage)
+		go w.consumeLoop(ctx, []string{EventsStream}, groupEngine, name, w.processResultMessage)
 	}
 	<-ctx.Done()
 }
@@ -84,26 +95,34 @@ func (w *Worker) ensureGroup(ctx context.Context, stream, group string) {
 	}
 }
 
-func (w *Worker) consumeLoop(ctx context.Context, stream, group, consumer string, process func(context.Context, string) error) {
+func (w *Worker) consumeLoop(ctx context.Context, streams []string, group, consumer string, process func(context.Context, string) error) {
+	if len(streams) == 0 {
+		return
+	}
+	args := make([]string, 0, 2*len(streams))
+	args = append(args, streams...)
+	for range streams {
+		args = append(args, ">")
+	}
 	for {
 		if ctx.Err() != nil {
 			return
 		}
 		res, err := w.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 			Group: group, Consumer: consumer,
-			Streams: []string{stream, ">"}, Count: 10, Block: 2 * time.Second,
+			Streams: args, Count: 10, Block: 2 * time.Second,
 		}).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) || ctx.Err() != nil {
 				continue
 			}
-			w.log.Warn("xreadgroup error; backing off", "stream", stream, "err", err)
+			w.log.Warn("xreadgroup error; backing off", "streams", streams, "err", err)
 			time.Sleep(time.Second) // E17: Redis down -> keep retrying
 			continue
 		}
 		for _, s := range res {
 			for _, m := range s.Messages {
-				w.handleMessage(ctx, stream, group, m, process)
+				w.handleMessage(ctx, s.Stream, group, m, process)
 			}
 		}
 	}
@@ -131,7 +150,7 @@ func (w *Worker) processStepMessage(ctx context.Context, payload string) error {
 	}
 
 	// Replay? Re-emit the recorded result and stop (E04: crash after commit,
-	// before publish/ack — the engine must still hear about it).
+	// before publish/ack â€” the engine must still hear about it).
 	prev, err := w.q.GetStepExecution(ctx, store.GetStepExecutionParams{
 		InstanceID: ev.InstanceID, StepName: ev.Step, Attempt: int16(ev.Attempt),
 	})
@@ -279,12 +298,12 @@ func jsonbOrNil(t pgtype.Text) []byte {
 }
 
 // PumpLocal drains due outbox events and processes them in-process, bypassing
-// Redis. TEST/DEV HARNESS ONLY — the production path is outbox.Relay + streams.
+// Redis. TEST/DEV HARNESS ONLY â€” the production path is outbox.Relay + streams.
 //
 // Start events whose handler is NOT in this worker's registry are SKIPPED
 // (left unpublished) so a pump with the right registry can claim them.
 // Packages that pump the shared test database must not run concurrently
-// (`go test -p 1`) — two differently-wired engines (F6 pause hook) stealing
+// (`go test -p 1`) â€” two differently-wired engines (F6 pause hook) stealing
 // each other's events would break both.
 // Returns the number of events processed by THIS worker.
 func (w *Worker) PumpLocal(ctx context.Context, batch int32) (int, error) {
