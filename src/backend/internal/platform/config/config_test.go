@@ -183,6 +183,58 @@ func TestConfig_TOTPKeyRequiredOutsideDev(t *testing.T) {
 	}
 }
 
+// BUG-0017 follow-up: OFFERGUARD_ENABLED=false switches every offer limit off, so only dev and ci may use it.
+func TestConfig_OfferGuardFlagByEnv(t *testing.T) {
+	goodKey := "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+	for _, env := range []string{"production", "demo"} {
+		t.Run(env+" refuses false", func(t *testing.T) {
+			base(t)
+			t.Setenv("APP_ENV", env)
+			t.Setenv("TOTP_ENCRYPTION_KEY", goodKey)
+			t.Setenv("OFFERGUARD_ENABLED", "false")
+			if _, err := Load("api"); err == nil || !strings.Contains(err.Error(), "OFFERGUARD_ENABLED") {
+				t.Fatalf("want an error naming OFFERGUARD_ENABLED, got %v", err)
+			}
+		})
+		t.Run(env+" default is on", func(t *testing.T) {
+			base(t)
+			t.Setenv("APP_ENV", env)
+			t.Setenv("TOTP_ENCRYPTION_KEY", goodKey)
+			t.Setenv("OFFERGUARD_ENABLED", "")
+			cfg, err := Load("api")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.OfferGuardDisabled {
+				t.Fatal("OfferGuardDisabled must default to false")
+			}
+		})
+	}
+	for _, env := range []string{"dev", "ci"} {
+		t.Run(env+" accepts false", func(t *testing.T) {
+			base(t)
+			t.Setenv("APP_ENV", env)
+			t.Setenv("OFFERGUARD_ENABLED", "false")
+			cfg, err := Load("api")
+			if err != nil {
+				t.Fatalf("%s must accept OFFERGUARD_ENABLED=false: %v", env, err)
+			}
+			if !cfg.OfferGuardDisabled {
+				t.Fatal("OfferGuardDisabled must be true")
+			}
+		})
+		t.Run(env+" default is on", func(t *testing.T) {
+			base(t)
+			t.Setenv("APP_ENV", env)
+			t.Setenv("OFFERGUARD_ENABLED", "")
+			cfg, err := Load("api")
+			if err != nil || cfg.OfferGuardDisabled {
+				t.Fatalf("default must be enabled, got disabled=%v err %v", cfg.OfferGuardDisabled, err)
+			}
+		})
+	}
+}
+
 func TestConfig_SenderProviderSettings(t *testing.T) {
 	base(t)
 	t.Setenv("APP_ENV", "ci")

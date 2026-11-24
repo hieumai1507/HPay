@@ -42,4 +42,4 @@ Migration 000027 adds `transactions.started_at`. It is set to `now()` when a tra
 - A request that needs no confirmation is still checked only at request time without the lock (no seeded offer uses that path for a limited service).
 - Money-request pay is outside the lock.
 - The one-time code of an otp or 2fa confirm is consumed before a limit refusal, so a refused confirm needs a new challenge.
-- `OFFERGUARD_ENABLED=false` disables every limit in any environment.
+- `OFFERGUARD_ENABLED=false` disables every limit in any environment. Fixed: config refuses it outside dev and ci (BUG-0021 task 1, commit `fix(config)`).

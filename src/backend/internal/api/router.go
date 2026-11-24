@@ -96,6 +96,7 @@ func NewRouter(d Deps) *gin.Engine {
 		walletH := NewWalletHandler(walletSvc)
 
 		transferSvc := transfer.NewService(d.Pool, engine, fees)
+		transferSvc.SetOfferGuardEnabled(!d.Cfg.OfferGuardDisabled)
 		transferSvc.SetAuthenticator(authSvc) // ADR-0014: confirm verifies PIN/OTP on the server
 		qrSvc := qr.NewService(signer)
 		transferH := NewTransferHandler(transferSvc, walletSvc, qrSvc)

@@ -44,7 +44,7 @@ Workers (role worker/all): outbox relay, workflow worker, recovery, approval swe
 | TRUSTED_PROXIES | empty | no | no | Comma separated proxy addresses or CIDRs whose `X-Forwarded-For` is trusted for the client IP (rate limiting). Empty means trust none |
 | MOCK_BANK_SECRET | `dev-mock-bank-secret` in `dev` and `ci` only | **yes** outside `dev`/`ci`, and not the dev default | yes | Shared secret for `/internal/mock-bank/callback`; the route is not mounted in `production` |
 | ENGINE_DYNAMIC_DISPATCH | enabled | no | no | Read in `transfer/service.go`; only the literal `false` disables service-driven workflow dispatch |
-| OFFERGUARD_ENABLED | enabled | no | no | Only literal `false` disables OfferGuard limits |
+| OFFERGUARD_ENABLED | enabled | no | no | Only literal `false` disables every OfferGuard limit. The server refuses to start with `false` when `APP_ENV` is `production` or `demo`; allowed in `dev` and `ci` only. Read once in `config.go` (`Config.OfferGuardDisabled`) and passed to the transfer service. |
 | DEFAULT_OFFER_CODE | `OFFER_CUST_L0` | no | no | `offerguard` offer for users without a `user_offers` row (most restrictive customer offer) |
 | ROUND_UP_UNIT_VND | handler default | no | no | Round-up step rounding unit |
 | TEST_DATABASE_URL | none | tests only | yes | Integration tests; skipped if unset |

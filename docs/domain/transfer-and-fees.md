@@ -191,7 +191,7 @@ Error mapping: limits -> `ERR_LIMIT_PER_TXN|ERR_LIMIT_DAILY|ERR_LIMIT_MONTHLY` (
 - Personal limits now follow the offer (BR-TRF-29, ADR-0007). Weekly rolling limits, balance-ceiling enforcement and a currency model are not implemented.
 - `GET /fees/preview` does not reflect the service or ledger type used by the engine request, so it can disagree with the fee actually frozen for non-p2p services.
 - Fee truncates (rounds down) with no rounding unit; `amount*percent_bp` can overflow int64 only for absurdly large amounts (no guard).
-- OfferGuard with `OFFERGUARD_ENABLED=false` removes all limits; no startup guard prevents that in production.
+- OfferGuard with `OFFERGUARD_ENABLED=false` removes all limits; the server refuses to start with it when APP_ENV is production or demo.
 - `GetServiceByCode` failure fallback hides typos (BR-TRF-04).
 - Error strings in `transfer/service.go` (lines 297, 486, 507, 518) and `offerguard.go` are Vietnamese; only the offerguard sentinels have `errTable` entries (`errmap.go`). The "dịch vụ hiện đang bảo trì" and "không tìm thấy giao dịch" errors are not mapped (audit mentions the latter).
 - Dead legacy paths remain in code (`Transfer`, `TransferToUser`, `Topup`) and bypass OfferGuard if re-mounted.
