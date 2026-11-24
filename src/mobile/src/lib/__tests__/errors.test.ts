@@ -2,8 +2,8 @@ import { ApiError, DEFAULT_ERROR_MESSAGE, NetworkError, describeError, getErrorM
 
 describe('error mapping (doc 02 §6 — no scattered messages)', () => {
   it('maps known ERR_* codes to English copy', () => {
-    expect(getErrorMessage('ERR_INSUFFICIENT_BALANCE')).toBe('Insufficient balance to complete this transaction.');
-    expect(getErrorMessage('ERR_TOKEN_REUSED')).toContain('unusual');
+    expect(getErrorMessage('ERR_INSUFFICIENT_BALANCE')).toBe('Insufficient balance for this transaction.');
+    expect(getErrorMessage('ERR_TOKEN_REUSED')).toContain('Unusual');
   });
 
   it('falls back to a default message for unknown or missing codes', () => {

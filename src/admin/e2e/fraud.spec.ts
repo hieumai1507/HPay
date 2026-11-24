@@ -59,7 +59,7 @@ test.describe('Fraud monitor', () => {
 
     const dialog = asChecker.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    const confirm = dialog.getByRole('button', { name: /Confirm fraud resolution|Mark as safe/ });
+    const confirm = dialog.getByRole('button', { name: /Confirm Fraud resolution|Mark as safe/ });
     await expect(confirm).toBeDisabled();
 
     await dialog.locator('textarea').fill('too short');
@@ -96,8 +96,8 @@ test.describe('Fraud monitor', () => {
     const [resp1, resp2] = await Promise.all([
       page1.waitForResponse((r) => r.url().includes('/resolve') && r.request().method() === 'POST'),
       page2.waitForResponse((r) => r.url().includes('/resolve') && r.request().method() === 'POST'),
-      page1.getByRole('dialog').getByRole('button', { name: /Confirm fraud resolution/ }).click(),
-      page2.getByRole('dialog').getByRole('button', { name: /Confirm fraud resolution/ }).click(),
+      page1.getByRole('dialog').getByRole('button', { name: /Confirm Fraud resolution/ }).click(),
+      page2.getByRole('dialog').getByRole('button', { name: /Confirm Fraud resolution/ }).click(),
     ]);
 
     const statuses = [resp1.status(), resp2.status()].sort();

@@ -39,13 +39,13 @@ export function KYCPhotoFrame({ type, error }: KYCPhotoFrameProps) {
                 <View style={[styles.corner, styles.topRight]} />
                 <View style={[styles.corner, styles.bottomLeft]} />
                 <View style={[styles.corner, styles.bottomRight]} />
-                <Text style={styles.cutoutText}>CĂN CƯỚC CÔNG DÂN</Text>
+                <Text style={styles.cutoutText}>ID CARD</Text>
               </>
             )}
             
             {!isId && (
               <View style={styles.selfieInnerBorder}>
-                <Text style={styles.cutoutText}>KHUÔN MẶT</Text>
+                <Text style={styles.cutoutText}>FACE</Text>
               </View>
             )}
           </View>

@@ -17,14 +17,14 @@ test.describe('Reconciliation', () => {
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
     await expect(asMaker.getByText('Total reconciled')).toBeVisible();
-    await expect(asMaker.getByText('AI ROOT CAUSE SUMMARY')).toBeVisible();
+    await expect(asMaker.getByText('AI ROOT-CAUSE SUMMARY')).toBeVisible();
   });
 
   test('running recon for an already-processed date does not crash the page', async ({ asMaker }) => {
     asMaker.once('dialog', (d) => d.accept());
     await asMaker.goto('/recon');
     await asMaker.locator('input[type="date"]').fill(yesterday());
-    await asMaker.getByRole('button', { name: /Run reconciliation/ }).click();
+    await asMaker.getByRole('button', { name: /Run Reconciliation/ }).click();
     // The mutation swallows both success and ERR_RECON_ALREADY_RAN into an
     // alert() (useReconQueries.ts useRunRecon) — assert the page survives.
     await expect(asMaker.getByText('Total reconciled')).toBeVisible();
