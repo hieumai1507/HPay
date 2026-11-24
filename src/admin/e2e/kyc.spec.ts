@@ -62,7 +62,7 @@ test.describe('KYC queue', () => {
     });
 
     let imageHits = 0;
-    await asChecker.route('**/seed/kyc/id-card.jpg**', (route) => {
+    await asChecker.route('**/seed/kyc/id-card.png**', (route) => {
       imageHits++;
       if (imageHits === 1) {
         route.fulfill({ status: 403, body: 'expired signed url' });

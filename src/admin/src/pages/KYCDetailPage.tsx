@@ -146,8 +146,8 @@ export default function KYCDetailPage() {
         {/* Images */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs font-semibold text-slate-700 mb-1.5">CCCD</div>
-            <SignedImage src={item.id_card_url} alt="CCCD" onExpired={() => refetch()} />
+            <div className="text-xs font-semibold text-slate-700 mb-1.5">ID card</div>
+            <SignedImage src={item.id_card_url} alt="ID card" onExpired={() => refetch()} />
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-700 mb-1.5">Selfie</div>
