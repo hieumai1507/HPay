@@ -6,3 +6,4 @@ export * from './useKYCQueries';
 export * from './useOrgQueries';
 export * from './useVaultQueries';
 export * from './usePinQueries';
+export * from './useTotpQueries';

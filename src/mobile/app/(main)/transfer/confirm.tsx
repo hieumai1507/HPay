@@ -1,12 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTransactionEngine, useFeePreview } from '@/src/queries';
-import { usePin } from '@/src/features/security/usePin';
+import { confirmWithAuth } from '@/src/features/security/confirmWithAuth';
+import { classifyConfirmError, type ConfirmFailure } from '@/src/features/security/confirmErrors';
+import { ConfirmFailureNotice } from '@/src/features/security/components/ConfirmFailureNotice';
+import { SECURITY_ROUTES } from '@/src/features/security/routes';
+import { useTransactionAuth } from '@/src/features/security/useTransactionAuth';
 import { useRecentContacts } from '@/src/features/wallet/recent-contacts';
-import { describeError } from '@/src/lib/errors';
 import { withIntentKey } from '@/src/lib/intentKey';
 import { formatAmountVND, parseAmountStrict } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
@@ -23,9 +26,9 @@ export default function TransferConfirmScreen() {
   const parsed = parseAmountStrict(params.amount ?? '');
   const amount = parsed.ok ? parsed.value : 0n;
 
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ConfirmFailure | null>(null);
   const guard = useSubmitGuard();
-  const { requestPin, pinPrompt } = usePin();
+  const { collect, prompt } = useTransactionAuth();
   const engine = useTransactionEngine();
   const feeQ = useFeePreview(parsed.ok ? amount.toString() : null);
   const recents = useRecentContacts();
@@ -39,9 +42,7 @@ export default function TransferConfirmScreen() {
 
   const submit = () =>
     guard.run(async () => {
-      setSubmitError(null);
-      const pin = await requestPin();
-      if (pin === null) return; // user cancelled; nothing was sent
+      setFailure(null);
       try {
         const { reqRes, confirmRes } = await withIntentKey(intent, async (idempotencyKey) => {
           const reqRes = await engine.requestTransaction({
@@ -51,9 +52,12 @@ export default function TransferConfirmScreen() {
             note: params.note || undefined,
             idempotencyKey,
           });
-          const confirmRes = await engine.confirmTransaction({
-            transactionId: reqRes.transaction_id,
-            pin,
+          // The band comes from the server; the factors of that band are collected here.
+          // A wrong credential re-asks for the SAME held transaction, never a second request.
+          const confirmRes = await confirmWithAuth({
+            request: reqRes,
+            collect,
+            confirm: engine.confirmTransaction,
           });
           return { reqRes, confirmRes };
         });
@@ -67,7 +71,14 @@ export default function TransferConfirmScreen() {
           params: { refCode: confirmRes.ref_code || reqRes.ref_code, amount: amount.toString() },
         });
       } catch (err: unknown) {
-        setSubmitError(describeError(err));
+        const f = classifyConfirmError(err);
+        if (f.kind === 'cancelled') return; // nothing moved; the intent key stays for a retry
+        setFailure(f);
+        // The held request is gone; the amount screen starts a fresh intent.
+        if (f.kind === 'restart') {
+          Alert.alert('Payment expired', f.message);
+          router.replace(SECURITY_ROUTES.transferAmount as never);
+        }
       }
     });
   return (
@@ -110,18 +121,18 @@ export default function TransferConfirmScreen() {
             </Text>
           </View>
         )}
-        {submitError && <Text className="text-xs color-rose-600 text-center">{submitError}</Text>}
+        <ConfirmFailureNotice failure={failure} />
       </View>
 
       <View className="p-4">
         <Button
           label="Transfer"
           loading={guard.isPending}
-          disabled={!parsed.ok || fee === null || guard.isPending}
+          disabled={!parsed.ok || fee === null || guard.isPending || failure?.blocking === true}
           onPress={submit}
         />
       </View>
-      {pinPrompt}
+      {prompt}
     </SafeAreaView>
   );
 }

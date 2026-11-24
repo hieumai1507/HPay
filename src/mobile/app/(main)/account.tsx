@@ -262,6 +262,19 @@ export default function AccountScreen() {
         </Pressable>
       </View>
 
+      {/* Two-step verification */}
+      <View className="bg-white dark:bg-slate-800 rounded-xl px-4 shadow-xs">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Two-step verification"
+          onPress={() => router.push('/(main)/security/totp-status' as never)}
+          className="flex-row items-center justify-between py-4 active:opacity-70"
+        >
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Two-step verification</Text>
+          <Text className="text-xl text-slate-300">›</Text>
+        </Pressable>
+      </View>
+
       {/* Logout */}
       <Pressable
         onPress={handleLogout}
