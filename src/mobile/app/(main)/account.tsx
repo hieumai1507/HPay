@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
 import { apiRequest } from '@/src/api/client';
+import { RESET_PIN_ROUTE, SET_PIN_ROUTE } from '@/src/features/security/pinErrors';
 import { useMe } from '@/src/queries';
 import { formatAmountVND } from '@/src/lib/money';
 import { useSecurityStore } from '@/src/stores/security';
@@ -236,6 +237,29 @@ export default function AccountScreen() {
             thumbColor={biometricEnabled ? '#0E90A3' : '#94a3b8'}
           />
         </View>
+      </View>
+
+      {/* PIN */}
+      <View className="bg-white dark:bg-slate-800 rounded-xl px-4 pb-4 shadow-xs">
+        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">PIN</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Set PIN"
+          onPress={() => router.push(SET_PIN_ROUTE)}
+          className="flex-row items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800 active:opacity-70"
+        >
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Set PIN</Text>
+          <Text className="text-xl text-slate-300">›</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Change or reset PIN"
+          onPress={() => router.push(RESET_PIN_ROUTE)}
+          className="flex-row items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800 active:opacity-70"
+        >
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Change or reset PIN</Text>
+          <Text className="text-xl text-slate-300">›</Text>
+        </Pressable>
       </View>
 
       {/* Logout */}

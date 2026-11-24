@@ -73,6 +73,7 @@ export default function MainTabsLayout() {
       <Tabs.Screen name="topup" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="transfer" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="requests" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="security" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="org" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="txn-detail" options={{ href: null }} />
     </Tabs>

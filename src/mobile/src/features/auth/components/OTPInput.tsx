@@ -8,9 +8,11 @@ interface OTPInputProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   secureTextEntry?: boolean;
+  /** Accessibility label prefix for each digit box (default OTP digit). */
+  label?: string;
 }
 
-export function OTPInput({ value, onChange, disabled = false, secureTextEntry = false }: OTPInputProps) {
+export function OTPInput({ value, onChange, disabled = false, secureTextEntry = false, label = 'OTP digit' }: OTPInputProps) {
   const inputsRef = useRef<(TextInput | null)[]>([]);
   const [digits, setDigits] = useState<string[]>(Array(6).fill(''));
 
@@ -103,7 +105,7 @@ export function OTPInput({ value, onChange, disabled = false, secureTextEntry = 
                 disabled && styles.boxDisabled,
               ]}
               textAlign="center"
-              accessibilityLabel={`OTP digit ${i + 1}`}
+              accessibilityLabel={`${label} ${i + 1}`}
             />
           );
         })}
