@@ -182,7 +182,7 @@ export default function FraudPage() {
       {/* Header Bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold text-slate-900">Fraud monitoring (TanStack Table v8)</h2>
+          <h2 className="text-lg font-bold text-slate-900">Fraud monitoring</h2>
           <span className="bg-rose-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
             {flags.filter((f) => f.status === 'open').length} open
           </span>

@@ -18,6 +18,7 @@ export const ROUTE_ACCESS = {
   '/recon': ['recon.run'],
   '/audit': ['kyc.review', 'fraud.resolve', 'workflow.action', 'recon.run', 'orgs.edit', 'ai.manage', 'admins.manage'],
   '/fraud': ['fraud.resolve'],
+  '/kyc': ['kyc.review'],
   '/attention': ['workflow.action'],
 } as const satisfies Record<string, readonly Permission[]>;
 

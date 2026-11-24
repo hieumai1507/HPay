@@ -41,7 +41,7 @@ interface BackendWorkflowRow {
   context?: Record<string, unknown>;
 }
 
-export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: boolean; status?: string; definition?: string }) {
+export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: boolean; status?: string; definition?: string }, enabled = true) {
   // Server-side filters (docs plan workflow-instances-filters): status,
   // definition, and stuck_only now all run on the full table, not just the
   // current page — map the UI's camelCase/`all` conventions to what the API
@@ -56,6 +56,7 @@ export function useWorkflowInstances(filters?: AdminQueryParams & { stuckOnly?: 
 
   return useQuery({
     queryKey: ['admin', 'workflows', filters],
+    enabled,
     queryFn: async (): Promise<Paged<WorkflowInstance>> => {
       // Errors propagate so the page shows the real failure instead of an empty list.
       const res = await apiRequest<{ workflows: BackendWorkflowRow[] | null; total?: number }>(

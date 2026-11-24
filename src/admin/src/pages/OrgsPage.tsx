@@ -144,7 +144,7 @@ export default function OrgsPage() {
             <div className="flex-1 min-w-0 flex flex-col gap-3.5">
               {selectedOrg.pendingApprovalsCount > 0 && (
                 <div className="bg-amber-50 border-l-4 border-amber-500 p-3 px-4 rounded-lg text-xs text-slate-700">
-                  <b>{selectedOrg.pendingApprovalsCount} orders awaiting approval</b> use the policy that was active when they were
+                  <b>{selectedOrg.pendingApprovalsCount} {selectedOrg.pendingApprovalsCount === 1 ? 'order is' : 'orders are'} awaiting approval</b> and {selectedOrg.pendingApprovalsCount === 1 ? 'uses' : 'use'} the policy that was active when {selectedOrg.pendingApprovalsCount === 1 ? 'it was' : 'they were'}
                   created. A new version applies only to orders created after you save it.
                 </div>
               )}

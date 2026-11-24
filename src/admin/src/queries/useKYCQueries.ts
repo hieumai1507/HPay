@@ -21,10 +21,11 @@ export interface KYCQueueItem {
   created_at: string;
 }
 
-export function useKYCQueue(paramsInput: KYCTab | (AdminQueryParams & { tab?: KYCTab })) {
+export function useKYCQueue(paramsInput: KYCTab | (AdminQueryParams & { tab?: KYCTab }), enabled = true) {
   const params: AdminQueryParams = typeof paramsInput === 'string' ? { tab: paramsInput } : paramsInput;
   return useQuery({
     queryKey: ['kyc', params],
+    enabled,
     queryFn: () => api<{ requests: KYCQueueItem[]; total?: number }>(`/v1/admin/kyc${buildQueryString(params)}`),
     select: (d): Paged<KYCQueueItem> => ({
       rows: d.requests ?? [],

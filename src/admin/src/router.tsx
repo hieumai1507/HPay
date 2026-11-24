@@ -49,8 +49,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: page(<DashboardPage />) },
-      { path: 'kyc', element: page(<KYCPage />) },
-      { path: 'kyc/:id', element: page(<KYCDetailPage />) },
+      { path: 'kyc', element: guarded(ROUTE_ACCESS['/kyc'], <KYCPage />) },
+      { path: 'kyc/:id', element: guarded(ROUTE_ACCESS['/kyc'], <KYCDetailPage />) },
       { path: 'fraud', element: guarded(ROUTE_ACCESS['/fraud'], <FraudPage />) },
       { path: 'workflows', element: page(<WorkflowPage />) },
       { path: 'workflows/:id', element: page(<WorkflowDetailPage />) },

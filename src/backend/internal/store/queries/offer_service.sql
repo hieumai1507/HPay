@@ -92,3 +92,11 @@ WHERE os.offer_id = $1;
 SELECT * FROM offer_auth_matrix
 WHERE offer_service_id = $1
 ORDER BY min_amount ASC;
+
+-- name: ListOfferAuthMatrix :many
+-- Every authentication tier of every service of one offer, in one query (admin offer detail).
+SELECT m.offer_service_id, m.min_amount, m.max_amount, m.auth_method
+FROM offer_auth_matrix m
+JOIN offer_services os ON os.id = m.offer_service_id
+WHERE os.offer_id = $1
+ORDER BY m.offer_service_id, m.min_amount ASC;

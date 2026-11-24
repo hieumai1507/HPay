@@ -123,7 +123,7 @@ export default function ServiceCatalogPage() {
             onClick={() => setSelectedService(info.row.original)}
             className="px-2.5 py-1 rounded-md border border-brand bg-cyan-50 text-brand text-xs font-semibold hover:bg-cyan-100 transition-colors cursor-pointer"
           >
-            ⚡ Low-Code Pipeline ({info.row.original.actions?.length || 2} steps)
+            ⚡ Action pipeline ({info.row.original.actions?.length ?? 0} {(info.row.original.actions?.length ?? 0) === 1 ? 'step' : 'steps'})
           </button>
         ),
       }),

@@ -101,7 +101,7 @@ export default function AISettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-bold text-slate-900">AI &amp; model routing settings (F11)</h2>
+        <h2 className="text-lg font-bold text-slate-900">AI &amp; model routing settings</h2>
         <span className="text-xs text-slate-500">Dynamic LLM Provider &amp; Secret Management</span>
       </div>
 
@@ -318,7 +318,7 @@ function SettingRow({
           >
             <option value="anthropic">Anthropic (Claude)</option>
             <option value="openai">OpenAI (ChatGPT)</option>
-            <option value="mock">Mock Engine (Dev / Offline)</option>
+            <option value="mock">Offline test engine (no real AI)</option>
           </select>
         </div>
 

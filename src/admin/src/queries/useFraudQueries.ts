@@ -40,10 +40,11 @@ interface BackendFlagRow {
   created_at?: string;
 }
 
-export function useFraudFlags(paramsInput?: string | AdminQueryParams) {
+export function useFraudFlags(paramsInput?: string | AdminQueryParams, enabled = true) {
   const params: AdminQueryParams = typeof paramsInput === 'string' ? { status: paramsInput } : (paramsInput || {});
   return useQuery({
     queryKey: ['admin', 'fraud-flags', params],
+    enabled,
     // Errors propagate (the page shows them); an empty list is a real answer.
     queryFn: async (): Promise<Paged<FraudFlagItem>> => {
       const res = await apiRequest<{ flags: BackendFlagRow[] | null; total?: number }>(

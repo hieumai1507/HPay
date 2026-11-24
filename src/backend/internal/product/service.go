@@ -109,7 +109,20 @@ func (s *Service) ListOffers(ctx context.Context, f listing.Filter) ([]store.Lis
 	return rows, total, nil
 }
 
-func (s *Service) GetOfferDetail(ctx context.Context, offerID uuid.UUID) (store.Offer, []store.ListOfferServicesRow, error) {
+// OfferServiceDetail is one service of an offer with its limits and authentication tiers.
+type OfferServiceDetail struct {
+	store.ListOfferServicesRow
+	AuthMatrix []AuthTier `json:"auth_matrix"`
+}
+
+// AuthTier is one amount band and the authentication it needs. MaxAmount is null for the top band.
+type AuthTier struct {
+	MinAmount  int64  `json:"min_amount"`
+	MaxAmount  *int64 `json:"max_amount"`
+	AuthMethod string `json:"auth_method"`
+}
+
+func (s *Service) GetOfferDetail(ctx context.Context, offerID uuid.UUID) (store.Offer, []OfferServiceDetail, error) {
 	off, err := s.q.GetOffer(ctx, offerID)
 	if err != nil {
 		return store.Offer{}, nil, err
@@ -118,7 +131,28 @@ func (s *Service) GetOfferDetail(ctx context.Context, offerID uuid.UUID) (store.
 	if err != nil {
 		return store.Offer{}, nil, err
 	}
-	return off, srvs, nil
+	tiers, err := s.q.ListOfferAuthMatrix(ctx, offerID)
+	if err != nil {
+		return store.Offer{}, nil, err
+	}
+	byService := make(map[uuid.UUID][]AuthTier, len(srvs))
+	for _, m := range tiers {
+		var max *int64
+		if m.MaxAmount.Valid {
+			v := m.MaxAmount.Int64
+			max = &v
+		}
+		byService[m.OfferServiceID] = append(byService[m.OfferServiceID], AuthTier{MinAmount: m.MinAmount, MaxAmount: max, AuthMethod: string(m.AuthMethod)})
+	}
+	out := make([]OfferServiceDetail, 0, len(srvs))
+	for _, sv := range srvs {
+		at := byService[sv.ID]
+		if at == nil {
+			at = []AuthTier{} // never null on the wire
+		}
+		out = append(out, OfferServiceDetail{ListOfferServicesRow: sv, AuthMatrix: at})
+	}
+	return off, out, nil
 }
 
 func (s *Service) CreateOffer(ctx context.Context, code, name string, role store.OfferRole, level int32, active bool, maxPocket int64, maxBanks int32, updatedBy string) (store.Offer, error) {

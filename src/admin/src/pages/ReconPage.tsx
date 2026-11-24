@@ -15,7 +15,7 @@ import { useAdminStore } from '@/stores/admin';
 const columnHelper = createColumnHelper<ReconItem>();
 
 export default function ReconPage() {
-  const [date, setDate] = useState('2026-07-07');
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA')); // today as YYYY-MM-DD in the browser's time zone
   const { data, isLoading, error } = useReconRun(date);
   const runMutation = useRunRecon();
   // UX only: the backend does not enforce admin roles yet (audit BE-H6).
