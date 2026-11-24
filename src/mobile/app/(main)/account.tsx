@@ -75,8 +75,8 @@ function OrgListItem({ org }: { org: OrgItem }) {
 
   const bg = orgColor(org.org_id);
   const label = org.role === 'checker'
-    ? `Vai trò: Checker · Level ${org.checker_level}`
-    : `Vai trò: ${roleLabel(org.role)}`;
+    ? `Role: Checker · Level ${org.checker_level}`
+    : `Role: ${roleLabel(org.role)}`;
 
   return (
     <Pressable
@@ -93,7 +93,7 @@ function OrgListItem({ org }: { org: OrgItem }) {
       {isActive ? (
         <View className="flex-row items-center gap-1.5 bg-cyan-50 px-2 py-1 rounded-full">
           <View className="w-1.5 h-1.5 rounded-full bg-brand" />
-          <Text className="text-[11px] font-semibold text-brand">Đang dùng</Text>
+          <Text className="text-[11px] font-semibold text-brand">In use</Text>
         </View>
       ) : (
         <Text className="text-xl text-slate-300">›</Text>
@@ -122,8 +122,8 @@ export default function AccountScreen() {
 
   const handleCreateOrg = () => {
     Alert.prompt(
-      'Tạo doanh nghiệp',
-      'Nhập tên công ty / tổ chức của bạn:',
+      'Create organization',
+      'Enter your company / organization name:',
       async (name) => {
         if (!name || name.trim().length < 2) return;
         try {
@@ -132,7 +132,7 @@ export default function AccountScreen() {
             body: JSON.stringify({ name: name.trim() }),
           });
         } catch (e: unknown) {
-          Alert.alert('Lỗi', (e instanceof Error ? e.message : String(e)));
+          Alert.alert('Error', (e instanceof Error ? e.message : String(e)));
         }
       },
       'plain-text',
@@ -150,7 +150,7 @@ export default function AccountScreen() {
   if (error || !data) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Text className="text-base color-rose-600 font-semibold">Không thể tải thông tin tài khoản.</Text>
+        <Text className="text-base color-rose-600 font-semibold">Could not load account details.</Text>
       </View>
     );
   }
@@ -162,14 +162,14 @@ export default function AccountScreen() {
     switch (status) {
       case 'verified':
       case 'auto_approved':
-        return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-600', label: 'Đã xác minh · Hạn mức 100M/ngày' };
+        return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-600', label: 'Verified · Limit 100M/day' };
       case 'pending':
       case 'manual_review':
-        return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-600', label: 'Đang xử lý' };
+        return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-600', label: 'Processing' };
       case 'rejected':
-        return { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-600', label: 'Bị từ chối' };
+        return { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-600', label: 'Rejected' };
       default:
-        return { bg: 'bg-slate-100', text: 'text-slate-500', dot: 'bg-slate-400', label: 'Chưa xác thực' };
+        return { bg: 'bg-slate-100', text: 'text-slate-500', dot: 'bg-slate-400', label: 'Not verified' };
     }
   };
   const badge = getKycBadge(user.kyc_status || 'none');
@@ -193,11 +193,11 @@ export default function AccountScreen() {
 
       {/* Business Wallets */}
       <View className="bg-white dark:bg-slate-800 rounded-xl px-4 pb-4 shadow-xs">
-        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">VÍ DOANH NGHIỆP</Text>
+        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">ORGANIZATION WALLETS</Text>
         {orgsLoading ? (
           <ActivityIndicator size="small" color="#0E90A3" className="my-3" />
         ) : orgs.length === 0 ? (
-          <Text className="text-xs text-slate-400 py-3">Bạn chưa tham gia doanh nghiệp nào.</Text>
+          <Text className="text-xs text-slate-400 py-3">You have not joined any organization yet.</Text>
         ) : (
           orgs.map((org) => <OrgListItem key={org.org_id} org={org} />)
         )}
@@ -205,28 +205,28 @@ export default function AccountScreen() {
           onPress={handleCreateOrg}
           className="mt-2.5 h-10 rounded-lg border-1.5 border-dashed border-cyan-300 items-center justify-center active:opacity-70"
         >
-          <Text className="text-xs font-semibold text-brand">+ Tạo doanh nghiệp mới</Text>
+          <Text className="text-xs font-semibold text-brand">+ Create new organization</Text>
         </Pressable>
       </View>
 
       {/* KYC & Limit */}
       <View className="bg-white dark:bg-slate-800 rounded-xl px-4 pb-4 shadow-xs">
-        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">TÀI KHOẢN</Text>
+        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">ACCOUNT</Text>
         <View className="flex-row items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800">
-          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Hạn mức giao dịch</Text>
+          <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Transaction limit</Text>
           <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatAmountVND(BigInt(txn_limit))}</Text>
         </View>
       </View>
 
       {/* Security */}
       <View className="bg-white dark:bg-slate-800 rounded-xl px-4 pb-4 shadow-xs">
-        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">BẢO MẬT</Text>
+        <Text className="text-[11px] font-bold text-slate-400 tracking-wider pt-3.5 pb-1">SECURITY</Text>
         <View className="flex-row items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800">
           <View className="flex-row items-center gap-3 flex-1 pr-4">
             <Text className="text-xl w-8">🫆</Text>
             <View>
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Mở khóa vân tay / khuôn mặt</Text>
-              <Text className="text-xs text-slate-400 mt-0.5">Dùng sinh trắc học để vào ứng dụng nhanh hơn</Text>
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Unlock with fingerprint / face</Text>
+              <Text className="text-xs text-slate-400 mt-0.5">Use biometrics to open the app faster</Text>
             </View>
           </View>
           <Switch
@@ -243,7 +243,7 @@ export default function AccountScreen() {
         onPress={handleLogout}
         className="h-12 rounded-lg bg-rose-50 border border-rose-100 items-center justify-center active:opacity-80"
       >
-        <Text className="color-rose-600 text-sm font-bold">Đăng xuất</Text>
+        <Text className="color-rose-600 text-sm font-bold">Log out</Text>
       </Pressable>
     </ScrollView>
   );

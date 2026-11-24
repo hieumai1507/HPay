@@ -30,7 +30,7 @@ export function AmountInput({ value, onChangeValue, error, autoFocus }: AmountIn
           placeholder="0"
           placeholderTextColor="#cbd5e1"
           autoFocus={autoFocus}
-          accessibilityLabel="Số tiền"
+          accessibilityLabel="Amount"
           maxLength={19}
         />
         <Text className="text-2xl font-semibold text-slate-400">₫</Text>

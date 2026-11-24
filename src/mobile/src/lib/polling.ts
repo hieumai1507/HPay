@@ -2,7 +2,7 @@
  * Groundwork for M02/M03: after a transfer is accepted (202), the client must NOT
  * declare failure just because the network hiccups or the workflow is still running.
  * It polls with backoff and only after POLL_TIMEOUT_MS gives up — surfaced to the user
- * as "đang xử lý" (still processing), never as "thất bại" (failed).
+ * as "processing" (still processing), never as "failed".
  *
  * `TransactionWatcher` is the interface screens depend on; `PollingTransactionWatcher`
  * is the v1 implementation. Doc 02 §6 reserves this seam so a later SSE-based watcher

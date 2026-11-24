@@ -69,10 +69,10 @@ export default function LoginScreen() {
           router.replace('/(main)/home');
         }
       } else {
-        Alert.alert('Lỗi', 'Không nhận được mã xác thực từ server.');
+        Alert.alert('Error', 'No authentication token received from the server.');
       }
     } catch (err: any) {
-      Alert.alert('Đăng nhập thất bại', describeError(err));
+      Alert.alert('Log in failed', describeError(err));
     } finally {
       setLoading(false);
     }
@@ -90,8 +90,8 @@ export default function LoginScreen() {
           </Pressable>
 
           <View className="mb-8">
-            <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Đăng nhập</Text>
-            <Text className="text-sm text-slate-500">Chào mừng bạn quay lại với HPay</Text>
+            <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Log in</Text>
+            <Text className="text-sm text-slate-500">Welcome back to HPay</Text>
           </View>
 
           {logoutReason && (
@@ -105,15 +105,15 @@ export default function LoginScreen() {
               </Text>
               <Text className="flex-1 text-xs leading-relaxed text-slate-700">
                 {logoutReason === 'refresh_revoked'
-                  ? 'Phát hiện đăng nhập bất thường từ thiết bị khác. Vui lòng đăng nhập lại để bảo mật tài khoản.'
-                  : 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.'}
+                  ? 'Unusual log in activity detected from another device. Please log in again to secure your account.'
+                  : 'Your session has expired. Please log in again.'}
               </Text>
             </View>
           )}
 
           <View className="gap-5">
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Số điện thoại</Text>
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Phone number</Text>
               <View className={`h-12 flex-row items-center rounded-lg border-1.5 ${errors.phone ? 'border-rose-600' : 'border-slate-300 dark:border-slate-700'} bg-white dark:bg-slate-800 px-4`}>
                 <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">+84</Text>
                 <View className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-3" />
@@ -138,14 +138,14 @@ export default function LoginScreen() {
             </View>
 
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Mật khẩu</Text>
+              <Text className="text-sm font-semibold text-slate-700 dark:text-slate-200">Password</Text>
               <View className={`h-12 flex-row items-center rounded-lg border-1.5 ${errors.password ? 'border-rose-600' : 'border-slate-300 dark:border-slate-700'} bg-white dark:bg-slate-800 pl-4`}>
                 <Controller
                   control={control}
                   name="password"
                   render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
-                      placeholder="Nhập mật khẩu của bạn"
+                      placeholder="Enter your password"
                       placeholderTextColor="#94a3b8"
                       secureTextEntry={secureText}
                       onBlur={onBlur}
@@ -170,14 +170,14 @@ export default function LoginScreen() {
 
         <View className="mt-10 gap-4">
           <Button
-            label="Đăng nhập"
+            label="Log in"
             loading={loading}
             onPress={handleSubmit(onSubmit)}
             className="w-full"
           />
           <Pressable onPress={() => router.push('/(auth)/register')} className="items-center py-2">
             <Text className="text-xs text-slate-600 dark:text-slate-400">
-              Chưa có tài khoản? <Text className="text-brand font-bold">Đăng ký ngay</Text>
+              No account yet? <Text className="text-brand font-bold">Sign up</Text>
             </Text>
           </Pressable>
         </View>

@@ -28,7 +28,7 @@ export default function TransferReceiverScreen() {
         onSuccess: (res) => setMaskedName(res.masked_name),
         onError: (err) => {
           if (isApiError(err) && err.code === 'ERR_USER_NOT_FOUND') {
-            setLookupError('Không tìm thấy người nhận với số này.');
+            setLookupError('No recipient found with this number.');
           } else {
             setLookupError(describeError(err));
           }
@@ -52,12 +52,12 @@ export default function TransferReceiverScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
           <Text className="text-xl font-bold text-slate-700 dark:text-slate-200 w-8">←</Text>
         </Pressable>
-        <Text className="text-base font-semibold text-slate-900 dark:text-white">Chuyển tiền</Text>
+        <Text className="text-base font-semibold text-slate-900 dark:text-white">Transfer</Text>
         <View className="w-8" />
       </View>
 
       <View className="flex-1 p-4 gap-3">
-        <Text className="text-xs font-semibold text-slate-600 dark:text-slate-400">Số điện thoại người nhận</Text>
+        <Text className="text-xs font-semibold text-slate-600 dark:text-slate-400">Recipient phone number</Text>
         <TextInput
           className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800"
           value={phone}
@@ -66,10 +66,10 @@ export default function TransferReceiverScreen() {
           placeholder="09xxxxxxxx"
           placeholderTextColor="#94a3b8"
           autoFocus
-          accessibilityLabel="Số điện thoại người nhận"
+          accessibilityLabel="Recipient phone number"
         />
 
-        {lookupPending && <Text className="text-xs text-slate-400">Đang tìm…</Text>}
+        {lookupPending && <Text className="text-xs text-slate-400">Searching…</Text>}
         {maskedName && (
           <View className="bg-cyan-50 dark:bg-slate-800 rounded-xl p-3 gap-0.5 border border-cyan-100 dark:border-slate-700">
             <Text className="text-sm font-semibold text-slate-900 dark:text-white">{maskedName}</Text>
@@ -80,7 +80,7 @@ export default function TransferReceiverScreen() {
 
         {recents.length > 0 && (
           <View className="mt-4 gap-2">
-            <Text className="text-xs font-semibold text-slate-600 dark:text-slate-400">Gần đây</Text>
+            <Text className="text-xs font-semibold text-slate-600 dark:text-slate-400">Recent</Text>
             {recents.map((c) => (
               <Pressable
                 key={c.phone}
@@ -98,7 +98,7 @@ export default function TransferReceiverScreen() {
 
       <View className="p-4">
         <Button
-          label="Tiếp tục"
+          label="Next"
           disabled={!maskedName}
           onPress={() => maskedName && proceed(phone, maskedName)}
         />

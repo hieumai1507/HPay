@@ -18,7 +18,7 @@ export interface SplitAvatarStackProps {
   participants: SplitAvatarStackParticipant[];
   collectedAmount: bigint;
   totalAmount: bigint;
-  /** ISO timestamp — when given, renders "còn Hh" in the caption. */
+  /** ISO timestamp — when given, renders "Hh left" in the caption. */
   expiresAt?: string;
 }
 
@@ -67,7 +67,7 @@ export function SplitAvatarStack({ participants, collectedAmount, totalAmount, e
       </View>
 
       <Text className="text-lg font-bold text-slate-900 dark:text-white">
-        Đã thu {formatAmountVND(collectedAmount)} / {formatAmountVND(totalAmount)}
+        Collected {formatAmountVND(collectedAmount)} / {formatAmountVND(totalAmount)}
       </Text>
 
       <View className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
@@ -75,8 +75,8 @@ export function SplitAvatarStack({ participants, collectedAmount, totalAmount, e
       </View>
 
       <Text className="text-xs text-slate-500">
-        {paidCount}/{participants.length} người đã trả
-        {hoursLeft !== null ? ` · còn ${hoursLeft} giờ` : ''}
+        {paidCount}/{participants.length} paid
+        {hoursLeft !== null ? ` · ${hoursLeft}h left` : ''}
       </Text>
     </View>
   );
