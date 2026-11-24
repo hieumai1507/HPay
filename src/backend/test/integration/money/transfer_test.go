@@ -164,8 +164,8 @@ func TestEdge_E12_LockedUserFailsMidWorkflow(t *testing.T) {
 func TestP2PFixedFeeIs25Cents(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 20_000)
-	for _, amount := range []int64{1_000, 5_000} {
+	senderID, _, _ := e.UserWithMoney(t, 5_000)
+	for _, amount := range []int64{1_000, 2_000} {
 		receiverID, _, _ := e.UserWithMoney(t, 0)
 		res, err := e.Svc.TransferToUser(ctx, senderID, receiverID, amount, "fee", uuid.NewString())
 		if err != nil {

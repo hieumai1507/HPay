@@ -151,7 +151,7 @@ func TestOfferGuard_BelowMinimum(t *testing.T) {
 	userID := setupOffer(t, pool, "P2P_TRANSFER", lim)
 	g := offerguard.New(pool)
 
-	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 49_999); !errors.Is(err, offerguard.ErrBelowMin) {
+	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 199); !errors.Is(err, offerguard.ErrBelowMin) {
 		t.Fatalf("err = %v, want ErrBelowMin", err)
 	}
 }

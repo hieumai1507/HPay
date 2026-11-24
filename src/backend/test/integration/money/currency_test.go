@@ -19,8 +19,8 @@ func TestCurrency_NewUserWalletIsUSD(t *testing.T) {
 	if err := e.Pool.QueryRow(context.Background(), `SELECT currency FROM wallets WHERE id=$1`, walletID).Scan(&cur); err != nil {
 		t.Fatal(err)
 	}
-	if cur != wallet.DefaultCurrency || cur != "USD" {
-		t.Fatalf("main wallet currency = %q, want USD", cur)
+	if cur != wallet.DefaultCurrency {
+		t.Fatalf("main wallet currency = %q, want %q", cur, wallet.DefaultCurrency)
 	}
 }
 

@@ -6,8 +6,8 @@ WHERE l0.code = 'OFFER_CUST_L0' AND l2.code = 'OFFER_CUST_L2' AND uo.offer_id = 
 DELETE FROM offers WHERE code = 'OFFER_CUST_L0' AND NOT EXISTS (SELECT 1 FROM user_offers uo WHERE uo.offer_id = offers.id);
 
 UPDATE offer_services os
-SET max_amount_per_txn = 100000000, daily_limit = 500000000, monthly_limit = 2000000000
+SET max_amount_per_txn = 400000, daily_limit = 2000000, monthly_limit = 8000000
 FROM offers o WHERE o.id = os.offer_id AND o.code IN ('OFFER_CUST_L1', 'OFFER_CUST_L2');
 
-UPDATE offers SET primary_pocket_max = 50000000 WHERE code = 'OFFER_CUST_L1';
-UPDATE offers SET primary_pocket_max = 200000000 WHERE code = 'OFFER_CUST_L2';
+UPDATE offers SET primary_pocket_max = 200000 WHERE code = 'OFFER_CUST_L1';
+UPDATE offers SET primary_pocket_max = 800000 WHERE code = 'OFFER_CUST_L2';

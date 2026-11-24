@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS offers (
     role                 offer_role NOT NULL DEFAULT 'customer',
     level                INT NOT NULL DEFAULT 1,
     is_active            BOOLEAN NOT NULL DEFAULT true,
-    primary_pocket_max   BIGINT NOT NULL DEFAULT 50000000,
+    primary_pocket_max   BIGINT NOT NULL DEFAULT 200000,
     max_bank_accounts    INT NOT NULL DEFAULT 2,
     updated_by           VARCHAR(80) NOT NULL DEFAULT 'system',
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -28,9 +28,9 @@ CREATE TABLE IF NOT EXISTS offer_services (
     service_id         UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     is_enabled         BOOLEAN NOT NULL DEFAULT true,
     min_amount         BIGINT NOT NULL DEFAULT 0,
-    max_amount_per_txn BIGINT NOT NULL DEFAULT 100000000,
-    daily_limit        BIGINT NOT NULL DEFAULT 500000000,
-    monthly_limit      BIGINT NOT NULL DEFAULT 2000000000,
+    max_amount_per_txn BIGINT NOT NULL DEFAULT 400000,
+    daily_limit        BIGINT NOT NULL DEFAULT 2000000,
+    monthly_limit      BIGINT NOT NULL DEFAULT 8000000,
     interval_seconds   INT NOT NULL DEFAULT 0,
     UNIQUE(offer_id, service_id)
 );
@@ -75,29 +75,29 @@ CREATE INDEX IF NOT EXISTS idx_money_req_payer ON money_requests (payer_id, stat
 -- Seed default Offers
 INSERT INTO offers (id, code, name, role, level, is_active, primary_pocket_max, max_bank_accounts, updated_by)
 VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'OFFER_CUST_L1', 'Personal (KYC tier 1)', 'customer', 1, true, 50000000, 2, 'mungnt'),
-  ('b0000000-0000-0000-0000-000000000002', 'OFFER_CUST_L2', 'Personal (KYC tier 2)', 'customer', 2, true, 200000000, 5, 'hoangnd'),
-  ('b0000000-0000-0000-0000-000000000003', 'OFFER_BIZ_STARTER', 'Business Starter (Maker/Checker L1)', 'merchant', 3, true, 1000000000, 10, 'hieumt'),
-  ('b0000000-0000-0000-0000-000000000004', 'OFFER_BIZ_ENT', 'Business Enterprise (Maker/Checker L2)', 'merchant', 5, true, 5000000000, 20, 'admin.root')
+  ('b0000000-0000-0000-0000-000000000001', 'OFFER_CUST_L1', 'Personal (KYC tier 1)', 'customer', 1, true, 200000, 2, 'mungnt'),
+  ('b0000000-0000-0000-0000-000000000002', 'OFFER_CUST_L2', 'Personal (KYC tier 2)', 'customer', 2, true, 800000, 5, 'hoangnd'),
+  ('b0000000-0000-0000-0000-000000000003', 'OFFER_BIZ_STARTER', 'Business Starter (Maker/Checker L1)', 'merchant', 3, true, 4000000, 10, 'hieumt'),
+  ('b0000000-0000-0000-0000-000000000004', 'OFFER_BIZ_ENT', 'Business Enterprise (Maker/Checker L2)', 'merchant', 5, true, 20000000, 20, 'admin.root')
 ON CONFLICT (code) DO NOTHING;
 
 -- Seed offer_services & auth matrix
 INSERT INTO offer_services (id, offer_id, service_id, is_enabled, min_amount, max_amount_per_txn, daily_limit, monthly_limit, interval_seconds)
 VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', true, 0, 100000000, 500000000, 2000000000, 3)
+  ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', true, 0, 400000, 2000000, 8000000, 3)
 ON CONFLICT (offer_id, service_id) DO NOTHING;
 
 INSERT INTO offer_auth_matrix (id, offer_service_id, min_amount, max_amount, auth_method)
 VALUES
-  ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 0, 2000000, 'pin'),
-  ('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 2000000, 50000000, 'otp'),
-  ('d0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001', 50000000, NULL, '2fa')
+  ('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 0, 8000, 'pin'),
+  ('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 8000, 200000, 'otp'),
+  ('d0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001', 200000, NULL, '2fa')
 ON CONFLICT DO NOTHING;
 
 -- Seed default zero fee policies
 INSERT INTO fee_policies (txn_type, fixed_fee, percent_bp, is_active)
 VALUES
-  ('p2p', 1000, 0, true),
+  ('p2p', 25, 0, true),
   ('topup', 0, 0, true),
   ('disbursement', 0, 0, true)
 ON CONFLICT DO NOTHING;

@@ -14,18 +14,26 @@ import (
 	"github.com/hieumai1507/hpay-backend/internal/workflow"
 )
 
-// RoundUpUnit is the rounding granularity in minor units (VND). Docs 04 §2.2
+// RoundUpUnit is the rounding granularity in cents (default 100, one dollar). Docs 04 §2.2
 // treats round-up as a stretch, system-wide constant rather than a per-user
-// setting; ROUND_UP_UNIT_VND lets tests override it.
+// setting; ROUND_UP_UNIT lets tests override it.
 var RoundUpUnit int64 = roundUpUnitFromEnv()
 
+// defaultRoundUpUnit is $1.00 in cents.
+const defaultRoundUpUnit int64 = 100
+
+// roundUpDiff is the distance from amount up to the next multiple of unit; 0 when it divides evenly.
+func roundUpDiff(amount, unit int64) int64 {
+	return (unit - amount%unit) % unit
+}
+
 func roundUpUnitFromEnv() int64 {
-	if v := os.Getenv("ROUND_UP_UNIT_VND"); v != "" {
+	if v := os.Getenv("ROUND_UP_UNIT"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
 			return n
 		}
 	}
-	return 10_000
+	return defaultRoundUpUnit
 }
 
 // RoundUp is the optional ROUND_UP step appended after CONFIRM in
@@ -80,8 +88,8 @@ func (r *RoundUp) Execute(ctx context.Context, in workflow.StepInput) (workflow.
 		return skipRoundUp("sender_not_main"), nil
 	}
 
-	diff := RoundUpUnit - (txn.Amount % RoundUpUnit)
-	if diff == RoundUpUnit {
+	diff := roundUpDiff(txn.Amount, RoundUpUnit)
+	if diff == 0 {
 		return skipRoundUp("exact"), nil // divides evenly, nothing to round
 	}
 

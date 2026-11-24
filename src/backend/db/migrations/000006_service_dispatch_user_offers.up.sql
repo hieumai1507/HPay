@@ -104,7 +104,7 @@ UPDATE wallets w SET system_code = 'SYSTEM_SUSPENSE'
 --    with sane default limits, so OfferGuard (fail-closed) does not block demo flows.
 --    Pre-existing rows (e.g. seeded OFFER_CUST_L2 × P2P) are preserved by ON CONFLICT.
 INSERT INTO offer_services (offer_id, service_id, is_enabled, min_amount, max_amount_per_txn, daily_limit, monthly_limit, interval_seconds)
-SELECT o.id, s.id, true, 0, 100000000, 500000000, 2000000000, 0
+SELECT o.id, s.id, true, 0, 400000, 2000000, 8000000, 0
   FROM offers o
   CROSS JOIN services s
   WHERE o.code IN ('OFFER_CUST_L1','OFFER_CUST_L2','OFFER_BIZ_STARTER')
@@ -114,11 +114,11 @@ ON CONFLICT (offer_id, service_id) DO NOTHING;
 -- 6. Standard 3-tier auth matrix (pin/otp/2fa) for any offer_service that lacks one.
 --    Each tier guarded independently so the pre-seeded L2×P2P rows are untouched.
 INSERT INTO offer_auth_matrix (offer_service_id, min_amount, max_amount, auth_method)
-SELECT os.id, 0, 2000000, 'pin' FROM offer_services os
+SELECT os.id, 0, 8000, 'pin' FROM offer_services os
   WHERE NOT EXISTS (SELECT 1 FROM offer_auth_matrix m WHERE m.offer_service_id = os.id AND m.auth_method = 'pin');
 INSERT INTO offer_auth_matrix (offer_service_id, min_amount, max_amount, auth_method)
-SELECT os.id, 2000000, 50000000, 'otp' FROM offer_services os
+SELECT os.id, 8000, 200000, 'otp' FROM offer_services os
   WHERE NOT EXISTS (SELECT 1 FROM offer_auth_matrix m WHERE m.offer_service_id = os.id AND m.auth_method = 'otp');
 INSERT INTO offer_auth_matrix (offer_service_id, min_amount, max_amount, auth_method)
-SELECT os.id, 50000000, NULL, '2fa' FROM offer_services os
+SELECT os.id, 200000, NULL, '2fa' FROM offer_services os
   WHERE NOT EXISTS (SELECT 1 FROM offer_auth_matrix m WHERE m.offer_service_id = os.id AND m.auth_method = '2fa');

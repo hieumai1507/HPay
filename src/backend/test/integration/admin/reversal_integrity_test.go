@@ -179,9 +179,9 @@ func TestReversal_ReceiverWithoutFundsGoesToNeedsManual(t *testing.T) {
 	_, spendWallet, spendPhone := e.UserWithMoney(t, 0)
 	_ = spendWallet
 	if _, err := e.Svc.Transfer(ctx, rUser, spendPhone, testutil.WalletBalance(t, e.Pool, rw)-0, "spend", uuid.NewString()); err != nil {
-		// fee may make the full balance too large; retry with a smaller amount that still empties the wallet below the reversal amount
+		// the flat 25 cent fee makes the full balance too large; spend the balance minus the fee, which empties the wallet
 		bal := testutil.WalletBalance(t, e.Pool, rw)
-		if _, err2 := e.Svc.Transfer(ctx, rUser, spendPhone, bal-bal/100-1, "spend", uuid.NewString()); err2 != nil {
+		if _, err2 := e.Svc.Transfer(ctx, rUser, spendPhone, bal-25, "spend", uuid.NewString()); err2 != nil {
 			t.Fatalf("receiver spend: %v / %v", err, err2)
 		}
 	}

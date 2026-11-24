@@ -1,7 +1,7 @@
 package authn
 
 // ADR-0017: the 2fa band through the real service. Cases TC-2FA-010..015.
-// A transaction of 60,000,000 VND is in the 2fa band (50,000,000 and above).
+// A transaction of $2,400.00 (240,000 cents) is in the 2fa band (above 200,000 cents).
 
 import (
 	"context"

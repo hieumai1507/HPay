@@ -42,7 +42,7 @@ func TestQR_MintResolveTransferEndToEnd(t *testing.T) {
 		t.Fatal("expected non-empty receiver token")
 	}
 
-	// 3. Sender transfers VND 500,000 to Receiver using the receiver token
+	// 3. Sender transfers $20.00 (2,000 cents) to Receiver using the receiver token
 	res, err := e.Svc.TransferToUser(ctx, senderID, receiverID, 2_000, "For lunch", uuid.NewString())
 	if err != nil {
 		t.Fatalf("TransferToUser failed: %v", err)

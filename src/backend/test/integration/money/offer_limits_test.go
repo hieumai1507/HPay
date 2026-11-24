@@ -243,7 +243,7 @@ func TestOfferLimits_SeededTableMatchesSpec(t *testing.T) {
 	}
 }
 
-// AC-5: the seeded auth bands are PIN below 8,000, OTP to 200,000, 2FA above.
+// AC-5: the seeded auth bands are PIN below 8,000, OTP from 8,000, 2FA from 200,000 (the upper bound of a band is exclusive).
 func TestOfferLimits_SeededAuthMatrix(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	u, _, _ := e.UserWithMoney(t, 0)
@@ -252,7 +252,7 @@ func TestOfferLimits_SeededAuthMatrix(t *testing.T) {
 	cases := []struct {
 		amount int64
 		want   string
-	}{{1, "pin"}, {7_999, "pin"}, {8_000, "otp"}, {200_000, "otp"}, {200_001, "2fa"}}
+	}{{1, "pin"}, {7_999, "pin"}, {8_000, "otp"}, {199_999, "otp"}, {200_000, "2fa"}}
 	for _, c := range cases {
 		d, err := g.Check(context.Background(), u, "P2P_TRANSFER", "p2p", c.amount)
 		if err != nil {

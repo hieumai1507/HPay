@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
+	"github.com/hieumai1507/hpay-backend/internal/wallet"
 )
 
 // RunSerialized is the TestMain body for packages that drive the outbox pump
@@ -91,7 +92,7 @@ func NewUserWithWallet(t *testing.T, pool *pgxpool.Pool) (userID, walletID uuid.
 		t.Fatalf("insert user: %v", err)
 	}
 	w, err := q.CreateUserWallet(context.Background(), store.CreateUserWalletParams{
-		OwnerID: u.ID, Currency: "VND", Purpose: "main", Label: pgtype.Text{},
+		OwnerID: u.ID, Currency: wallet.DefaultCurrency, Purpose: "main", Label: pgtype.Text{},
 	})
 	if err != nil {
 		t.Fatalf("create wallet: %v", err)

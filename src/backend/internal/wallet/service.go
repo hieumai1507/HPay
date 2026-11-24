@@ -47,7 +47,7 @@ func NewService(pool *pgxpool.Pool) *Service {
 // (self-heal + backfill, docs plan f3 §1).
 func (s *Service) EnsureMainWallet(ctx context.Context, userID uuid.UUID) error {
 	_, err := s.q.CreateUserWallet(ctx, store.CreateUserWalletParams{
-		OwnerID: userID, Currency: "VND", Purpose: "main",
+		OwnerID: userID, Currency: DefaultCurrency, Purpose: "main",
 		Label: pgtype.Text{},
 	})
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *Service) Topup(ctx context.Context, userID uuid.UUID, amount int64, ide
 		return TopupResult{}, err
 	}
 
-	userWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
+	userWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: DefaultCurrency})
 	if err != nil {
 		return TopupResult{}, ErrWalletNotFound
 	}
@@ -195,7 +195,7 @@ func counterparty(myWallet, senderWallet uuid.UUID, senderName, senderPhone, rec
 
 // History returns transactions of the user's main wallet, keyset-paginated.
 func (s *Service) History(ctx context.Context, userID uuid.UUID, before time.Time, beforeID uuid.UUID, limit int32) ([]TxnView, error) {
-	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
+	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: DefaultCurrency})
 	if err != nil {
 		return nil, ErrWalletNotFound
 	}
@@ -235,7 +235,7 @@ func (s *Service) Detail(ctx context.Context, userID uuid.UUID, refCode string) 
 		}
 		return TxnView{}, err
 	}
-	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
+	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: DefaultCurrency})
 	if err != nil {
 		return TxnView{}, ErrTxnNotFound
 	}
@@ -266,7 +266,7 @@ func (s *Service) DetailRaw(ctx context.Context, userID uuid.UUID, refCode strin
 		}
 		return store.GetTransactionByRefCodeRow{}, err
 	}
-	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
+	w, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: DefaultCurrency})
 	if err != nil {
 		return store.GetTransactionByRefCodeRow{}, ErrTxnNotFound
 	}

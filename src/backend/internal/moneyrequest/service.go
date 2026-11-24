@@ -270,11 +270,11 @@ func (s *Service) Pay(ctx context.Context, payerID, requestID uuid.UUID, idemKey
 		return PayResult{}, ErrExpired // E19
 	}
 
-	payerWallet, err := qtx.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: payerID, Currency: "VND"})
+	payerWallet, err := qtx.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: payerID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return PayResult{}, wallet.ErrWalletNotFound
 	}
-	requesterWallet, err := qtx.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: req.RequesterID, Currency: "VND"})
+	requesterWallet, err := qtx.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: req.RequesterID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return PayResult{}, wallet.ErrWalletNotFound
 	}

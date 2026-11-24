@@ -76,7 +76,7 @@ export function setup() {
   // Fund the two senders: KYC 'none' caps topups at 2M each — do 2 per sender.
   for (const u of [users[0], users[1]]) {
     for (let t = 0; t < 2; t++) {
-      const res = http.post(`${BASE}/v1/wallets/topup`, JSON.stringify({ amount: 2_000_000 }), {
+      const res = http.post(`${BASE}/v1/wallets/topup`, JSON.stringify({ amount: 8_000 }), {
         headers: { ...auth(u.token).headers, "Idempotency-Key": `${u.phone}-fund-${t}` },
       });
       if (res.status !== 201) fail(`topup ${u.phone}: ${res.status} ${res.body}`);
@@ -90,7 +90,7 @@ function doTransfer(data, tagName) {
   const receiver = data.users[2 + (__VU % 2)]; // users[2]/users[3] receive
   return http.post(
     `${BASE}/v1/transactions/transfer`,
-    JSON.stringify({ receiver_phone: receiver.phone, amount: 1000, note: "k6" }),
+    JSON.stringify({ receiver_phone: receiver.phone, amount: 400, note: "k6" }),
     {
       headers: { ...auth(sender.token).headers, "Idempotency-Key": `k6-${__VU}-${__ITER}-${Date.now()}` },
       tags: { name: tagName },

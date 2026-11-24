@@ -22,7 +22,7 @@ func confirmPIN(e *testkit.Env, sender uuid.UUID, res transfer.EngineRequestResu
 
 // BUG-0017 / BE-H2: a request waiting for its PIN does not count toward the quota, and nothing
 // re-checked at confirm, so many requests could all pass and all start. The limit must hold when
-// money starts to move: at L0 the daily cap is 2,500,000, so of five held requests of 1,500,000
+// money starts to move: at L0 the daily cap is 10,000 cents, so of five held requests of 6,000
 // exactly one may start.
 func TestLimitWindow_ConcurrentConfirmsRespectDailyLimit(t *testing.T) {
 	e := testkit.NewEnv(t, "")
@@ -64,7 +64,7 @@ func TestLimitWindow_ConcurrentConfirmsRespectDailyLimit(t *testing.T) {
 	}
 }
 
-// The quota counts amount + fee, so the confirm check must too: with the 1,000 VND p2p fee, two
+// The quota counts amount + fee, so the confirm check must too: with the 25 cent p2p fee, two
 // holds of 1,249,500 are 2,501,000 in total. Without the fee the second would be exactly at the
 // cap and pass.
 func TestLimitWindow_ConfirmCountsTheFee(t *testing.T) {
@@ -111,7 +111,7 @@ func TestLimitWindow_VolumeIsCountedFromWhenTheTransactionStarted(t *testing.T) 
 		Amount: 4_400, Idempotency: uuid.NewString(),
 	})
 	if !errors.Is(err, offerguard.ErrLimitDaily) {
-		t.Fatalf("1,500,000 started today plus 1,100,000 exceeds the 2,500,000 daily limit, got %v", err)
+		t.Fatalf("6,000 started today plus 4,400 exceeds the 10,000 daily limit, got %v", err)
 	}
 }
 

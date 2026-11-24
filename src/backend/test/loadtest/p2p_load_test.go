@@ -105,7 +105,7 @@ func TestP2PLoad(t *testing.T) {
 				t0 := time.Now()
 				res, err := e.Svc.ExecuteEngineRequest(ctx, transfer.EngineRequestInput{
 					ServiceCode: "P2P_TRANSFER", SenderUserID: s.user, ReceiverPhone: rc.phone,
-					Amount: 4 + int64(r.Intn(36)), Idempotency: wallet.NewRefCode(),
+					Amount: 40 + int64(r.Intn(360)), Idempotency: wallet.NewRefCode(),
 				})
 				if err == nil && res.Status == "awaiting_auth" {
 					_, err = e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{

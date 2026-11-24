@@ -108,21 +108,21 @@ func (s *seeder) run() {
 	wL2 := s.mainWallet(l2, "checker L2 main")
 	vault := s.vaultWallet(u1, "Holiday fund")
 
-	// --- u1 history: >=10 mixed txns across several days; final 12,450,000 ---
-	s.txn("seed-u1-topup-1", "topup", cashIn, w1, 15_000_000, u1, -6)
-	s.txn("seed-u1-topup-2", "topup", cashIn, w1, 6_000_000, u1, -4)
-	s.txn("seed-u1-p2p-1", "p2p", w1, w2, 500_000, u1, -5)
-	s.txn("seed-u1-p2p-2", "p2p", w1, w2, 700_000, u1, -3)
-	s.txn("seed-u1-p2p-3", "p2p", w1, w2, 800_000, u1, -2)
-	flagged := s.txn("seed-u1-p2p-4", "p2p", w1, w2, 1_750_000, u1, -1)
-	velocity := s.txn("seed-u1-p2p-5", "p2p", w1, w2, 1_000_000, u1, 0)
-	s.txn("seed-u2-p2p-back", "p2p", w2, w1, 100_000, u2, -1)
-	s.txn("seed-u1-vault-1", "vault_move", w1, vault, 4_000_000, u1, -3)
-	s.txn("seed-u1-vault-2", "vault_move", w1, vault, 200_000, u1, -1)
+	// --- u1 history: >=10 mixed txns across several days; final $498.00 (49,800 cents) ---
+	s.txn("seed-u1-topup-1", "topup", cashIn, w1, 60_000, u1, -6)
+	s.txn("seed-u1-topup-2", "topup", cashIn, w1, 24_000, u1, -4)
+	s.txn("seed-u1-p2p-1", "p2p", w1, w2, 2000, u1, -5)
+	s.txn("seed-u1-p2p-2", "p2p", w1, w2, 2800, u1, -3)
+	s.txn("seed-u1-p2p-3", "p2p", w1, w2, 3200, u1, -2)
+	flagged := s.txn("seed-u1-p2p-4", "p2p", w1, w2, 7000, u1, -1)
+	velocity := s.txn("seed-u1-p2p-5", "p2p", w1, w2, 4000, u1, 0)
+	s.txn("seed-u2-p2p-back", "p2p", w2, w1, 400, u2, -1)
+	s.txn("seed-u1-vault-1", "vault_move", w1, vault, 16_000, u1, -3)
+	s.txn("seed-u1-vault-2", "vault_move", w1, vault, 800, u1, -1)
 
 	// --- u2 / org-side funding ---
-	s.txn("seed-u2-topup-1", "topup", cashIn, w2, 500_000, u2, -4)
-	s.txn("seed-u11-topup-1", "topup", cashIn, wOwner, 500_000, owner, -2)
+	s.txn("seed-u2-topup-1", "topup", cashIn, w2, 2000, u2, -4)
+	s.txn("seed-u11-topup-1", "topup", cashIn, wOwner, 2000, owner, -2)
 
 	// --- organization Acme Corp + policy "Large spend" (large spend) v3 ---
 	orgID := s.org("Acme Corp", owner)
@@ -133,34 +133,34 @@ func (s *seeder) run() {
 	s.member(orgID, l2, "checker", 2)
 	policyID := s.policy(orgID, "Large spend", 3, owner)
 
-	s.txn("seed-org-topup", "topup", cashIn, orgWallet, 854_500_000, owner, -7)
+	s.txn("seed-org-topup", "topup", cashIn, orgWallet, 3_418_000, owner, -7)
 	// completed disbursement with a full step trail
-	disb := s.txn("seed-org-disb-done", "org_disbursement", orgWallet, w2, 12_000_000, maker, -2)
+	disb := s.txn("seed-org-disb-done", "org_disbursement", orgWallet, w2, 48_000, maker, -2)
 	s.instance("seed-inst-disb-done", "org_disbursement", disb, "completed", "", -2,
 		[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"WAIT_APPROVAL", "completed"},
 			{"MOVE_FUNDS", "completed"}, {"CONFIRM", "completed"}})
 
 	// pending disbursement at 1/2 signatures, parked at WAIT_APPROVAL
-	pend := s.pendingTxn("seed-org-disb-pending", "org_disbursement", orgWallet, wMaker, 45_000_000, maker, "pending_approval")
+	pend := s.pendingTxn("seed-org-disb-pending", "org_disbursement", orgWallet, wMaker, 180_000, maker, "pending_approval")
 	pendInst := s.instance("seed-inst-disb-pending", "org_disbursement", pend, "waiting_approval", "WAIT_APPROVAL", 0,
 		[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"WAIT_APPROVAL", "started"}})
 	s.approvalOrgTxn(pend, orgID, pendInst, policyID, maker, l1)
 
 	// --- workflow variety for the admin monitor ---
-	failT := s.compensatedTxn("seed-wf-failed", w2, w4, 300_000, u2, "failed", -1)
+	failT := s.compensatedTxn("seed-wf-failed", w2, w4, 1200, u2, "failed", -1)
 	s.instance("seed-inst-failed", "p2p_transfer", failT, "failed", "MOVE_FUNDS", -1,
 		[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"MOVE_FUNDS", "failed"}})
-	compT := s.compensatedTxn("seed-wf-comp", w2, w4, 300_000, u2, "failed", -2)
+	compT := s.compensatedTxn("seed-wf-comp", w2, w4, 1200, u2, "failed", -2)
 	s.instance("seed-inst-comp", "p2p_transfer", compT, "compensated", "CONFIRM", -2,
 		[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"MOVE_FUNDS", "completed"},
 			{"CONFIRM", "failed"}, {"MOVE_FUNDS", "compensated"}})
-	asyncT := s.pendingTxn("seed-wf-async", "p2p", wMaker, wL1, 200_000, maker, "processing_async")
+	asyncT := s.pendingTxn("seed-wf-async", "p2p", wMaker, wL1, 800, maker, "processing_async")
 	s.instance("seed-inst-async", "p2p_transfer", asyncT, "running", "MOVE_FUNDS", 0,
 		[]step{{"VALIDATE", "completed"}, {"FRAUD_CHECK", "completed"}, {"MOVE_FUNDS", "started"}})
 
 	// --- u4: locked with a confirmed_fraud flag + reversal pending in My Tasks ---
-	s.txn("seed-u4-topup", "topup", cashIn, w4, 1_000_000, u4, -3)
-	badTxn := s.txn("seed-u4-p2p", "p2p", w4, w2, 500_000, u4, -1)
+	s.txn("seed-u4-topup", "topup", cashIn, w4, 4000, u4, -3)
+	badTxn := s.txn("seed-u4-p2p", "p2p", w4, w2, 2000, u4, -1)
 	s.fraudFlag(badTxn, "VELOCITY_5MIN", 92,
 		`{"signals":[{"code":"VELOCITY_5MIN","points":60,"evidence":"3 transactions in 4 minutes"}],"advisory":"AI: behaviour resembles an account takeover — recommend locking the account and reversing the transactions"}`,
 		"confirmed_fraud")
@@ -183,26 +183,26 @@ func (s *seeder) run() {
 
 	// --- recon: yesterday, 3 matched + 3 missing_external at the cutoff window ---
 	y := time.Now().AddDate(0, 0, -1)
-	r1 := s.reconTopup("seed-recon-t1", cashIn, wMaker, 1_000_000, maker, y.Add(-10*time.Hour))
-	r2 := s.reconTopup("seed-recon-t2", cashIn, wL1, 1_000_000, l1, y.Add(-8*time.Hour))
-	r3 := s.reconTopup("seed-recon-t3", cashIn, wL2, 1_000_000, l2, y.Add(-6*time.Hour))
-	s.statement(r1, 1_000_000, y, "match")
-	s.statement(r2, 1_000_000, y, "match")
-	s.statement(r3, 1_000_000, y, "match")
+	r1 := s.reconTopup("seed-recon-t1", cashIn, wMaker, 4000, maker, y.Add(-10*time.Hour))
+	r2 := s.reconTopup("seed-recon-t2", cashIn, wL1, 4000, l1, y.Add(-8*time.Hour))
+	r3 := s.reconTopup("seed-recon-t3", cashIn, wL2, 4000, l2, y.Add(-6*time.Hour))
+	s.statement(r1, 4000, y, "match")
+	s.statement(r2, 4000, y, "match")
+	s.statement(r3, 4000, y, "match")
 	night := time.Date(y.Year(), y.Month(), y.Day(), 23, 58, 0, 0, time.Local)
-	s.statement("SEEDX1"+shortID(), 2_500_000, night, "missing")
-	s.statement("SEEDX2"+shortID(), 1_200_000, night.Add(2*time.Minute), "missing")
-	s.statement("SEEDX3"+shortID(), 800_000, night.Add(3*time.Minute), "missing")
+	s.statement("SEEDX1"+shortID(), 10_000, night, "missing")
+	s.statement("SEEDX2"+shortID(), 4800, night.Add(2*time.Minute), "missing")
+	s.statement("SEEDX3"+shortID(), 3200, night.Add(3*time.Minute), "missing")
 	s.reconRun(y)
 
 	// --- money requests: 1 pending incoming for u1 + a split group 2/3 paid ---
-	s.moneyRequest("seed-mreq-1", u2, u1, 200_000, "Coffee money this week", nil, "pending", uuid.Nil)
+	s.moneyRequest("seed-mreq-1", u2, u1, 800, "Coffee money this week", nil, "pending", uuid.Nil)
 	split := fixedUUID("seed-split-group")
-	p1 := s.txn("seed-split-pay-u2", "p2p", w2, w1, 150_000, u2, 0)
-	p2 := s.txn("seed-split-pay-u11", "p2p", wOwner, w1, 150_000, owner, 0)
-	s.moneyRequest("seed-mreq-s1", u1, u2, 150_000, "Split: group dinner", &split, "paid", p1)
-	s.moneyRequest("seed-mreq-s2", u1, owner, 150_000, "Split: group dinner", &split, "paid", p2)
-	s.moneyRequest("seed-mreq-s3", u1, maker, 150_000, "Split: group dinner", &split, "pending", uuid.Nil)
+	p1 := s.txn("seed-split-pay-u2", "p2p", w2, w1, 600, u2, 0)
+	p2 := s.txn("seed-split-pay-u11", "p2p", wOwner, w1, 600, owner, 0)
+	s.moneyRequest("seed-mreq-s1", u1, u2, 600, "Split: group dinner", &split, "paid", p1)
+	s.moneyRequest("seed-mreq-s2", u1, owner, 600, "Split: group dinner", &split, "paid", p2)
+	s.moneyRequest("seed-mreq-s3", u1, maker, 600, "Split: group dinner", &split, "pending", uuid.Nil)
 
 	s.assertLedger()
 	s.summary()
@@ -233,6 +233,9 @@ func (s *seeder) seedE2EAdmins() {
 // approves a reversal consumes one of these for good; the suite uses a fresh one each time.
 const e2eReversiblePool = 40
 
+// e2eReversibleAmount is the amount of each reversible transaction, in cents ($1.00).
+const e2eReversibleAmount = 100
+
 // seedE2EReversible creates completed p2p transactions dedicated to the E2E suite. They are
 // flagged only by their idempotency key prefix, belong to throwaway users, and are only created
 // with --e2e-admins, so the default demo data is unchanged.
@@ -246,10 +249,10 @@ func (s *seeder) seedE2EReversible() {
 	to := s.user("0900009002", "E2E Receiver", "verified", "active", hash)
 	wFrom := s.mainWallet(from, "e2e sender main")
 	wTo := s.mainWallet(to, "e2e receiver main")
-	s.txn("e2e-pool-topup", "topup", cashIn, wFrom, int64(e2eReversiblePool)*10_000, from, -1)
+	s.txn("e2e-pool-topup", "topup", cashIn, wFrom, int64(e2eReversiblePool)*e2eReversibleAmount, from, -1)
 	for i := 1; i <= e2eReversiblePool; i++ {
 		key := fmt.Sprintf("e2e-reversible-%03d", i)
-		id := s.txn(key, "p2p", wFrom, wTo, 10_000, from, -1)
+		id := s.txn(key, "p2p", wFrom, wTo, e2eReversibleAmount, from, -1)
 		// A completed workflow instance makes the transaction discoverable through
 		// GET /v1/admin/workflows?definition=p2p_transfer, which is how the E2E fixture finds it.
 		s.instance("inst-"+key, "p2p_transfer", id, "completed", "", -1,
@@ -322,7 +325,7 @@ func (s *seeder) assignOffer(userID uuid.UUID, offerCode string) {
 func (s *seeder) mainWallet(userID uuid.UUID, label string) uuid.UUID {
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO wallets (owner_type, owner_id, currency, purpose)
-		VALUES ('user',$1,'VND','main') ON CONFLICT DO NOTHING`, userID); err != nil {
+		VALUES ('user',$1,$2,'main') ON CONFLICT DO NOTHING`, userID, wallet.DefaultCurrency); err != nil {
 		fatal("wallet: %v", err)
 	}
 	var id uuid.UUID
@@ -346,7 +349,7 @@ func (s *seeder) vaultWallet(userID uuid.UUID, label string) uuid.UUID {
 	}
 	if err := s.pool.QueryRow(s.ctx, `
 		INSERT INTO wallets (owner_type, owner_id, currency, purpose, label)
-		VALUES ('user',$1,'VND','vault',$2) RETURNING id`, userID, label).Scan(&id); err != nil {
+		VALUES ('user',$1,$3,'vault',$2) RETURNING id`, userID, label, wallet.DefaultCurrency).Scan(&id); err != nil {
 		fatal("vault: %v", err)
 	}
 	s.touched[id] = "vault " + label
@@ -466,7 +469,7 @@ func (s *seeder) org(name string, owner uuid.UUID) uuid.UUID {
 func (s *seeder) orgWallet(orgID uuid.UUID) uuid.UUID {
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO wallets (owner_type, owner_id, currency, purpose)
-		VALUES ('organization',$1,'VND','main') ON CONFLICT DO NOTHING`, orgID); err != nil {
+		VALUES ('organization',$1,$2,'main') ON CONFLICT DO NOTHING`, orgID, wallet.DefaultCurrency); err != nil {
 		fatal("org wallet: %v", err)
 	}
 	var id uuid.UUID
@@ -492,12 +495,12 @@ func (s *seeder) member(orgID, userID uuid.UUID, role string, level int) {
 	}
 }
 
-// policy "Large spend" (large spend) v3: >=10M needs 1 L1 signature; >=40M adds 1 L2 signature.
+// policy "Large spend" v3: >= $400.00 needs 1 L1 signature; the second tier adds 1 L2 signature.
 func (s *seeder) policy(orgID uuid.UUID, name string, version int, by uuid.UUID) uuid.UUID {
 	id := fixedUUID(fmt.Sprintf("policy:%s:%d", name, version))
 	if _, err := s.pool.Exec(s.ctx, `
 		INSERT INTO approval_policies (id, org_id, name, min_amount, max_amount, tiers, version, is_active, created_by)
-		VALUES ($1,$2,$3,10000000,NULL,
+		VALUES ($1,$2,$3,40000,NULL,
 		  '[{"level":1,"required_approvals":1},{"level":2,"required_approvals":1}]'::jsonb,
 		  $4,true,$5)
 		ON CONFLICT (id) DO NOTHING`, id, orgID, name, version, by); err != nil {
@@ -715,12 +718,12 @@ func (s *seeder) summary() {
 	fmt.Println("─────────────────────────────────────────────────────────")
 	fmt.Println(" HPay demo seed OK — password for every user: Demo@123")
 	fmt.Println("─────────────────────────────────────────────────────────")
-	fmt.Println(" 0900000001  Hieu Mai      verified, 12,450,000₫, vault 'Holiday fund' 4.2/6M")
+	fmt.Println(" 0900000001  Hieu Mai      verified, $498.00, vault 'Holiday fund' $168.00 of $240.00")
 	fmt.Println(" 0900000002  Minh Anh      verified, P2P counterpart, 1 money request pending")
 	fmt.Println(" 0900000003  (queue)       KYC manual_review, ai_score 64 → admin KYC queue")
 	fmt.Println(" 0900000004  (locked)      confirmed_fraud + reversal pending in admin My Tasks")
 	fmt.Println(" 0900000011-14 Acme Corp    owner/maker/checker L1/L2 — policy 'Large spend' v3")
-	fmt.Println("   org wallet 842.500.000₫ · 1 disbursement waiting 1/2 signatures (45M)")
+	fmt.Println("   org wallet $33,700.00 · 1 disbursement waiting 1/2 signatures ($1,800.00)")
 	fmt.Println(" Admin monitor: instances failed@MOVE_FUNDS · compensated · processing_async")
 	fmt.Println(" Recon yesterday: 3 matched + 3 missing_external in the 23:58–00:02 window")
 	fmt.Println(" Demo flow: login 0900000001 → Home → History → Split tracking;")
@@ -730,5 +733,5 @@ func (s *seeder) summary() {
 	_ = s.pool.QueryRow(s.ctx,
 		`SELECT balance FROM wallets WHERE owner_type='user'
 		   AND owner_id=(SELECT id FROM users WHERE phone='0900000001') AND purpose='main'`).Scan(&bal)
-	fmt.Printf(" sanity: u1 main balance = %d (want 12450000)\n", bal)
+	fmt.Printf(" sanity: u1 main balance = %d (want 49800)\n", bal)
 }
