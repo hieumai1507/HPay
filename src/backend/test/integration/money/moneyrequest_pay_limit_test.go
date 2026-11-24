@@ -62,6 +62,7 @@ func TestMoneyRequestPay_ConcurrentPaysRespectDailyLimit(t *testing.T) {
 		t.Fatalf("daily limit 2.5M, five requests of 1.5M: want 1 started and %d refused, got %d started and %d refused", n-1, started, limited)
 	}
 }
+
 // Deterministic check of the lock MODE: while another transaction holds the payer's limit-window
 // lock in shared mode, Pay (which needs it exclusive) must wait; it must finish once that
 // transaction ends. A shared lock in Pay would not wait, and parallel pays could all pass the check.
