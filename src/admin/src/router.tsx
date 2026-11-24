@@ -20,6 +20,7 @@ const WorkflowDetailPage = lazy(() => import('@/pages/WorkflowDetailPage'));
 const ServiceCatalogPage = lazy(() => import('@/pages/ServiceCatalogPage'));
 const OfferFactoryPage = lazy(() => import('@/pages/OfferFactoryPage'));
 const OfferDetailPage = lazy(() => import('@/pages/OfferDetailPage'));
+const NeedsAttentionPage = lazy(() => import('@/pages/NeedsAttentionPage'));
 const MyTasksPage = lazy(() => import('@/pages/MyTasksPage'));
 const ReconPage = lazy(() => import('@/pages/ReconPage'));
 const OrgsPage = lazy(() => import('@/pages/OrgsPage'));
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: 'fraud', element: guarded(ROUTE_ACCESS['/fraud'], <FraudPage />) },
       { path: 'workflows', element: page(<WorkflowPage />) },
       { path: 'workflows/:id', element: page(<WorkflowDetailPage />) },
+      { path: 'attention', element: guarded(ROUTE_ACCESS['/attention'], <NeedsAttentionPage />) },
       { path: 'tasks', element: page(<MyTasksPage />) },
       { path: 'recon', element: guarded(ROUTE_ACCESS['/recon'], <ReconPage />) },
       { path: 'services', element: guarded(ROUTE_ACCESS['/services'], <ServiceCatalogPage />) },

@@ -11,12 +11,14 @@ import {
   Layers,
   Package,
   Inbox,
+  AlertTriangle,
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import { ROUTE_ACCESS, canAccessRoute, type GuardedRoute } from '@/lib/access';
+import { useAttentionSummary } from '@/queries';
 import { useAdminStore } from '@/stores/admin';
 
 import { LogoMark } from './Logo';
@@ -27,6 +29,7 @@ const NAV_ITEMS: { to: string; label: string; icon: typeof LayoutDashboard }[] =
   { to: '/fraud', label: 'Fraud Monitor', icon: ShieldAlert },
   { to: '/workflows', label: 'Workflow', icon: Workflow },
   { to: '/tasks', label: 'My Tasks', icon: Inbox },
+  { to: '/attention', label: 'Needs attention', icon: AlertTriangle },
   { to: '/recon', label: 'Đối soát', icon: Scale },
   { to: '/services', label: 'Service Catalog', icon: Layers },
   { to: '/offers', label: 'Offer Factory', icon: Package },
@@ -40,6 +43,9 @@ export function Sidebar() {
   const can = useAdminStore((s) => s.can);
   // UX only: hides links the role cannot use; the backend does not enforce roles yet (BE-H6).
   const visibleItems = NAV_ITEMS.filter((i) => !(i.to in ROUTE_ACCESS) || canAccessRoute(can, i.to as GuardedRoute));
+
+  const attention = useAttentionSummary(canAccessRoute(can, '/attention'));
+  const attentionCount = attention.data?.total ?? 0;
 
   return (
     <aside
@@ -70,6 +76,11 @@ export function Sidebar() {
           >
             <Icon size={17} />
             {!collapsed && label}
+            {to === '/attention' && attentionCount > 0 && (
+              <span aria-label={`${attentionCount} cases need attention`} className="ml-auto rounded-full bg-rose-600 px-2 text-xs font-bold text-white">
+                {attentionCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

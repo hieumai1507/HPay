@@ -1129,7 +1129,7 @@ paths:
         - {
             name: status,
             in: query,
-            schema: { type: string, enum: [pending], default: pending },
+            schema: { type: string, enum: [pending, needs_manual], default: pending },
           }
       responses:
         "200":
@@ -1137,6 +1137,16 @@ paths:
             description: "{approvals: [{id, subject_type, subject_id, ref_code, amount, fee, created_by, expires_at}]}",
           }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/admin/attention/summary:
+    get:
+      tags: [admin]
+      summary: Read-only counts of parked money cases for the admin alert badge (G12) - needs_manual approvals and compensation_failed workflow instances. Needs workflow.action.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: "{needs_manual_approvals, compensation_failed_workflows, total}" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: ERR_FORBIDDEN_PERMISSION }
 
   /v1/admin/approvals/{id}/decide:
     post:
@@ -1583,7 +1593,7 @@ paths:
         - {
             name: status,
             in: query,
-            schema: { type: string, enum: [pending], default: pending },
+            schema: { type: string, enum: [pending, needs_manual], default: pending },
           }
       responses:
         "200":
