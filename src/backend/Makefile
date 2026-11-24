@@ -35,7 +35,11 @@ seed: ## F10: idempotent demo data (needs migrate-up); asserts balance == SUM(le
 	go build -o bin/seed ./cmd/seed
 	APP_ENV=dev DATABASE_URL="$(DB_URL)" ./bin/seed
 
-# Load test of the real transfer path (request, confirm with PIN, workflow, ledger). Needs Postgres and Redis\n# running and a FRESH migrated database; leftover rows from other tests distort the numbers.\n# Tune with LOAD_USERS, LOAD_WORKERS and LOAD_SECONDS. Results and history: docs/quality/performance/.\nLOAD_DB_URL ?= postgres://HPay:HPay@localhost:5432/load?sslmode=disable\nloadtest: ## Go load test of the P2P path (create the database 'load' and migrate it first)
+# Load test of the real transfer path (request, confirm with PIN, workflow, ledger). Needs Postgres and Redis
+# running and a FRESH migrated database; leftover rows from other tests distort the numbers.
+# Tune with LOAD_USERS, LOAD_WORKERS and LOAD_SECONDS. Results and history: docs/quality/performance/.
+LOAD_DB_URL ?= postgres://HPay:HPay@localhost:5432/load?sslmode=disable
+loadtest: ## Go load test of the P2P path (create the database 'load' and migrate it first)
 	TEST_DATABASE_URL="$(LOAD_DB_URL)" REDIS_ADDR=localhost:6379 APP_ENV=ci \
 	  go test -tags loadtest ./test/loadtest -run TestP2PLoad -v -count=1 -timeout 15m
 
