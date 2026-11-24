@@ -123,10 +123,10 @@ Also unmapped: raw database errors (unique violation 23505 on `transactions.reve
 
 | Code | HTTP | Meaning | Raised in |
 |------|------|---------|-----------|
-| ERR_PIN_WEAK | 400 | PIN is not 6 digits, or all the same digit, or a sequence | uth.ErrWeakPIN |
-| ERR_PIN_NOT_SET | 403 | the user has no PIN; set one first | uth.ErrPINNotSet |
-| ERR_PIN_INCORRECT | 403 | wrong PIN (counts toward the lockout) | uth.ErrPINIncorrect |
-| ERR_PIN_LOCKED | 429 | five wrong PINs; PIN use locked for 15 minutes | uth.ErrPINLocked |
+| ERR_PIN_WEAK | 400 | PIN is not 6 digits, or all the same digit, or a sequence | auth.ErrWeakPIN |
+| ERR_PIN_NOT_SET | 403 | the user has no PIN; set one first | auth.ErrPINNotSet |
+| ERR_PIN_INCORRECT | 403 | wrong PIN (counts toward the lockout) | auth.ErrPINIncorrect |
+| ERR_PIN_LOCKED | 429 | five wrong PINs; PIN use locked for 15 minutes | auth.ErrPINLocked |
 | ERR_PIN_COOLING | 403 | a PIN transaction above 2,500,000 VND within 24 hours of a PIN reset or operator clear | auth.ErrPINCooling |
 | ERR_PIN_RESET_RATE_LIMITED | 429 | more than 3 PIN reset codes requested in an hour | auth.ErrPINResetRateLimited |
 | ERR_OTP_DELIVERY_UNAVAILABLE | 503 | no real code delivery channel is configured (production and demo until a provider is chosen) | auth.ErrSenderUnavailable |
@@ -134,9 +134,9 @@ Also unmapped: raw database errors (unique violation 23505 on `transactions.reve
 | ERR_TOTP_INVALID | 400 | wrong, expired, replayed or already used authenticator or recovery code | auth.ErrTOTPInvalid |
 | ERR_TOTP_LOCKED | 429 | five wrong authenticator codes; TOTP use locked for 15 minutes | auth.ErrTOTPLocked |
 | ERR_TOTP_ALREADY_ENABLED | 409 | enrolment would overwrite an active authenticator | auth.ErrTOTPAlreadyEnabled |
-| ERR_AUTH_METHOD_UNAVAILABLE | 422 | the offer needs a method with no provider (2fa) | 	ransfer.ErrAuthMethodUnavailable |
-| ERR_AUTH_EXPIRED | 410 | not confirmed within 10 minutes | 	ransfer.ErrAuthExpired |
-| ERR_CREDENTIAL_REQUIRED | 400 | the method needs a credential the caller did not send | 	ransfer.ErrCredentialRequired |
-| ERR_ALREADY_CONFIRMED | 409 | the transaction is not waiting for authentication | 	ransfer.ErrAlreadyConfirmed |
-| ERR_AUTH_NOT_CONFIGURED | 503 | the service was built without an authenticator | 	ransfer.ErrAuthNotConfigured |
-| ERR_TXN_NOT_FOUND | 404 | also returned by confirm for ANOTHER user's transaction | 	ransfer.ErrTxnNotFound |
+| ERR_AUTH_METHOD_UNAVAILABLE | 422 | the offer needs a method with no provider (2fa) | transfer.ErrAuthMethodUnavailable |
+| ERR_AUTH_EXPIRED | 410 | not confirmed within 10 minutes | transfer.ErrAuthExpired |
+| ERR_CREDENTIAL_REQUIRED | 400 | the method needs a credential the caller did not send | transfer.ErrCredentialRequired |
+| ERR_ALREADY_CONFIRMED | 409 | the transaction is not waiting for authentication | transfer.ErrAlreadyConfirmed |
+| ERR_AUTH_NOT_CONFIGURED | 503 | the service was built without an authenticator | transfer.ErrAuthNotConfigured |
+| ERR_TXN_NOT_FOUND | 404 | also returned by confirm for ANOTHER user's transaction | transfer.ErrTxnNotFound |

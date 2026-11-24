@@ -267,9 +267,9 @@ In the 'Constraints that are missing' list: the row about nothing preventing a s
 
 | Object | Definition |
 |--------|------------|
-| enum value pproval_status = 'needs_manual' | request whose approved effect could not be applied; terminal for the decision flow (000016, own file because ALTER TYPE ADD VALUE cannot share a transaction) |
+| enum value approval_status = 'needs_manual' | request whose approved effect could not be applied; terminal for the decision flow (000016, own file because ALTER TYPE ADD VALUE cannot share a transaction) |
 | unique index one_reversal_per_txn | on 	ransactions (reversal_of) WHERE reversal_of IS NOT NULL (000017; the migration fails with the offending ids if duplicates exist) |
-| unique index one_pending_approval_per_subject | on pproval_requests (subject_type, subject_id) WHERE status = 'pending' (000017) |
+| unique index one_pending_approval_per_subject | on approval_requests (subject_type, subject_id) WHERE status = 'pending' (000017) |
 
 Both rows in 'Constraints that are missing' about reversal uniqueness are now closed.
 
