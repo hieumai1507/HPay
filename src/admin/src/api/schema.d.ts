@@ -78,7 +78,7 @@ export interface paths {
                         ref_code: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND dong)
+                         * @description amount in cents
                          */
                         amount: number;
                         bank_ref?: string;
@@ -205,7 +205,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Login (rate-limited 5/min/IP; errors do not reveal user existence) */
+        /** Login (rate-limited 5/min/IP; 5 failed logins lock the account for 15 minutes; errors and timing do not reveal user existence) */
         post: {
             parameters: {
                 query?: never;
@@ -247,7 +247,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description ERR_RATE_LIMITED */
+                /** @description ERR_RATE_LIMITED (per IP) or ERR_LOGIN_LOCKED (5 failed logins lock the account for 15 minutes, even for the correct password) */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -419,9 +419,20 @@ export interface paths {
                             user: components["schemas"]["User"];
                             /**
                              * Format: int64
-                             * @description max amount per transaction
+                             * @description per-transaction limit of the user's offer for P2P_TRANSFER (amount in cents, USD); 0 when the user has no usable offer
                              */
                             txn_limit: number;
+                            /** @description the user's offer and its limits for P2P_TRANSFER (absent when the user has no usable offer) */
+                            offer?: {
+                                /** @example OFFER_CUST_L1 */
+                                code?: string;
+                                /** Format: int64 */
+                                per_txn_limit?: number;
+                                /** Format: int64 */
+                                daily_limit?: number;
+                                /** Format: int64 */
+                                monthly_limit?: number;
+                            };
                         };
                     };
                 };
@@ -579,7 +590,7 @@ export interface paths {
                             found: true;
                             /**
                              * @description server-masked — raw names never leave the API
-                             * @example Nguyễn V** A*
+                             * @example Nguyen V** A*
                              */
                             masked_name: string;
                         };
@@ -774,7 +785,7 @@ export interface paths {
                         service_code: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         amount: number;
                         /** @example 0912345678 */
@@ -787,7 +798,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description created — check auth_required for the next step */
+                /** @description created — check auth_required and status. When auth_required is pin or otp the status is awaiting_auth and NOTHING has moved until /transactions/confirm succeeds; a request that needs 2fa is refused with ERR_AUTH_METHOD_UNAVAILABLE (ADR-0014) */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -839,6 +850,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/transactions/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue the OTP for a transaction in the otp band (ADR-0014). The code is returned only when APP_ENV=dev; other environments deliver it out of band */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        transaction_id: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: otp_sent} (plus otp_dev in dev) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TXN_NOT_FOUND (also for another user's transaction) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_ALREADY_CONFIRMED */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_RATE_LIMITED */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/transactions/confirm": {
         parameters: {
             query?: never;
@@ -848,7 +921,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Unified engine step 2/3 — acknowledge PIN/OTP auth for a transaction already started by /transactions/request; posting itself runs async via the workflow engine */
+        /** Unified engine step 2/3 — authenticate a transaction held in awaiting_auth with the server-verified PIN (plus OTP for the otp band, plus an authenticator code for the 2fa band) and start its workflow once (ADR-0014, ADR-0017). Calling it again returns the current state */
         post: {
             parameters: {
                 query?: never;
@@ -863,6 +936,8 @@ export interface paths {
                         transaction_id: string;
                         pin?: string;
                         otp?: string;
+                        /** @description 2fa band: a 6-digit authenticator code or a recovery code (ADR-0017); ignored in the pin and otp bands */
+                        totp?: string;
                     };
                 };
             };
@@ -876,8 +951,43 @@ export interface paths {
                         "application/json": components["schemas"]["TransferResult"];
                     };
                 };
-                /** @description ERR_TXN_NOT_FOUND */
+                /** @description ERR_CREDENTIAL_REQUIRED */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_INCORRECT / ERR_PIN_NOT_SET */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TXN_NOT_FOUND — unknown id AND another user's transaction */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_AUTH_EXPIRED — not confirmed within 10 minutes */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_AUTH_METHOD_UNAVAILABLE — the 2fa band has no provider yet */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_LOCKED — 5 wrong PINs lock PIN use for 15 minutes; ERR_RATE_LIMITED */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -885,6 +995,411 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set the first transaction PIN. Requires the account password (step-up). The PIN is stored only as an argon2id hash and is never returned or logged */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                        /** @description 6 digits, not all the same digit and not a sequence */
+                        new_pin: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: pin_set} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_WEAK / ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_INVALID_CREDENTIALS */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_RATE_LIMITED */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the transaction PIN. Requires the current PIN, which uses the same attempt counter and lockout as a payment confirmation */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        current_pin: string;
+                        new_pin: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: pin_changed} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_WEAK / ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_INCORRECT / ERR_PIN_NOT_SET */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_LOCKED / ERR_RATE_LIMITED */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/v1/me/pin/reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a forgotten-PIN reset (ADR-0016). Requires the account password; a one-time code is sent through the delivery port (never in the response outside dev) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: code_sent, expires_in}; dev adds otp_dev */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_INVALID_CREDENTIALS */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_NOT_SET */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_OTP_COOLDOWN (30 s) / ERR_PIN_RESET_RATE_LIMITED (3 per hour) / ERR_RATE_LIMITED */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_OTP_DELIVERY_UNAVAILABLE (no real provider configured, fails closed) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pin/reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish the reset with the code and a new PIN. Clears the PIN lock and starts a 24 hour cooling period for large PIN transactions */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description 6 digits sent to the user */
+                        code: string;
+                        /** @description 6 digits, not all the same digit and not a sequence */
+                        new_pin: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: pin_reset} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_WEAK (the code is not consumed) / ERR_OTP_INVALID / ERR_OTP_EXPIRED / ERR_OTP_MAX_ATTEMPTS / ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_RATE_LIMITED */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/totp/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start enrolment of an authenticator app (ADR-0017). Needs the account password and an existing PIN. The secret and the otpauth URI are returned once, here and nowhere else; the secret is stored encrypted */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: pending, secret, otpauth_uri} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_INVALID_CREDENTIALS */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_PIN_NOT_SET */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TOTP_ALREADY_ENABLED */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/totp/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate the authenticator with a first valid code; returns 10 single-use recovery codes once */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description 6 digits from the authenticator app */
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: totp_enabled, recovery_codes: [..10]} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TOTP_INVALID / ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TOTP_NOT_ENROLLED */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_TOTP_LOCKED (5 wrong codes lock TOTP use for 15 minutes) */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether an authenticator is active and how many recovery codes are left. Never returns the secret */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description {enabled, recovery_codes_left} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1033,7 +1548,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @example Du lịch Đà Lạt */
+                        /** @example Holiday fund */
                         label: string;
                         /**
                          * Format: int64
@@ -1155,7 +1670,7 @@ export interface paths {
                         payer_phone: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         amount: number;
                         note?: string;
@@ -1225,7 +1740,7 @@ export interface paths {
                         payer_phones: string[];
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         total_amount: number;
                         note?: string;
@@ -1710,8 +2225,122 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description ERR_RATE_LIMITED */
+                /** @description ERR_RATE_LIMITED or ERR_LOGIN_LOCKED (5 failed logins lock the admin for 15 minutes) */
                 429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}/pin/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator fallback for a user who cannot receive a reset code. Removes the user's PIN (permission pin.reset, superadmin only); the user sets a new one. Never reads or sets a PIN */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description who verified the identity and how; stored in the audit trail */
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: pin_cleared} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_FORBIDDEN_PERMISSION / ERR_PIN_NOT_SET (no PIN to clear) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{id}/totp/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator fallback for a user who lost the authenticator. Removes the user's TOTP and recovery codes (permission totp.reset, superadmin only). Never reads a secret */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description who verified the identity and how; stored in the audit trail */
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description {status: totp_removed} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_VALIDATION */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description ERR_FORBIDDEN_PERMISSION / ERR_TOTP_NOT_ENROLLED (nothing to remove) */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1981,7 +2610,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    status?: "pending";
+                    status?: "pending" | "needs_manual";
                 };
                 header?: never;
                 path?: never;
@@ -1997,6 +2626,48 @@ export interface paths {
                     content?: never;
                 };
                 401: components["responses"]["Unauthorized"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/attention/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read-only counts of parked money cases for the admin alert badge (G12) - needs_manual approvals and compensation_failed workflow instances. Needs workflow.action. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description {needs_manual_approvals, compensation_failed_workflows, total} */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                401: components["responses"]["Unauthorized"];
+                /** @description ERR_FORBIDDEN_PERMISSION */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
         };
         put?: never;
@@ -2143,15 +2814,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description {run, items, report_url} */
+                /** @description {run, items, report_url}; when no run exists for the date: {run: null, items: [], total: 0} */
                 200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ERR_RECON_NOT_FOUND */
-                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2712,7 +3376,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Platform-ops override — create a new approval policy version for an org (admin console "Tổ chức & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership */
+        /** Platform-ops override — create a new approval policy version for an org (admin console "Organizations & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership */
         put: {
             parameters: {
                 query?: never;
@@ -3130,7 +3794,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    status?: "pending";
+                    status?: "pending" | "needs_manual";
                 };
                 header?: never;
                 path?: never;
@@ -3403,7 +4067,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Maker withdraws their own still-pending request (mockup "Hủy lệnh") — reuses the same finalize path as a checker reject */
+        /** Maker withdraws their own still-pending request (mockup "Cancel order") — reuses the same finalize path as a checker reject */
         post: {
             parameters: {
                 query?: never;
@@ -3486,14 +4150,14 @@ export interface components {
         Wallet: {
             /** Format: uuid */
             id: string;
-            /** @example VND */
+            /** @example USD */
             currency: string;
             /** @example main */
             purpose: string;
             label?: string | null;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             balance: number;
         };
@@ -3538,11 +4202,11 @@ export interface components {
         Vault: {
             /** Format: uuid */
             id?: string;
-            /** @example Du lịch Đà Lạt */
+            /** @example Holiday fund */
             label?: string;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             balance?: number;
             /**
@@ -3586,7 +4250,7 @@ export interface components {
             receiver_wallet_id: string;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             amount: number;
             /** Format: int64 */
@@ -3597,7 +4261,7 @@ export interface components {
              * @enum {string}
              */
             direction: "in" | "out";
-            /** @example Nguyễn V** A* */
+            /** @example Nguyen V** A* */
             counterparty_name: string | null;
             /** @example 091****678 */
             counterparty_phone: string | null;

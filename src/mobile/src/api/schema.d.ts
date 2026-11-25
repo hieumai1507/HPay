@@ -78,7 +78,7 @@ export interface paths {
                         ref_code: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND dong)
+                         * @description amount in cents
                          */
                         amount: number;
                         bank_ref?: string;
@@ -419,7 +419,7 @@ export interface paths {
                             user: components["schemas"]["User"];
                             /**
                              * Format: int64
-                             * @description per-transaction limit of the user's offer for P2P_TRANSFER (minor units, VND); 0 when the user has no usable offer
+                             * @description per-transaction limit of the user's offer for P2P_TRANSFER (amount in cents, USD); 0 when the user has no usable offer
                              */
                             txn_limit: number;
                             /** @description the user's offer and its limits for P2P_TRANSFER (absent when the user has no usable offer) */
@@ -590,7 +590,7 @@ export interface paths {
                             found: true;
                             /**
                              * @description server-masked — raw names never leave the API
-                             * @example Nguyễn V** A*
+                             * @example Nguyen V** A*
                              */
                             masked_name: string;
                         };
@@ -785,7 +785,7 @@ export interface paths {
                         service_code: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         amount: number;
                         /** @example 0912345678 */
@@ -1548,7 +1548,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @example Du lịch Đà Lạt */
+                        /** @example Holiday fund */
                         label: string;
                         /**
                          * Format: int64
@@ -1670,7 +1670,7 @@ export interface paths {
                         payer_phone: string;
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         amount: number;
                         note?: string;
@@ -1740,7 +1740,7 @@ export interface paths {
                         payer_phones: string[];
                         /**
                          * Format: int64
-                         * @description minor units (VND)
+                         * @description amount in cents
                          */
                         total_amount: number;
                         note?: string;
@@ -2814,15 +2814,8 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description {run, items, report_url} */
+                /** @description {run, items, report_url}; when no run exists for the date: {run: null, items: [], total: 0} */
                 200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ERR_RECON_NOT_FOUND */
-                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3383,7 +3376,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Platform-ops override — create a new approval policy version for an org (admin console "Tổ chức & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership */
+        /** Platform-ops override — create a new approval policy version for an org (admin console "Organizations & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership */
         put: {
             parameters: {
                 query?: never;
@@ -4074,7 +4067,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Maker withdraws their own still-pending request (mockup "Hủy lệnh") — reuses the same finalize path as a checker reject */
+        /** Maker withdraws their own still-pending request (mockup "Cancel order") — reuses the same finalize path as a checker reject */
         post: {
             parameters: {
                 query?: never;
@@ -4157,14 +4150,14 @@ export interface components {
         Wallet: {
             /** Format: uuid */
             id: string;
-            /** @example VND */
+            /** @example USD */
             currency: string;
             /** @example main */
             purpose: string;
             label?: string | null;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             balance: number;
         };
@@ -4209,11 +4202,11 @@ export interface components {
         Vault: {
             /** Format: uuid */
             id?: string;
-            /** @example Du lịch Đà Lạt */
+            /** @example Holiday fund */
             label?: string;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             balance?: number;
             /**
@@ -4257,7 +4250,7 @@ export interface components {
             receiver_wallet_id: string;
             /**
              * Format: int64
-             * @description minor units (VND)
+             * @description amount in cents
              */
             amount: number;
             /** Format: int64 */
@@ -4268,7 +4261,7 @@ export interface components {
              * @enum {string}
              */
             direction: "in" | "out";
-            /** @example Nguyễn V** A* */
+            /** @example Nguyen V** A* */
             counterparty_name: string | null;
             /** @example 091****678 */
             counterparty_phone: string | null;
