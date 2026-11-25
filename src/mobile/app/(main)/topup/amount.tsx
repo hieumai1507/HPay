@@ -7,7 +7,7 @@ import { useMe, useTopup } from '@/src/queries';
 import { describeError, isApiError } from '@/src/lib/errors';
 import { FEATURE_AVAILABILITY } from '@/src/lib/availability';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { formatAmountVND, parseAmountStrict } from '@/src/lib/money';
+import { formatAmountUSD, parseAmountStrict } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { AmountInput, Button, NotAvailable } from '@/src/ui';
 
@@ -35,7 +35,7 @@ function TopupForm() {
 
   const validationError =
     amount !== null && txnLimit !== null && amount > txnLimit
-      ? `Exceeds your KYC limit (max ${formatAmountVND(txnLimit)})`
+      ? `Exceeds your KYC limit (max ${formatAmountUSD(txnLimit)})`
       : !parsed.ok && parsed.reason === 'too_large'
         ? 'Amount is too large'
         : null;
@@ -82,7 +82,7 @@ function TopupForm() {
             autoFocus
           />
           {txnLimit !== null && (
-            <Text className="text-center text-xs text-slate-500">Limit per Transaction: {formatAmountVND(txnLimit)}</Text>
+            <Text className="text-center text-xs text-slate-500">Limit per Transaction: {formatAmountUSD(txnLimit)}</Text>
           )}
         </View>
 

@@ -34,8 +34,7 @@ export function AmountDisplay({ valueMinorUnits, sign = 'none', size = 'md', col
       className={`font-bold ${SIZE_CLASSES[size]} ${colorClass}`}
       style={colorOverride ? { color: colorOverride, fontVariant: ['tabular-nums'] } : { fontVariant: ['tabular-nums'] }}
     >
-      {prefix}
-      {formatted} ₫
+      {`${prefix}$${formatted}`}
     </Text>
   );
 }

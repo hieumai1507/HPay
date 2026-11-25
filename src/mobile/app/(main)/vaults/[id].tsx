@@ -9,7 +9,7 @@ import { describeError } from '@/src/lib/errors';
 import { classifyConfirmError } from '@/src/features/security/confirmErrors';
 import { useTransactionAuth } from '@/src/features/security/useTransactionAuth';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { formatAmountVND, parseAmountStrict, percentOf } from '@/src/lib/money';
+import { formatAmountUSD, formatAmountWhileTyping, parseAmountStrict, percentOf } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useMainWallet, useSetRoundUpTarget, useVaultMove, useVaults } from '@/src/queries';
 import { color } from '@/src/ui/tokens';
@@ -120,7 +120,7 @@ export default function VaultDetailScreen() {
         <View className="rounded-2xl p-5 mb-4" style={{ backgroundColor: color.brand[600] }}>
           <Text className="text-white/80 text-xs">Saved</Text>
           <Text className="text-white text-3xl font-bold tabular-nums mt-1">
-            {formatAmountVND(BigInt(vault.balance ?? 0))}
+            {formatAmountUSD(BigInt(vault.balance ?? 0))}
           </Text>
           {pct !== null && (
             <>
@@ -128,7 +128,7 @@ export default function VaultDetailScreen() {
                 <View className="h-2 rounded-full bg-white" style={{ width: `${pct}%` }} />
               </View>
               <Text className="text-white/80 text-xs mt-1">
-                {pct}% of target {formatAmountVND(BigInt(vault.target_amount ?? 0))}
+                {pct}% of target {formatAmountUSD(BigInt(vault.target_amount ?? 0))}
               </Text>
             </>
           )}
@@ -181,13 +181,13 @@ export default function VaultDetailScreen() {
           <Text className="text-xs text-slate-500 mb-1">Amount</Text>
           <TextInput
             value={raw}
-            onChangeText={setRaw}
+            onChangeText={(t) => setRaw(formatAmountWhileTyping(t))}
             placeholder="0"
-            keyboardType="number-pad"
+            keyboardType="decimal-pad"
             className="text-2xl font-bold text-slate-900 dark:text-white tabular-nums"
           />
           <Text className="text-xs text-slate-500 mt-2">
-            Available: {formatAmountVND(available)}{' '}
+            Available: {formatAmountUSD(available)}{' '}
             {mode === 'deposit' ? '(main Wallet)' : '(in Vault)'}
           </Text>
         </View>

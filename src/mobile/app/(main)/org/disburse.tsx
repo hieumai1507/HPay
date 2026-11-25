@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDisburseOrgMoney } from '@/src/queries';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { formatAmountVND, formatAmountWhileTyping, parseAmountStrict } from '@/src/lib/money';
+import { formatAmountUSD, formatAmountWhileTyping, parseAmountStrict } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useOrgStore } from '@/src/stores/org';
 
@@ -96,7 +96,7 @@ export default function DisburseScreen() {
           <View className="bg-brand rounded-2xl p-5 flex-row items-center justify-between shadow-xs">
             <View>
               <Text className="text-xs font-semibold text-white/80 mb-1">Business wallet</Text>
-              <Text className="text-2xl font-bold text-white">{formatAmountVND(BigInt(activeOrg.balance))}</Text>
+              <Text className="text-2xl font-bold text-white">{formatAmountUSD(BigInt(activeOrg.balance))}</Text>
             </View>
             <View className="bg-white/20 px-2.5 py-1 rounded-full">
               <Text className="text-[11px] font-bold text-white">MAKER</Text>
@@ -125,9 +125,9 @@ export default function DisburseScreen() {
                 placeholderTextColor="#94a3b8"
                 value={amount}
                 onChangeText={handleAmountChange}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
-              <Text className="text-base text-slate-500 ml-2">₫</Text>
+              <Text className="text-base text-slate-500 ml-2">USD</Text>
             </View>
           </View>
 

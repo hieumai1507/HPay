@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useOfferDetail, type OfferServiceConfig, type AuthMatrixRule } from '@/queries';
 import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
-import { formatVnd, moneyErrorMessage, parseMinorUnits, type MoneyParseResult } from '@/lib/money';
+import { centsToInputText, formatUsd, moneyErrorMessage, parseCents, parseWholeNumber, type MoneyParseResult } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 import { Badge, ErrorNotice, NotAvailableNote } from '@/ui';
 
@@ -22,7 +22,7 @@ const EMPTY_SERVICE: OfferServiceConfig = {
 };
 
 function hint(r: MoneyParseResult): string {
-  return r.ok ? formatVnd(r.value) : moneyErrorMessage(r.reason);
+  return r.ok ? formatUsd(r.value) : moneyErrorMessage(r.reason);
 }
 
 export default function OfferDetailPage() {
@@ -35,7 +35,7 @@ export default function OfferDetailPage() {
   const [selectedServiceCode, setSelectedServiceCode] = useState<string | null>(null);
 
   // Edits are kept as the raw text the operator typed and are validated on every
-  // render (digits only, no negatives, upper bound). Nothing goes through Number().
+  // render (dollars with up to two decimals, no negatives, upper bound; sent to the API as cents). Nothing goes through Number().
   // undefined = untouched, so the field shows the real value from the API.
   const [draft, setDraft] = useState<{
     max?: string;
@@ -62,16 +62,16 @@ export default function OfferDetailPage() {
     servicesList.find((s) => s.serviceCode === selectedServiceCode) ?? servicesList[0] ?? EMPTY_SERVICE;
   const hasServices = servicesList.length > 0;
 
-  const maxPerTxn = draft.max ?? String(activeService.maxAmountPerTxn);
-  const dailyLimit = draft.daily ?? String(activeService.dailyLimit);
-  const monthlyLimit = draft.monthly ?? String(activeService.monthlyLimit);
+  const maxPerTxn = draft.max ?? centsToInputText(activeService.maxAmountPerTxn);
+  const dailyLimit = draft.daily ?? centsToInputText(activeService.dailyLimit);
+  const monthlyLimit = draft.monthly ?? centsToInputText(activeService.monthlyLimit);
   const intervalSec = draft.interval ?? String(activeService.intervalSec);
   const authMatrix: AuthMatrixRule[] = draft.auth ?? activeService.authMatrix ?? [];
 
-  const maxPerTxnR = parseMinorUnits(maxPerTxn);
-  const dailyR = parseMinorUnits(dailyLimit);
-  const monthlyR = parseMinorUnits(monthlyLimit);
-  const intervalR = parseMinorUnits(intervalSec, MAX_INTERVAL_SEC);
+  const maxPerTxnR = parseCents(maxPerTxn);
+  const dailyR = parseCents(dailyLimit);
+  const monthlyR = parseCents(monthlyLimit);
+  const intervalR = parseWholeNumber(intervalSec, MAX_INTERVAL_SEC);
 
   return (
     <div className="flex flex-col gap-4">
@@ -151,10 +151,10 @@ export default function OfferDetailPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">MAX PER TRANSACTION</label>
+                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">MAX PER TRANSACTION (USD)</label>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   disabled={!hasServices}
                   aria-invalid={!maxPerTxnR.ok}
                   value={maxPerTxn}
@@ -165,10 +165,10 @@ export default function OfferDetailPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">DAILY LIMIT</label>
+                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">DAILY LIMIT (USD)</label>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   disabled={!hasServices}
                   aria-invalid={!dailyR.ok}
                   value={dailyLimit}
@@ -179,10 +179,10 @@ export default function OfferDetailPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">MONTHLY LIMIT</label>
+                <label className="text-[11px] font-bold text-slate-500 mb-1 block uppercase">MONTHLY LIMIT (USD)</label>
                 <input
                   type="text"
-                  inputMode="numeric"
+                  inputMode="decimal"
                   disabled={!hasServices}
                   aria-invalid={!monthlyR.ok}
                   value={monthlyLimit}
@@ -224,8 +224,8 @@ export default function OfferDetailPage() {
 
                   <span className="text-xs text-slate-800 flex-1">
                     {item.maxAmount
-                      ? `From ${item.minAmount.toLocaleString('en-US')} ₫ to ${item.maxAmount.toLocaleString('en-US')} ₫`
-                      : `Above ${item.minAmount.toLocaleString('en-US')} ₫`}{' '}
+                      ? `From ${formatUsd(item.minAmount)} to ${formatUsd(item.maxAmount)}`
+                      : `Above ${formatUsd(item.minAmount)}`}{' '}
                     → Requires <b>{item.authMethod.toUpperCase()}</b>
                   </span>
 

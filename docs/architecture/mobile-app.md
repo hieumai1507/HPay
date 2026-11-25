@@ -63,7 +63,7 @@ Other source folders: `src/api` (client, refresh, query-client, generated `schem
 
 ## Money handling
 
-Amounts are `bigint` from input to wire. `parseAmountStrict` (`lib/money.ts`) parses user input and rejects empty, zero and anything above `MAX_AMOUNT` (1,000,000,000 VND, the largest backend per-transaction cap); `percentOf` does progress percentages in bigint; `EngineRequestPayload.amount`, vault, org disbursement and policy tier amounts are `bigint` and go through `stringifyWithBigInt`. Guards: ESLint `no-restricted-syntax` in `eslint.config.js` and the jest test `TestEdge_C01_NoFloatMoney` fail on `Number()/parseInt()/parseFloat()` applied to identifiers or members named amount/balance/fee/total/target.
+Amounts are `bigint` from input to wire. `parseAmountStrict` (`lib/money.ts`) parses user input and rejects empty, zero and anything above `MAX_AMOUNT` (4,000,000 cents, $40,000.00, the largest backend per-transaction cap); `percentOf` does progress percentages in bigint; `EngineRequestPayload.amount`, vault, org disbursement and policy tier amounts are `bigint` and go through `stringifyWithBigInt`. Guards: ESLint `no-restricted-syntax` in `eslint.config.js` and the jest test `TestEdge_C01_NoFloatMoney` fail on `Number()/parseInt()/parseFloat()` applied to identifiers or members named amount/balance/fee/total/target.
 
 ## PIN
 

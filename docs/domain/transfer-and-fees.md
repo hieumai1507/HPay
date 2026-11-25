@@ -64,9 +64,9 @@ Turns a user request (P2P transfer, money-request payment, bank top-up, vault de
 | BR-TRF-14 | MOVE_FUNDS legs: debit sender `amount+fee`, credit receiver `amount`, credit `SYSTEM_FEE` `fee` when fee > 0; compensation mirrors exactly. | `handlers/handlers.go:Wallet.legs` (124-141) | `TestP2PTransferEndToEnd`, `TestEdge_E07_CompensationReversesMovedFunds` |
 | BR-TRF-15 | VALIDATE and MOVE_FUNDS re-check sender and receiver OWNER status (`active`) inside the workflow (E12) and VALIDATE re-checks balance >= amount+fee. | `handlers.go:Validator.Execute` (46-68), `Wallet.Execute` (97-106) | `TestEdge_E12_LockedUserFailsMidWorkflow` |
 | BR-TRF-16 | CONFIRM completes the transaction only from `processing`. | `handlers.go:Confirmer`; `queries/transactions.sql:CompleteTransaction` | `TestP2PTransferEndToEnd` |
-| BR-TRF-17 | Fee = `fixed + amount*percent_bp/10000` using integer division (truncation toward zero), then raised to `min_fee`, then capped to `max_fee` when set, then floored at 0. | `fee/fee.go:Calc` (25-37) | `TestCalc` |
+| BR-TRF-17 | Fee = `fixed + amount*percent_bp/10000` using integer division on cents (truncation toward zero, so a fee is a whole cent rounded down), then raised to `min_fee`, then capped to `max_fee` when set, then floored at 0. | `fee/fee.go:Calc` (25-37) | `TestCalc` |
 | BR-TRF-18 | Policy selection: active policies of the txn type with `kyc_status = user tier OR NULL`; tier-specific wins over NULL; highest `version` wins; none found means fee 0. | `queries/fee.sql:GetFeePolicy`; `fee.go:For` (45-58) | none |
-| BR-TRF-19 | Seed policy: `p2p` fixed 1000 VND, `topup` and `disbursement` 0, tier NULL. | `000004...up.sql:98-103` | `TestP2PTransferEndToEnd` (fee 1000 asserted on SYSTEM_FEE net, `transfer_test.go:44`) |
+| BR-TRF-19 | Seed policy: `p2p` fixed 25 cents ($0.25), `topup` and `disbursement` 0, tier NULL. | `000004...up.sql:98-103` | `TestP2PTransferEndToEnd` (fee 25 asserted on SYSTEM_FEE net, `transfer_test.go:44`) |
 | BR-TRF-20 | OfferGuard resolves the user's offer via `user_offers` (offer must be active); with no assignment it falls back to the default offer code; no matching service row gives `ErrServiceNotInOffer`. | `offerguard.go:65-78`; `queries/offer_guard.sql` | `TestOfferGuard_UnknownServiceRefused` |
 | BR-TRF-21 | `is_enabled=false` gives `ErrServiceDisabled`. | `offerguard.go:82-84` | `TestOfferGuard_ServiceDisabled` |
 | BR-TRF-22 | `amount < min_amount` gives `ErrBelowMin`. | `offerguard.go:85-87` | `TestOfferGuard_BelowMinimum` |
@@ -211,7 +211,7 @@ Error mapping: limits -> `ERR_LIMIT_PER_TXN|ERR_LIMIT_DAILY|ERR_LIMIT_MONTHLY` (
 | `test/integration/money/transfer_test.go`, `transaction_request_http_test.go`, `vault_test.go`, `internal/offerguard/offerguard_test.go`, `internal/fee/fee_test.go` | tests |
 
 ## 12. Open questions
-- Whether a biometric factor is required from 10 million VND (State Bank Decision 2345/QD-NHNN) and how the mobile app collects it (owner: product and legal).
+- Whether a biometric factor is required above a threshold (the earlier design cited Vietnam's State Bank Decision 2345/QD-NHNN, 10 million VND, about $400) and how the mobile app collects it (owner: product and legal).
 - Should quota be keyed per service rather than per ledger type (owner: product, undecided)?
 - Which timezone defines "day" and "month" for limits (owner: product, undecided)?
-- Should fee rounding use a unit (e.g. round to 1 VND is implicit) or ceil instead of floor (owner: finance, undecided)?
+- Should fee rounding use a unit (e.g. round to 1 cent is implicit) or ceil instead of floor (owner: finance, undecided)?

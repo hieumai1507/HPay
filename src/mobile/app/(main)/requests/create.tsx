@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCreateRequest } from '@/src/queries';
 import { useIdempotencyKey } from '@/src/lib/idempotency';
-import { formatAmountWhileTyping, parseAmountToBigInt, formatAmountVND } from '@/src/lib/money';
+import { formatAmountWhileTyping, parseAmountToBigInt, formatAmountUSD } from '@/src/lib/money';
 
 export default function CreateRequestScreen() {
   const router = useRouter();
@@ -60,7 +60,7 @@ export default function CreateRequestScreen() {
 
       Alert.alert(
         'Success',
-        `Money request for ${formatAmountVND(amountVal!)} sent to ${phoneClean}`,
+        `Money request for ${formatAmountUSD(amountVal!)} sent to ${phoneClean}`,
         [{ text: 'OK', onPress: () => router.replace('/(main)/requests') }]
       );
     } catch (err: any) {
@@ -105,13 +105,13 @@ export default function CreateRequestScreen() {
             </View>
 
             <View className="w-full">
-              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Amount (VND)</Text>
+              <Text className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Amount (USD)</Text>
               <View className={`flex-row items-center bg-slate-50 dark:bg-slate-900 border ${amountError ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'} rounded-xl h-12 px-3`}>
-                <Text className="text-lg font-bold text-slate-400 mr-2">₫</Text>
+                <Text className="text-lg font-bold text-slate-400 mr-2">$</Text>
                 <TextInput
                   placeholder="0"
                   placeholderTextColor="#94a3b8"
-                  keyboardType="number-pad"
+                  keyboardType="decimal-pad"
                   value={amountStr}
                   onChangeText={handleAmountChange}
                   className="flex-1 text-lg font-bold text-brand h-full p-0"

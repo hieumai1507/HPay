@@ -11,15 +11,15 @@ describe('SplitAvatarStack (docs ui-design-spec.html §8, mockup screen 29)', ()
 
   it('shows collected/total amount and paid count', async () => {
     await render(
-      <SplitAvatarStack participants={participants} collectedAmount={420_000n} totalAmount={630_000n} />
+      <SplitAvatarStack participants={participants} collectedAmount={42_000n} totalAmount={63_000n} />
     );
-    expect(screen.getByText('Collected 420,000 ₫ / 630,000 ₫')).toBeTruthy();
+    expect(screen.getByText('Collected $420.00 / $630.00')).toBeTruthy();
     expect(screen.getByText('2/3 paid')).toBeTruthy();
   });
 
   it('renders initials for every participant', async () => {
     await render(
-      <SplitAvatarStack participants={participants} collectedAmount={0n} totalAmount={630_000n} />
+      <SplitAvatarStack participants={participants} collectedAmount={0n} totalAmount={63_000n} />
     );
     expect(screen.getByText('MA')).toBeTruthy();
     expect(screen.getByText('TL')).toBeTruthy();
@@ -28,7 +28,7 @@ describe('SplitAvatarStack (docs ui-design-spec.html §8, mockup screen 29)', ()
 
   it('dims the avatar of an unpaid participant (opacity .45)', async () => {
     await render(
-      <SplitAvatarStack participants={participants} collectedAmount={420_000n} totalAmount={630_000n} />
+      <SplitAvatarStack participants={participants} collectedAmount={42_000n} totalAmount={63_000n} />
     );
     const unpaidAvatar = screen.getByTestId('split-avatar-3');
     const paidAvatar = screen.getByTestId('split-avatar-1');
@@ -41,8 +41,8 @@ describe('SplitAvatarStack (docs ui-design-spec.html §8, mockup screen 29)', ()
     await render(
       <SplitAvatarStack
         participants={participants}
-        collectedAmount={420_000n}
-        totalAmount={630_000n}
+        collectedAmount={42_000n}
+        totalAmount={63_000n}
         expiresAt={inTwoHours}
       />
     );

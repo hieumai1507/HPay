@@ -12,7 +12,7 @@ export interface ActiveOrg {
   role: 'admin' | 'maker' | 'checker';
   checkerLevel: number;
   walletId: string;
-  /** Balance in VND (integer) */
+  /** Balance in cents (integer, USD) */
   balance: number;
 }
 

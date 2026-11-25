@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useRequestInbox, useSentRequests, type InboxRequest, type SentRequest } from '@/src/queries';
-import { formatAmountVND } from '@/src/lib/money';
+import { formatAmountUSD } from '@/src/lib/money';
 import { color } from '@/src/ui/tokens';
 import { EmptyState } from '@/src/ui';
 
@@ -129,7 +129,7 @@ export default function RequestsIndexScreen() {
                     </Text>
                   </View>
                   <View className="items-end gap-1">
-                    <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatAmountVND(BigInt(item.amount))}</Text>
+                    <Text className="text-sm font-bold text-slate-900 dark:text-white">{formatAmountUSD(BigInt(item.amount))}</Text>
                     <View className={`px-2 py-0.5 rounded-md ${badge.bg}`}>
                       <Text className="text-[10px] font-bold" style={{ color: badge.color }}>{badge.text}</Text>
                     </View>

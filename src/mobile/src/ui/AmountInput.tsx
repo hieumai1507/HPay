@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
-import { formatAmountWhileTyping, sanitizeAmountInput } from '@/src/lib/money';
+import { formatAmountWhileTyping } from '@/src/lib/money';
 
 export interface AmountInputProps {
   value: string;
@@ -13,7 +13,7 @@ export interface AmountInputProps {
 export function AmountInput({ value, onChangeValue, error, autoFocus }: AmountInputProps) {
   const handleChange = useCallback(
     (raw: string) => {
-      onChangeValue(formatAmountWhileTyping(sanitizeAmountInput(raw)));
+      onChangeValue(formatAmountWhileTyping(raw));
     },
     [onChangeValue],
   );
@@ -26,14 +26,14 @@ export function AmountInput({ value, onChangeValue, error, autoFocus }: AmountIn
           style={{ fontVariant: ['tabular-nums'] }}
           value={value}
           onChangeText={handleChange}
-          keyboardType="number-pad"
+          keyboardType="decimal-pad"
           placeholder="0"
           placeholderTextColor="#cbd5e1"
           autoFocus={autoFocus}
           accessibilityLabel="Amount"
           maxLength={19}
         />
-        <Text className="text-2xl font-semibold text-slate-400">₫</Text>
+        <Text className="text-2xl font-semibold text-slate-400">USD</Text>
       </View>
       {error ? <Text className="text-xs color-rose-600">{error}</Text> : null}
     </View>

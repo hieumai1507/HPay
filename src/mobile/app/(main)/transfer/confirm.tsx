@@ -11,7 +11,7 @@ import { SECURITY_ROUTES } from '@/src/features/security/routes';
 import { useTransactionAuth } from '@/src/features/security/useTransactionAuth';
 import { useRecentContacts } from '@/src/features/wallet/recent-contacts';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { formatAmountVND, parseAmountStrict } from '@/src/lib/money';
+import { formatAmountUSD, parseCentsStrict } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { Button } from '@/src/ui';
 
@@ -23,7 +23,7 @@ export default function TransferConfirmScreen() {
     note: string;
     receiverToken?: string;
   }>();
-  const parsed = parseAmountStrict(params.amount ?? '');
+  const parsed = parseCentsStrict(params.amount);
   const amount = parsed.ok ? parsed.value : 0n;
 
   const [failure, setFailure] = useState<ConfirmFailure | null>(null);
@@ -100,16 +100,16 @@ export default function TransferConfirmScreen() {
         <View className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 gap-3">
           <Row label="Recipient" value={params.maskedName ?? ''} />
           <Row label="Phone number" value={params.phone ?? ''} />
-          <Row label="Amount" value={formatAmountVND(amount)} />
+          <Row label="Amount" value={formatAmountUSD(amount)} />
           <Row
             label="Fee"
-            value={fee !== null ? formatAmountVND(fee) : 'Calculating…'}
+            value={fee !== null ? formatAmountUSD(fee) : 'Calculating…'}
           />
           {params.note ? <Row label="Note" value={params.note} /> : null}
           <View className="h-px bg-slate-200 dark:bg-slate-700" />
           <Row
             label="Total"
-            value={total !== null ? formatAmountVND(total) : '—'}
+            value={total !== null ? formatAmountUSD(total) : '—'}
             bold
           />
         </View>

@@ -16,7 +16,6 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/src/api/client';
 import { useMainWallet, useTransactions } from '@/src/queries';
 import { describeError } from '@/src/lib/errors';
-import { formatAmountVND } from '@/src/lib/money';
 import { useOrgStore } from '@/src/stores/org';
 import { useSessionStore } from '@/src/stores/session';
 import { useSettingsStore } from '@/src/stores/settings';
@@ -240,4 +239,3 @@ function buildBizActions(role: string, pendingCount: number) {
   ];
 }
 
-void formatAmountVND;

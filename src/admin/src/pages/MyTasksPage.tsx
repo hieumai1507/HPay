@@ -9,7 +9,7 @@ import {
   useDecideApproval,
   type AdminApprovalItem,
 } from '@/queries/useApprovalQueries';
-import { formatVnd } from '@/lib/money';
+import { formatUsd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 import { useToastStore } from '@/stores/toast';
 import { Badge, ErrorNotice } from '@/ui';
@@ -25,7 +25,7 @@ function subjectTone(subject: string): 'danger' | 'warning' | 'info' {
 }
 
 function formatTaskAmount(v: number) {
-  return v ? formatVnd(v) : '—';
+  return v ? formatUsd(v) : '—';
 }
 
 export default function MyTasksPage() {

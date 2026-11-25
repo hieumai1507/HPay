@@ -149,7 +149,7 @@ sequenceDiagram
   A->>DB: one tx: ConsumeOTPIfActive (one winner), ResetUserPIN (clears lock, stamps pin_reset_at), audit pin.reset
   A->>S: Notify pin_reset
   API-->>U: 200 {status: pin_reset}
-  Note over U,DB: next 24 h: ExecuteEngineRequest refuses a PIN amount above 2,500,000 VND (ERR_PIN_COOLING)
+  Note over U,DB: next 24 h: ExecuteEngineRequest refuses a PIN amount above 10,000 cents, $100.00 (ERR_PIN_COOLING)
 ```
 
 Operator fallback: `POST /v1/admin/users/:id/pin/reset` (permission `pin.reset`, reason required) removes the PIN, stamps `pin_reset_at`, writes audit `pin.clear` and notifies the user; the user then sets a new PIN with `PUT /v1/me/pin`.

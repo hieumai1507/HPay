@@ -9,7 +9,7 @@ import { Badge } from '@/ui';
 import { DataTable } from '@/components/table/DataTable';
 import { useTableQueryState } from '@/hooks/useTableQueryState';
 import { ACTION_PERMISSION, NO_PERMISSION_REASON } from '@/lib/access';
-import { formatCount } from '@/lib/money';
+import { formatCount, formatUsd } from '@/lib/money';
 import { useAdminStore } from '@/stores/admin';
 
 const columnHelper = createColumnHelper<ReconItem>();
@@ -63,14 +63,14 @@ export default function ReconPage() {
         ),
       }),
       columnHelper.accessor('internalAmount', {
-        header: 'Wallet (₫)',
-        cell: (info) => <span className="font-mono font-medium">{formatCount(info.getValue())}</span>,
+        header: 'Wallet (USD)',
+        cell: (info) => <span className="font-mono font-medium">{formatUsd(info.getValue())}</span>,
       }),
       columnHelper.accessor('externalAmount', {
-        header: 'Bank (₫)',
+        header: 'Bank (USD)',
         cell: (info) => (
           <span className={`font-mono font-medium ${info.getValue() !== null ? 'text-slate-900' : 'text-slate-400'}`}>
-            {formatCount(info.getValue())}
+            {formatUsd(info.getValue())}
           </span>
         ),
       }),

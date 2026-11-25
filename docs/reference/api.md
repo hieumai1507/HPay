@@ -27,7 +27,7 @@ Role `worker` serves no HTTP. Role comes from `--role=` on `cmd/server`.
 - `RateLimit(limit, window)`: Redis fixed window keyed by client IP + route; fail-open on Redis errors; 429 `ERR_RATE_LIMITED`. `RateLimitUser` is the same keyed by user id.
 - `RequireIdempotencyKey`: header `Idempotency-Key` required, at most 64 chars, else 400 `ERR_IDEMPOTENCY_KEY_REQUIRED`. Used on every mounted money-moving or money-object-creating POST (marked IDEM below). The key is scoped to the calling user and bound to the request payload: same key and payload returns the original result, same key and another payload is 409 `ERR_IDEMPOTENCY_KEY_REUSED` (ADR-0011).
 - Every response carries `X-Request-Id` (echoed or generated).
-- Money amounts are integers in VND minor units.
+- Money amounts are integers in cents (US dollars; 1 = $0.01).
 
 ## Public / infrastructure
 

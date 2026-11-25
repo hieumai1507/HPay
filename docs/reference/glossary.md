@@ -14,7 +14,7 @@ Domain docs live in `docs/domain/<name>.md` (some may still be in progress).
 
 | Term | Definition | Doc |
 |---|---|---|
-| Minor unit | All amounts are `BIGINT` VND with no decimals; floats are never used. | [ledger](../domain/ledger.md) |
+| Minor unit | All amounts are `BIGINT` US cents (1 = $0.01), shown as dollars with two decimals; floats are never used. | [ledger](../domain/ledger.md) |
 | Ledger entry | One debit or credit row in `ledger_entries` (append-only, enforced by trigger). A transaction posts balanced legs. | [ledger](../domain/ledger.md) |
 | Double entry / Post | `ledger.Post` writes all legs of a transaction atomically and updates wallet balances; errors `ErrUnbalanced`, `ErrInsufficientBalance`. | [ledger](../domain/ledger.md) |
 | Ledger account | Row in `ledger_accounts` (SYS_CASH, SYS_FEE, SYS_SUSPENSE) that maps a system wallet to a chart-of-accounts type. | [ledger](../domain/ledger.md) |

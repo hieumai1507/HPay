@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiRequest } from '@/src/api/client';
 import { withIntentKey } from '@/src/lib/intentKey';
-import { parseAmountStrict } from '@/src/lib/money';
+import { formatAmountWhileTyping, parseAmountStrict } from '@/src/lib/money';
 import { useSubmitGuard } from '@/src/lib/useSubmitGuard';
 import { useOrgStore } from '@/src/stores/org';
 
@@ -121,7 +121,7 @@ interface PolicyTier {
 
 function PolicyTab({ orgId }: { orgId: string }) {
   const [tiers, setTiers] = useState<PolicyTier[]>([
-    { level: 1, min_amount: '10000000', required_approvals: 1 },
+    { level: 1, min_amount: '400.00', required_approvals: 1 },
   ]);
   const guard = useSubmitGuard();
 
@@ -182,14 +182,14 @@ function PolicyTab({ orgId }: { orgId: string }) {
             )}
           </View>
           <View>
-            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">From amount (₫)</Text>
+            <Text className="text-xs font-bold text-slate-500 tracking-wider mb-1.5 uppercase">From amount ($)</Text>
             <TextInput
               className="h-12 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-base text-slate-900 dark:text-white"
-              placeholder="Vd: 10000000"
+              placeholder="e.g. 40000.00"
               placeholderTextColor="#94a3b8"
               keyboardType="numeric"
               value={tier.min_amount}
-              onChangeText={(v) => updateTier(i, 'min_amount', v.replace(/\D/g, ''))}
+              onChangeText={(v) => updateTier(i, 'min_amount', formatAmountWhileTyping(v))}
             />
           </View>
           <View>
