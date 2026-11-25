@@ -124,11 +124,11 @@ func (s *Service) TransferToUser(ctx context.Context, senderID, receiverID uuid.
 	if receiverID == senderID {
 		return Result{}, ledger.ErrSelfTransfer
 	}
-	senderWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: senderID, Currency: "VND"})
+	senderWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: senderID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return Result{}, wallet.ErrWalletNotFound
 	}
-	receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiverID, Currency: "VND"})
+	receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiverID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return Result{}, ErrReceiverNotFound
 	}
@@ -516,7 +516,7 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 		if err != nil {
 			return enginePlan{}, err
 		}
-		main, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: "VND"})
+		main, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: wallet.DefaultCurrency})
 		if err != nil {
 			return enginePlan{}, wallet.ErrWalletNotFound
 		}
@@ -542,7 +542,7 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 		if err != nil {
 			return enginePlan{}, wallet.ErrWalletNotFound
 		}
-		usr, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: "VND"})
+		usr, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: wallet.DefaultCurrency})
 		if err != nil {
 			return enginePlan{}, wallet.ErrWalletNotFound
 		}
@@ -567,11 +567,11 @@ func (s *Service) planWallets(ctx context.Context, strategy string, input Engine
 		if receiverID == input.SenderUserID {
 			return enginePlan{}, ledger.ErrSelfTransfer
 		}
-		senderWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: "VND"})
+		senderWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: input.SenderUserID, Currency: wallet.DefaultCurrency})
 		if err != nil {
 			return enginePlan{}, wallet.ErrWalletNotFound
 		}
-		receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiverID, Currency: "VND"})
+		receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiverID, Currency: wallet.DefaultCurrency})
 		if err != nil {
 			return enginePlan{}, ErrReceiverNotFound
 		}

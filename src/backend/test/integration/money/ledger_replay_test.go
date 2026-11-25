@@ -22,10 +22,10 @@ import (
 func TestEdge_E06_DuplicateStepNoDoublePost(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_000_000, "replay", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 4_000, "replay", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

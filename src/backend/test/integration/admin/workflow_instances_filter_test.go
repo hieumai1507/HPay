@@ -35,7 +35,7 @@ func seedWorkflowInstance(t *testing.T, e *testkit.Env, defName, status string, 
 		var id uuid.UUID
 		if err := e.Pool.QueryRow(ctx, `
 			INSERT INTO transactions (ref_code, type, sender_wallet_id, receiver_wallet_id, amount, fee, initiated_by, status)
-			VALUES ($1, 'p2p', $2, $2, 100000, 0, $3, 'completed')
+			VALUES ($1, 'p2p', $2, $2, 400, 0, $3, 'completed')
 			RETURNING id`, refCode, walletID, userID).Scan(&id); err != nil {
 			t.Fatalf("seed transaction: %v", err)
 		}

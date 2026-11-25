@@ -14,7 +14,7 @@ import (
 func TestOrgPolicies_ListsTheRealVersions(t *testing.T) {
 	rig := testkit.NewAdminRig(t)
 	_, tok := rig.NewAdmin("ops", "active")
-	f := testkit.NewOrgFixture(t, rig.E, 1_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, rig.E, 4_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
 	w := rig.Call("GET", "/v1/admin/orgs/"+f.OrgID.String()+"/policies", tok, nil)
 	if w.Code != http.StatusOK {
@@ -45,8 +45,8 @@ func TestOrgPolicies_ListsTheRealVersions(t *testing.T) {
 func TestOrgPolicies_OnlyShowsThisOrganization(t *testing.T) {
 	rig := testkit.NewAdminRig(t)
 	_, tok := rig.NewAdmin("ops", "active")
-	a := testkit.NewOrgFixture(t, rig.E, 1_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
-	b := testkit.NewOrgFixture(t, rig.E, 1_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	a := testkit.NewOrgFixture(t, rig.E, 4_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	b := testkit.NewOrgFixture(t, rig.E, 4_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
 	w := rig.Call("GET", "/v1/admin/orgs/"+a.OrgID.String()+"/policies", tok, nil)
 	var res struct {

@@ -15,9 +15,9 @@ import (
 func TestApprovalDetail_MakerCanView(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "salary", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "salary", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestApprovalDetail_MakerCanView(t *testing.T) {
 	if d.Status != "pending" || d.CurrentLevel != 1 {
 		t.Fatalf("detail: want pending level 1, got %+v", d)
 	}
-	if d.MakerID != f.MakerID || d.RefCode != res.RefCode || d.Amount != 1_000_000 {
+	if d.MakerID != f.MakerID || d.RefCode != res.RefCode || d.Amount != 4_000 {
 		t.Fatalf("detail money facts wrong: %+v", d)
 	}
 	if d.SignaturesRequired != 1 {
@@ -47,11 +47,11 @@ func TestApprovalDetail_MakerCanView(t *testing.T) {
 func TestApprovalDetail_EligibleCheckerCanView(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1, 2}, []approval.Tier{
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1, 2}, []approval.Tier{
 		{Level: 1, RequiredApprovals: 1}, {Level: 2, RequiredApprovals: 1},
 	})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,9 +74,9 @@ func TestApprovalDetail_EligibleCheckerCanView(t *testing.T) {
 func TestApprovalDetail_UnrelatedUserGetsNotFound(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,11 +99,11 @@ func TestApprovalDetail_UnrelatedUserGetsNotFound(t *testing.T) {
 func TestApprovalDetail_SignatureHistoryOrdered(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 3_000_000, []int{1, 2}, []approval.Tier{
+	f := testkit.NewOrgFixture(t, e, 12_000, []int{1, 2}, []approval.Tier{
 		{Level: 1, RequiredApprovals: 1}, {Level: 2, RequiredApprovals: 1},
 	})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,9 +149,9 @@ func TestApprovalDetail_SignatureHistoryOrdered(t *testing.T) {
 func TestApprovalDetailByRefCode_MakerResolvesJustCreatedRequest(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,9 +183,9 @@ func TestApprovalDetailByRefCode_MakerResolvesJustCreatedRequest(t *testing.T) {
 func TestApprovalDetail_SignaturesRequiredReflectsPolicySnapshot(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 1_000_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 4_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

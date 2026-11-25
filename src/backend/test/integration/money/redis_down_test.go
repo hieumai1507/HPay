@@ -34,11 +34,11 @@ func TestEdge_E17_RedisDownNoDataLoss(t *testing.T) {
 	deadRdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1", DialTimeout: 200 * time.Millisecond})
 	defer deadRdb.Close()
 
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
 	// 1. Transfer is accepted while Redis is down — DB + outbox only.
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_000_000, "e17", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 4_000, "e17", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer must not depend on redis: %v", err)
 	}
@@ -122,11 +122,11 @@ func TestEdge_E17_RedisDownNoDataLoss(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	wantSender := int64(2_000_000) - res.Amount - res.Fee
+	wantSender := int64(8_000) - res.Amount - res.Fee
 	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != wantSender {
 		t.Fatalf("sender balance after recovery: want %d, got %d", wantSender, got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 1_000_000 {
-		t.Fatalf("receiver balance after recovery: want 1000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 4_000 {
+		t.Fatalf("receiver balance after recovery: want 4000, got %d", got)
 	}
 }

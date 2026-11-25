@@ -18,7 +18,7 @@ func TestEdge_E02_ConcurrentOverdraw(t *testing.T) {
 	ctx := context.Background()
 	userA, walletA := testutil.NewUserWithWallet(t, pool)
 	_, walletB := testutil.NewUserWithWallet(t, pool)
-	testkit.Fund(t, pool, userA, walletA, 100_000)
+	testkit.Fund(t, pool, userA, walletA, 400)
 
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
@@ -26,7 +26,7 @@ func TestEdge_E02_ConcurrentOverdraw(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			errs[i] = testkit.PostTransfer(ctx, pool, userA, walletA, walletB, 70_000)
+			errs[i] = testkit.PostTransfer(ctx, pool, userA, walletA, walletB, 280)
 		}(i)
 	}
 	wg.Wait()
@@ -43,11 +43,11 @@ func TestEdge_E02_ConcurrentOverdraw(t *testing.T) {
 	if fails != 1 {
 		t.Fatalf("want exactly 1 failure, got %d (errs=%v)", fails, errs)
 	}
-	if got := testutil.WalletBalance(t, pool, walletA); got != 30_000 {
-		t.Fatalf("wallet A: want 30000, got %d", got)
+	if got := testutil.WalletBalance(t, pool, walletA); got != 120 {
+		t.Fatalf("wallet A: want 120, got %d", got)
 	}
-	if got := testutil.WalletBalance(t, pool, walletB); got != 70_000 {
-		t.Fatalf("wallet B: want 70000, got %d", got)
+	if got := testutil.WalletBalance(t, pool, walletB); got != 280 {
+		t.Fatalf("wallet B: want 280, got %d", got)
 	}
 	if testutil.WalletBalance(t, pool, walletA) != testutil.LedgerSum(t, pool, walletA) {
 		t.Fatal("wallet A: balance != ledger sum")
@@ -61,12 +61,12 @@ func TestEdge_E03_CrossTransferNoDeadlock(t *testing.T) {
 	ctx := context.Background()
 	userA, walletA := testutil.NewUserWithWallet(t, pool)
 	userB, walletB := testutil.NewUserWithWallet(t, pool)
-	testkit.Fund(t, pool, userA, walletA, 50_000)
-	testkit.Fund(t, pool, userB, walletB, 50_000)
+	testkit.Fund(t, pool, userA, walletA, 200)
+	testkit.Fund(t, pool, userB, walletB, 200)
 
 	done := make(chan error, 2)
-	go func() { done <- testkit.PostTransfer(ctx, pool, userA, walletA, walletB, 10_000) }()
-	go func() { done <- testkit.PostTransfer(ctx, pool, userB, walletB, walletA, 10_000) }()
+	go func() { done <- testkit.PostTransfer(ctx, pool, userA, walletA, walletB, 40) }()
+	go func() { done <- testkit.PostTransfer(ctx, pool, userB, walletB, walletA, 40) }()
 
 	timeout := time.After(10 * time.Second)
 	for i := 0; i < 2; i++ {
@@ -79,7 +79,7 @@ func TestEdge_E03_CrossTransferNoDeadlock(t *testing.T) {
 			t.Fatal("deadlock suspected: transfers did not finish in 10s")
 		}
 	}
-	if a, b := testutil.WalletBalance(t, pool, walletA), testutil.WalletBalance(t, pool, walletB); a != 50_000 || b != 50_000 {
-		t.Fatalf("balances after cross transfer: A=%d B=%d, want 50000/50000", a, b)
+	if a, b := testutil.WalletBalance(t, pool, walletA), testutil.WalletBalance(t, pool, walletB); a != 200 || b != 200 {
+		t.Fatalf("balances after cross transfer: A=%d B=%d, want 200/200", a, b)
 	}
 }

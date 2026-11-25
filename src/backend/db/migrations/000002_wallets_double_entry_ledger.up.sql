@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_type  owner_type NOT NULL,
     owner_id    UUID NOT NULL,
-    currency    VARCHAR(3) NOT NULL DEFAULT 'VND',
+    currency    VARCHAR(3) NOT NULL DEFAULT 'USD',
     purpose     VARCHAR(20) NOT NULL DEFAULT 'main',
     label       VARCHAR(60),
     balance     BIGINT NOT NULL DEFAULT 0,
@@ -95,9 +95,9 @@ VALUES
   -- Opening balance 0 on purpose: every movement is journalled, so the pool's
   -- balance is exactly SUM(ledger_entries). Cash-in goes negative as money
   -- flows out to user wallets, which is the correct sign for a funding pool.
-  ('00000000-0000-0000-0000-000000000001', 'system', '00000000-0000-0000-0000-000000000000', 'VND', 'system_cash', 0, 'SYSTEM_CASH_IN'),
-  ('00000000-0000-0000-0000-000000000002', 'system', '00000000-0000-0000-0000-000000000000', 'VND', 'system_fee', 0, 'SYSTEM_FEE'),
-  ('00000000-0000-0000-0000-000000000003', 'system', '00000000-0000-0000-0000-000000000000', 'VND', 'system_suspense', 0, 'SYSTEM_SUSPENSE')
+  ('00000000-0000-0000-0000-000000000001', 'system', '00000000-0000-0000-0000-000000000000', 'USD', 'system_cash', 0, 'SYSTEM_CASH_IN'),
+  ('00000000-0000-0000-0000-000000000002', 'system', '00000000-0000-0000-0000-000000000000', 'USD', 'system_fee', 0, 'SYSTEM_FEE'),
+  ('00000000-0000-0000-0000-000000000003', 'system', '00000000-0000-0000-0000-000000000000', 'USD', 'system_suspense', 0, 'SYSTEM_SUSPENSE')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO ledger_accounts (id, code, name, type, wallet_id)

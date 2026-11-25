@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	store "github.com/hieumai1507/hpay-backend/internal/store/gen"
+	"github.com/hieumai1507/hpay-backend/internal/wallet"
 )
 
 // Sentinel errors — the API layer maps each to a stable ERR_* code.
@@ -50,7 +51,7 @@ type Vault struct {
 
 func (s *Service) List(ctx context.Context, userID uuid.UUID) ([]Vault, error) {
 	rows, err := s.q.ListUserVaults(ctx, store.ListUserVaultsParams{
-		OwnerID: userID, Currency: "VND",
+		OwnerID: userID, Currency: wallet.DefaultCurrency,
 	})
 	if err != nil {
 		return nil, err
@@ -76,7 +77,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, label string, ta
 	}
 	row, err := s.q.CreateVaultWallet(ctx, store.CreateVaultWalletParams{
 		OwnerID:      userID,
-		Currency:     "VND",
+		Currency:     wallet.DefaultCurrency,
 		Label:        pgtype.Text{String: label, Valid: true},
 		TargetAmount: pgtype.Int8{Int64: target, Valid: target > 0},
 	})

@@ -176,11 +176,11 @@ func TestKYCTierUnlocksTransferLimit(t *testing.T) {
 	// Fund via direct ledger post — Topup itself is tier-limited (2M at none),
 	// and this test needs a 20M balance before KYC.
 	senderID, senderWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, senderID, senderWallet, 20_000_000)
+	testkit.Fund(t, e.Pool, senderID, senderWallet, 80_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	// tier none: 10M > 2M limit → blocked
-	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 10_000_000, "", uuid.NewString()); err == nil {
+	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 40_000, "", uuid.NewString()); err == nil {
 		t.Fatal("want limit error at tier none")
 	}
 
@@ -191,7 +191,7 @@ func TestKYCTierUnlocksTransferLimit(t *testing.T) {
 	e.Drain(t)
 
 	// tier auto_approved: same transfer passes
-	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 10_000_000, "", uuid.NewString()); err != nil {
+	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 40_000, "", uuid.NewString()); err != nil {
 		t.Fatalf("transfer after kyc: %v", err)
 	}
 	e.Drain(t)

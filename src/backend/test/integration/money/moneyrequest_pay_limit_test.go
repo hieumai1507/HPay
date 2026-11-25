@@ -19,14 +19,14 @@ import (
 func TestMoneyRequestPay_ConcurrentPaysRespectDailyLimit(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	payer, _, payerPhone := e.UserWithMoney(t, 2_000_000)
+	payer, _, payerPhone := e.UserWithMoney(t, 8_000)
 	requester, _, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, payer, "OFFER_CUST_L0")
 
 	const n = 5
 	ids := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {
-		r, err := e.Msvc.Create(ctx, requester, payerPhone, 1_500_000, "dinner", uuid.NewString())
+		r, err := e.Msvc.Create(ctx, requester, payerPhone, 6_000, "dinner", uuid.NewString())
 		if err != nil {
 			t.Fatalf("create request %d: %v", i, err)
 		}
@@ -69,10 +69,10 @@ func TestMoneyRequestPay_ConcurrentPaysRespectDailyLimit(t *testing.T) {
 func TestMoneyRequestPay_WaitsForThePayersExclusiveLimitLock(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	payer, _, payerPhone := e.UserWithMoney(t, 2_000_000)
+	payer, _, payerPhone := e.UserWithMoney(t, 8_000)
 	requester, _, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, payer, "OFFER_CUST_L0")
-	r, err := e.Msvc.Create(ctx, requester, payerPhone, 100_000, "lunch", uuid.NewString())
+	r, err := e.Msvc.Create(ctx, requester, payerPhone, 400, "lunch", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

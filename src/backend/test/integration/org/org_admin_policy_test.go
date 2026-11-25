@@ -24,7 +24,7 @@ func TestOrgAdminPolicy_CreatePolicyAsAdmin_NoOrgMembershipRequired(t *testing.T
 	// newOrgFixture already installed a v1 "default" policy — reuse that
 	// name so this call exercises the real "bump an existing policy"
 	// versioning path, not just "create a brand-new name at v1".
-	res, err := e.Osvc.CreatePolicyAsAdmin(ctx, adminID, f.OrgID, "default", 10_000_000, nil,
+	res, err := e.Osvc.CreatePolicyAsAdmin(ctx, adminID, f.OrgID, "default", 40_000, nil,
 		[]approval.Tier{{Level: 1, RequiredApprovals: 1}, {Level: 2, RequiredApprovals: 2}})
 	if err != nil {
 		t.Fatalf("CreatePolicyAsAdmin: %v", err)
@@ -122,7 +122,7 @@ func TestOrgAdminPolicy_VersionConflictMapsToSentinelError(t *testing.T) {
 
 	svcDone := make(chan error, 1)
 	go func() {
-		_, err := e.Osvc.CreatePolicyAsAdmin(ctx, uuid.New(), f.OrgID, "default", 10_000_000, nil,
+		_, err := e.Osvc.CreatePolicyAsAdmin(ctx, uuid.New(), f.OrgID, "default", 40_000, nil,
 			[]approval.Tier{{Level: 1, RequiredApprovals: 1}})
 		svcDone <- err
 	}()

@@ -76,7 +76,7 @@ func (h *TransferHandler) Transfer(c *gin.Context) {
 func (h *TransferHandler) FeePreview(c *gin.Context) {
 	amount, err := strconv.ParseInt(c.Query("amount"), 10, 64)
 	if err != nil {
-		respondValidation(c, "amount must be an integer (minor units)")
+		respondValidation(c, "amount must be an integer (cents)")
 		return
 	}
 	feeAmt, total, err := h.svc.FeePreview(c.Request.Context(), mustUserID(c), amount)

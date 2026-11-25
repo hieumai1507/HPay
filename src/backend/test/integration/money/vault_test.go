@@ -48,12 +48,12 @@ func newVault(t *testing.T, e *testkit.Env, userID uuid.UUID, label string) uuid
 func TestVault_DepositMovesMoneyAndBalances(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, userID, mainWallet, 2_000_000)
+	testkit.Fund(t, e.Pool, userID, mainWallet, 8_000)
 	vaultID := newVault(t, e, userID, "Holiday fund")
 
 	mainBefore := testutil.WalletBalance(t, e.Pool, mainWallet)
 
-	res, err := vaultMove(t, e, userID, vaultID, 500_000, "deposit")
+	res, err := vaultMove(t, e, userID, vaultID, 2_000, "deposit")
 	if err != nil {
 		t.Fatalf("deposit: %v", err)
 	}
@@ -62,25 +62,25 @@ func TestVault_DepositMovesMoneyAndBalances(t *testing.T) {
 		t.Fatalf("deposit status: want completed, got %s", got)
 	}
 
-	if got := testutil.WalletBalance(t, e.Pool, mainWallet); got != mainBefore-500_000 {
-		t.Fatalf("main: want %d, got %d", mainBefore-500_000, got)
+	if got := testutil.WalletBalance(t, e.Pool, mainWallet); got != mainBefore-2_000 {
+		t.Fatalf("main: want %d, got %d", mainBefore-2_000, got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, vaultID); got != 500_000 {
-		t.Fatalf("vault: want 500000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, vaultID); got != 2_000 {
+		t.Fatalf("vault: want 2000, got %d", got)
 	}
 	// The invariant that matters: both wallets are backed by their ledger.
-	if got := testutil.LedgerSum(t, e.Pool, vaultID); got != 500_000 {
-		t.Fatalf("vault ledger sum: want 500000, got %d", got)
+	if got := testutil.LedgerSum(t, e.Pool, vaultID); got != 2_000 {
+		t.Fatalf("vault ledger sum: want 2000, got %d", got)
 	}
 }
 
 func TestVault_WithdrawReturnsToMain(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, userID, mainWallet, 2_000_000)
+	testkit.Fund(t, e.Pool, userID, mainWallet, 8_000)
 	vaultID := newVault(t, e, userID, "Emergency fund")
 
-	dep, err := vaultMove(t, e, userID, vaultID, 800_000, "deposit")
+	dep, err := vaultMove(t, e, userID, vaultID, 3_200, "deposit")
 	if err != nil {
 		t.Fatalf("deposit: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestVault_WithdrawReturnsToMain(t *testing.T) {
 	}
 	mainAfterDeposit := testutil.WalletBalance(t, e.Pool, mainWallet)
 
-	wd, err := vaultMove(t, e, userID, vaultID, 300_000, "withdraw")
+	wd, err := vaultMove(t, e, userID, vaultID, 1_200, "withdraw")
 	if err != nil {
 		t.Fatalf("withdraw: %v", err)
 	}
@@ -99,11 +99,11 @@ func TestVault_WithdrawReturnsToMain(t *testing.T) {
 		t.Fatalf("withdraw status: %s", got)
 	}
 
-	if got := testutil.WalletBalance(t, e.Pool, vaultID); got != 500_000 {
-		t.Fatalf("vault after withdraw: want 500000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, vaultID); got != 2_000 {
+		t.Fatalf("vault after withdraw: want 2000, got %d", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, mainWallet); got != mainAfterDeposit+300_000 {
-		t.Fatalf("main after withdraw: want %d, got %d", mainAfterDeposit+300_000, got)
+	if got := testutil.WalletBalance(t, e.Pool, mainWallet); got != mainAfterDeposit+1_200 {
+		t.Fatalf("main after withdraw: want %d, got %d", mainAfterDeposit+1_200, got)
 	}
 }
 
@@ -111,10 +111,10 @@ func TestVault_WithdrawReturnsToMain(t *testing.T) {
 func TestVault_WithdrawOverBalanceRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, userID, mainWallet, 1_000_000)
+	testkit.Fund(t, e.Pool, userID, mainWallet, 4_000)
 	vaultID := newVault(t, e, userID, "Empty vault")
 
-	_, err := vaultMove(t, e, userID, vaultID, 100_000, "withdraw")
+	_, err := vaultMove(t, e, userID, vaultID, 400, "withdraw")
 	if !errors.Is(err, ledger.ErrInsufficientBalance) {
 		t.Fatalf("withdraw from empty vault: err = %v, want ErrInsufficientBalance", err)
 	}
@@ -128,11 +128,11 @@ func TestVault_WithdrawOverBalanceRejected(t *testing.T) {
 func TestVault_ForeignVaultRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	attacker, attackerWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, attacker, attackerWallet, 1_000_000)
+	testkit.Fund(t, e.Pool, attacker, attackerWallet, 4_000)
 	victim, _, _ := e.UserWithMoney(t, 0)
 	victimVault := newVault(t, e, victim, "Someone else's vault")
 
-	_, err := vaultMove(t, e, attacker, victimVault, 100_000, "deposit")
+	_, err := vaultMove(t, e, attacker, victimVault, 400, "deposit")
 	if !errors.Is(err, vault.ErrNotFound) {
 		t.Fatalf("foreign vault: err = %v, want vault.ErrNotFound", err)
 	}
@@ -141,10 +141,10 @@ func TestVault_ForeignVaultRejected(t *testing.T) {
 func TestVault_DirectionMustBeValid(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	userID, mainWallet, _ := e.UserWithMoney(t, 0)
-	testkit.Fund(t, e.Pool, userID, mainWallet, 1_000_000)
+	testkit.Fund(t, e.Pool, userID, mainWallet, 4_000)
 	vaultID := newVault(t, e, userID, "Direction test vault")
 
-	if _, err := vaultMove(t, e, userID, vaultID, 100_000, "sideways"); !errors.Is(err, vault.ErrDirectionInvalid) {
+	if _, err := vaultMove(t, e, userID, vaultID, 400, "sideways"); !errors.Is(err, vault.ErrDirectionInvalid) {
 		t.Fatalf("bad direction: err = %v, want ErrDirectionInvalid", err)
 	}
 }
@@ -156,7 +156,7 @@ func TestVault_MultipleVaultsPerUser(t *testing.T) {
 	userID, _, _ := e.UserWithMoney(t, 0)
 
 	svc := vault.New(e.Pool)
-	if _, err := svc.Create(context.Background(), userID, "Vault A", 1_000_000); err != nil {
+	if _, err := svc.Create(context.Background(), userID, "Vault A", 4_000); err != nil {
 		t.Fatalf("first vault: %v", err)
 	}
 	if _, err := svc.Create(context.Background(), userID, "Vault B", 0); err != nil {

@@ -9,11 +9,11 @@ func TestEvaluateAndDecide(t *testing.T) {
 		wantScore int
 		want      Decision
 	}{
-		{"clean", Input{Amount: 100_000, Avg30dAmount: 100_000, TxnsInLast5Min: 1, HourOfDay: 14}, 0, DecisionPass},
-		{"new receiver only", Input{Amount: 100_000, TxnsInLast5Min: 1, IsNewReceiver: true, HourOfDay: 14}, 20, DecisionPass},
-		{"velocity + new receiver = flag", Input{Amount: 100_000, TxnsInLast5Min: 4, IsNewReceiver: true, HourOfDay: 14}, 50, DecisionFlag},
-		{"spike + odd hours = flag boundary", Input{Amount: 5_000_000, Avg30dAmount: 1_000_000, TxnsInLast5Min: 1, HourOfDay: 2}, 55, DecisionFlag},
-		{"all four = block, capped", Input{Amount: 10_000_000, Avg30dAmount: 500_000, TxnsInLast5Min: 5, IsNewReceiver: true, HourOfDay: 3}, 100, DecisionBlock},
+		{"clean", Input{Amount: 400, Avg30dAmount: 400, TxnsInLast5Min: 1, HourOfDay: 14}, 0, DecisionPass},
+		{"new receiver only", Input{Amount: 400, TxnsInLast5Min: 1, IsNewReceiver: true, HourOfDay: 14}, 20, DecisionPass},
+		{"velocity + new receiver = flag", Input{Amount: 400, TxnsInLast5Min: 4, IsNewReceiver: true, HourOfDay: 14}, 50, DecisionFlag},
+		{"spike + odd hours = flag boundary", Input{Amount: 20_000, Avg30dAmount: 4_000, TxnsInLast5Min: 1, HourOfDay: 2}, 55, DecisionFlag},
+		{"all four = block, capped", Input{Amount: 40_000, Avg30dAmount: 2_000, TxnsInLast5Min: 5, IsNewReceiver: true, HourOfDay: 3}, 100, DecisionBlock},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestDecideBoundaries(t *testing.T) {
 
 func TestAmountSpikeNeedsHistory(t *testing.T) {
 	// No 30-day history -> no spike rule even for a huge amount.
-	_, score := Evaluate(Input{Amount: 1_000_000_000, Avg30dAmount: 0, TxnsInLast5Min: 1, HourOfDay: 14})
+	_, score := Evaluate(Input{Amount: 4_000_000, Avg30dAmount: 0, TxnsInLast5Min: 1, HourOfDay: 14})
 	if score != 0 {
 		t.Fatalf("spike must not fire without history, got score %d", score)
 	}

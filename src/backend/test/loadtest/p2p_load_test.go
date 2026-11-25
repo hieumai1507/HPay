@@ -57,7 +57,7 @@ func TestP2PLoad(t *testing.T) {
 
 	accts := make([]acct, users)
 	for i := range accts {
-		u, w, p := e.UserWithMoney(t, 2_000_000)
+		u, w, p := e.UserWithMoney(t, 8_000)
 		e.SetPIN(t, u, testkit.ValidPIN)
 		accts[i] = acct{u, w, p}
 	}
@@ -105,7 +105,7 @@ func TestP2PLoad(t *testing.T) {
 				t0 := time.Now()
 				res, err := e.Svc.ExecuteEngineRequest(ctx, transfer.EngineRequestInput{
 					ServiceCode: "P2P_TRANSFER", SenderUserID: s.user, ReceiverPhone: rc.phone,
-					Amount: 1_000 + int64(r.Intn(9_000)), Idempotency: wallet.NewRefCode(),
+					Amount: 40 + int64(r.Intn(360)), Idempotency: wallet.NewRefCode(),
 				})
 				if err == nil && res.Status == "awaiting_auth" {
 					_, err = e.Svc.ExecuteEngineConfirm(ctx, transfer.EngineConfirmInput{

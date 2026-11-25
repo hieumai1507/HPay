@@ -36,8 +36,8 @@ const (
 	PINResetMaxPerHour = 3
 	// PINCoolingPeriod is how long the cap below applies after a reset.
 	PINCoolingPeriod = 24 * time.Hour
-	// PINCoolingCap is the largest PIN transaction (VND) allowed during the cooling period.
-	PINCoolingCap int64 = 2_500_000
+	// PINCoolingCap is the largest PIN transaction (in cents, $100.00) allowed during the cooling period.
+	PINCoolingCap int64 = 10_000
 )
 
 // SetSender replaces the delivery channel (tests and wiring). The default is chosen from the

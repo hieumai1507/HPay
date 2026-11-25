@@ -89,7 +89,7 @@ func TestPINReset_CoolingCapAppliesToConfirm(t *testing.T) {
 	e := rig.E
 	sender, _, _ := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L2")
-	testkit.Fund(t, e.Pool, sender, mustWallet(t, e, sender), 40_000_000)
+	testkit.Fund(t, e.Pool, sender, mustWallet(t, e, sender), 160_000)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 	_, _, rcv := e.UserWithMoney(t, 0)
 	testkit.AgeUserTransactions(t, e, sender, "1 hour")
@@ -105,7 +105,7 @@ func TestPINReset_CoolingCapAppliesToConfirm(t *testing.T) {
 	}
 	// a small one goes through
 	if _, err := e.Svc.ExecuteEngineRequest(context.Background(), transfer.EngineRequestInput{
-		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: rcv, Amount: 100_000, Idempotency: uuid.NewString(),
+		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: rcv, Amount: 400, Idempotency: uuid.NewString(),
 	}); err != nil {
 		t.Fatalf("a small PIN transaction must still work: %v", err)
 	}

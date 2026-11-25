@@ -72,7 +72,7 @@ func TestMigration000015_UpDownBackfill(t *testing.T) {
 		}
 	}
 	ins := `INSERT INTO transactions (ref_code, idempotency_key, type, status, amount, initiated_by)
-	        VALUES ($1, $2, 'p2p', 'completed', 1000, $3)`
+	        VALUES ($1, $2, 'p2p', 'completed', 4, $3)`
 	if _, err := conn.Exec(ctx, ins, "LEGACY-1", "legacy-key", uid); err != nil {
 		t.Fatal(err)
 	}

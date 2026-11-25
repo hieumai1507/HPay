@@ -13,7 +13,7 @@ import (
 func TestWorkflowDetail_CarriesTheTransactionAndTheDefinition(t *testing.T) {
 	rig := testkit.NewAdminRig(t)
 	_, tok := rig.NewAdmin("ops", "active")
-	ref, _, _, _, _ := rig.E.CompletedTransfer(t, 77_000)
+	ref, _, _, _, _ := rig.E.CompletedTransfer(t, 308)
 
 	var instID string
 	if err := rig.E.Pool.QueryRow(t.Context(), `
@@ -41,8 +41,8 @@ func TestWorkflowDetail_CarriesTheTransactionAndTheDefinition(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
 		t.Fatal(err)
 	}
-	if res.Instance.TxnRef != ref || res.Instance.TxnAmount != 77_000 {
-		t.Fatalf("want the transaction %s / 77000, got %q / %d", ref, res.Instance.TxnRef, res.Instance.TxnAmount)
+	if res.Instance.TxnRef != ref || res.Instance.TxnAmount != 308 {
+		t.Fatalf("want the transaction %s / 308, got %q / %d", ref, res.Instance.TxnRef, res.Instance.TxnAmount)
 	}
 	if res.Instance.DefinitionName == "" || res.Instance.DefinitionVersion < 1 {
 		t.Fatalf("definition missing: %+v", res.Instance)

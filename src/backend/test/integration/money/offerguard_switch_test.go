@@ -17,13 +17,13 @@ import (
 func TestOfferGuardSwitch_OffDisablesLimitsOnDefaultKeepsThem(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	code := "OFFER_TEST_" + uuid.NewString()[:8]
 	if _, err := e.Pool.Exec(ctx, `
 		WITH o AS (INSERT INTO offers (code, name, role, level, is_active) VALUES ($1, 'switch test', 'customer', 1, true) RETURNING id)
 		INSERT INTO offer_services (offer_id, service_id, is_enabled, min_amount, max_amount_per_txn, daily_limit, monthly_limit, interval_seconds)
-		SELECT o.id, s.id, true, 0, 10000, 0, 0, 0 FROM o, services s WHERE s.code = 'P2P_TRANSFER'`, code); err != nil {
+		SELECT o.id, s.id, true, 0, 40, 0, 0, 0 FROM o, services s WHERE s.code = 'P2P_TRANSFER'`, code); err != nil {
 		t.Fatal(err)
 	}
 	e.SetOffer(t, sender, code)
@@ -31,7 +31,7 @@ func TestOfferGuardSwitch_OffDisablesLimitsOnDefaultKeepsThem(t *testing.T) {
 
 	in := func() transfer.EngineRequestInput {
 		return transfer.EngineRequestInput{ServiceCode: "P2P_TRANSFER", SenderUserID: sender,
-			ReceiverPhone: receiverPhone, Amount: 500_000, Idempotency: uuid.NewString()}
+			ReceiverPhone: receiverPhone, Amount: 2_000, Idempotency: uuid.NewString()}
 	}
 	// 500,000 is above this offer's per-transaction cap of 10,000.
 	if _, err := e.Svc.ExecuteEngineRequest(ctx, in()); err == nil {

@@ -22,10 +22,10 @@ const maskedFixtureName = "Test U***"
 func TestHistory_CounterpartyMaskedAndDirection(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, senderPhone := e.UserWithMoney(t, 2_000_000)
+	senderID, _, senderPhone := e.UserWithMoney(t, 8_000)
 	receiverID, _, receiverPhone := e.UserWithMoney(t, 0)
 
-	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 500_000, "m3", uuid.NewString()); err != nil {
+	if _, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 2_000, "m3", uuid.NewString()); err != nil {
 		t.Fatal(err)
 	}
 	e.Drain(t)
@@ -90,10 +90,10 @@ func TestHistory_CounterpartyMaskedAndDirection(t *testing.T) {
 func TestDetail_CounterpartyMasked(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 1_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 4_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 200_000, "detail", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 800, "detail", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,10 +114,10 @@ func TestDetail_CounterpartyMasked(t *testing.T) {
 func TestTimeline_FailureCode(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, _, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 8_000)
 	receiverID, _, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 300_000, "failure code", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_200, "failure code", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestTimeline_FailureCode(t *testing.T) {
 	}
 
 	// Completed transfers must NOT carry a failure code.
-	res2, err := e.Svc.Transfer(ctx, senderID, receiverPhoneActive(t, e), 100_000, "ok", uuid.NewString())
+	res2, err := e.Svc.Transfer(ctx, senderID, receiverPhoneActive(t, e), 400, "ok", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

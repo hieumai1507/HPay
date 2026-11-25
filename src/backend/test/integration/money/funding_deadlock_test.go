@@ -27,7 +27,7 @@ func TestFunding_ConcurrentTopupsNeverDeadlock(t *testing.T) {
 		users[i] = u
 	}
 	_, _, phone := e.UserWithMoney(t, 0)
-	rich, _, _ := e.UserWithMoney(t, 2_000_000)
+	rich, _, _ := e.UserWithMoney(t, 8_000)
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 2*n)
@@ -35,12 +35,12 @@ func TestFunding_ConcurrentTopupsNeverDeadlock(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			_, err := e.Wsvc.Topup(ctx, u, 50_000, uuid.NewString())
+			_, err := e.Wsvc.Topup(ctx, u, 200, uuid.NewString())
 			errs <- err
 		}()
 		go func() {
 			defer wg.Done()
-			_, err := e.Svc.Transfer(ctx, rich, phone, 1_000, "dl", uuid.NewString())
+			_, err := e.Svc.Transfer(ctx, rich, phone, 4, "dl", uuid.NewString())
 			errs <- err
 		}()
 	}

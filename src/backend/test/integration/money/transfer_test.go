@@ -16,15 +16,15 @@ import (
 func TestP2PTransferEndToEnd(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_000_000, "test p2p", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 4_000, "test p2p", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Fee != 1_000 { // tier none: 0.1% of 1M
-		t.Fatalf("fee: want 1000, got %d", res.Fee)
+	if res.Fee != 25 { // the p2p fee is a fixed 25 cents
+		t.Fatalf("fee: want 25, got %d", res.Fee)
 	}
 	e.Drain(t)
 
@@ -35,15 +35,15 @@ func TestP2PTransferEndToEnd(t *testing.T) {
 	if status != "completed" {
 		t.Fatalf("txn status: want completed, got %s", status)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 2_000_000-1_001_000 {
-		t.Fatalf("sender balance: want 999000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 8_000-4_000-25 {
+		t.Fatalf("sender balance: want 3975, got %d", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 1_000_000 {
-		t.Fatalf("receiver balance: want 1000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 4_000 {
+		t.Fatalf("receiver balance: want 4000, got %d", got)
 	}
 	feeWallet := testutil.SystemWallet(t, e.Pool, "SYSTEM_FEE")
-	if net := e.TxnLedgerNet(t, res.RefCode, feeWallet); net != 1_000 {
-		t.Fatalf("SYSTEM_FEE net for txn: want 1000, got %d", net)
+	if net := e.TxnLedgerNet(t, res.RefCode, feeWallet); net != 25 {
+		t.Fatalf("SYSTEM_FEE net for txn: want 25, got %d", net)
 	}
 
 	// timeline has all 7 steps completed: v3 (docs plan action-pipeline-wiring)
@@ -83,10 +83,10 @@ func TestEdge_E07_CompensationReversesMovedFunds(t *testing.T) {
 	}
 	e.Svc = transfer.NewServiceWithDefinition(e.Pool, e.Engine, fee.NewService(e.Pool), defName)
 
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 500_000, "comp test", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 2_000, "comp test", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,8 +102,8 @@ func TestEdge_E07_CompensationReversesMovedFunds(t *testing.T) {
 	if instStatus != "compensated" || txnStatus != "failed" {
 		t.Fatalf("want compensated/failed, got %s/%s", instStatus, txnStatus)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 2_000_000 {
-		t.Fatalf("sender must be made whole: want 2000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 8_000 {
+		t.Fatalf("sender must be made whole: want 8000, got %d", got)
 	}
 	if got := testutil.WalletBalance(t, e.Pool, receiverWallet); got != 0 {
 		t.Fatalf("receiver must be reversed: want 0, got %d", got)
@@ -129,10 +129,10 @@ func TestEdge_E07_CompensationReversesMovedFunds(t *testing.T) {
 func TestEdge_E12_LockedUserFailsMidWorkflow(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	senderID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	senderID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	receiverID, receiverWallet, receiverPhone := e.UserWithMoney(t, 0)
 
-	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 300_000, "lock test", uuid.NewString())
+	res, err := e.Svc.Transfer(ctx, senderID, receiverPhone, 1_200, "lock test", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,13 +149,30 @@ func TestEdge_E12_LockedUserFailsMidWorkflow(t *testing.T) {
 	if txnStatus != "failed" {
 		t.Fatalf("want failed, got %s", txnStatus)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 2_000_000 {
-		t.Fatalf("sender untouched: want 2000000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != 8_000 {
+		t.Fatalf("sender untouched: want 8000, got %d", got)
 	}
 	if net := e.TxnLedgerNet(t, res.RefCode, senderWallet); net != 0 {
 		t.Fatal("no ledger entries expected for sender")
 	}
 	if net := e.TxnLedgerNet(t, res.RefCode, receiverWallet); net != 0 {
 		t.Fatal("no ledger entries expected for receiver")
+	}
+}
+
+// AC-6: the P2P fee is a flat 25 cents, whatever the amount.
+func TestP2PFixedFeeIs25Cents(t *testing.T) {
+	e := testkit.NewEnv(t, "")
+	ctx := context.Background()
+	senderID, _, _ := e.UserWithMoney(t, 5_000)
+	for _, amount := range []int64{1_000, 2_000} {
+		receiverID, _, _ := e.UserWithMoney(t, 0)
+		res, err := e.Svc.TransferToUser(ctx, senderID, receiverID, amount, "fee", uuid.NewString())
+		if err != nil {
+			t.Fatalf("transfer %d: %v", amount, err)
+		}
+		if res.Fee != 25 {
+			t.Errorf("amount %d: fee = %d, want 25", amount, res.Fee)
+		}
 	}
 }

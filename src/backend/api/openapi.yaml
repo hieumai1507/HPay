@@ -4,7 +4,7 @@ info:
   version: 0.10.0
   description: >
     Contract-first spec — one-to-one with internal/api/router.go.
-    All money amounts are int64 minor units (VND dong).
+    All money amounts are int64 cents of a US dollar (amount in cents; 1234 is $12.34). The currency is USD.
     Every POST that creates money movement requires the Idempotency-Key header;
     replaying the same key returns the ORIGINAL transaction with HTTP 200.
     Errors always use the Error schema with a stable ERR_* code.
@@ -60,7 +60,7 @@ paths:
                   {
                     type: integer,
                     format: int64,
-                    description: minor units (VND dong),
+                    description: amount in cents,
                   }
                 bank_ref: { type: string }
       responses:
@@ -233,7 +233,7 @@ paths:
                     {
                       type: integer,
                       format: int64,
-                      description: "per-transaction limit of the user's offer for P2P_TRANSFER (minor units, VND); 0 when the user has no usable offer",
+                      description: "per-transaction limit of the user's offer for P2P_TRANSFER (amount in cents, USD); 0 when the user has no usable offer",
                     }
                   offer:
                     type: object
@@ -420,7 +420,7 @@ paths:
                   {
                     type: integer,
                     format: int64,
-                    description: minor units (VND),
+                    description: amount in cents,
                   }
                 receiver_phone: { type: string, example: "0912345678" }
                 receiver_id: { type: string, format: uuid }
@@ -780,7 +780,7 @@ paths:
                   {
                     type: integer,
                     format: int64,
-                    description: minor units (VND),
+                    description: amount in cents,
                   }
                 note: { type: string, maxLength: 255 }
       responses:
@@ -809,7 +809,7 @@ paths:
                   {
                     type: integer,
                     format: int64,
-                    description: minor units (VND),
+                    description: amount in cents,
                   }
                 note: { type: string, maxLength: 255 }
                 amounts:
@@ -1797,11 +1797,11 @@ components:
       required: [id, currency, purpose, balance]
       properties:
         id: { type: string, format: uuid }
-        currency: { type: string, example: VND }
+        currency: { type: string, example: USD }
         purpose: { type: string, example: main }
         label: { type: string, nullable: true }
         balance:
-          { type: integer, format: int64, description: minor units (VND) }
+          { type: integer, format: int64, description: amount in cents }
     TopupResult:
       type: object
       required: [ref_code, status, amount, created_at]
@@ -1840,7 +1840,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         label: { type: string, example: "Holiday fund" }
-        balance: { type: integer, format: int64, description: minor units (VND) }
+        balance: { type: integer, format: int64, description: amount in cents }
         target_amount:
           {
             type: integer,
@@ -1919,7 +1919,7 @@ components:
           }
         sender_wallet_id: { type: string, format: uuid }
         receiver_wallet_id: { type: string, format: uuid }
-        amount: { type: integer, format: int64, description: minor units (VND) }
+        amount: { type: integer, format: int64, description: amount in cents }
         fee: { type: integer, format: int64 }
         note: { type: string }
         direction:

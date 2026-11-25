@@ -16,8 +16,8 @@ func TestSplitEven(t *testing.T) {
 		n     int
 		want  []int64
 	}{
-		{100_000, 3, []int64{33_334, 33_333, 33_333}},
-		{100_000, 4, []int64{25_000, 25_000, 25_000, 25_000}},
+		{1_000, 3, []int64{334, 333, 333}},
+		{400, 4, []int64{100, 100, 100, 100}},
 		{1, 1, []int64{1}},
 		{10, 3, []int64{4, 3, 3}},
 	}
@@ -50,13 +50,13 @@ func TestSplitEvenRejectsTooManyShares(t *testing.T) {
 }
 
 func TestValidateCustomSplit(t *testing.T) {
-	if err := ValidateCustomSplit([]int64{50_000, 50_000}, 100_000); err != nil {
+	if err := ValidateCustomSplit([]int64{200, 200}, 400); err != nil {
 		t.Fatalf("valid split rejected: %v", err)
 	}
-	if err := ValidateCustomSplit([]int64{50_000, 40_000}, 100_000); err == nil {
+	if err := ValidateCustomSplit([]int64{200, 160}, 400); err == nil {
 		t.Fatal("want error when amounts don't sum to total")
 	}
-	if err := ValidateCustomSplit([]int64{100_000, 0}, 100_000); err == nil {
+	if err := ValidateCustomSplit([]int64{400, 0}, 400); err == nil {
 		t.Fatal("want error for a zero share")
 	}
 	if err := ValidateCustomSplit(nil, 0); err == nil {

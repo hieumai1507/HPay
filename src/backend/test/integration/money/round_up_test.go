@@ -28,14 +28,14 @@ func setRoundUpTarget(t *testing.T, e *testkit.Env, userID, vaultID uuid.UUID, e
 
 func TestRoundUp_AppliesDifference(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	userID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	userID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	vaultID := newVault(t, e, userID, "Round-up")
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
 	senderBefore := testutil.WalletBalance(t, e.Pool, senderWallet)
 
-	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 123_000, "coffee", uuid.NewString())
+	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 1_234, "coffee", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer: %v", err)
 	}
@@ -44,14 +44,14 @@ func TestRoundUp_AppliesDifference(t *testing.T) {
 		t.Fatalf("txn status: want completed, got %s", got)
 	}
 
-	const wantDiff = 7_000 // 123_000 rounds up to 130_000
+	const wantDiff = 66 // 1_234 rounds up to 1_300
 	if got := testutil.WalletBalance(t, e.Pool, vaultID); got != wantDiff {
 		t.Fatalf("vault balance: want %d, got %d", wantDiff, got)
 	}
 	if got := testutil.LedgerSum(t, e.Pool, vaultID); got != wantDiff {
 		t.Fatalf("vault ledger sum: want %d, got %d", wantDiff, got)
 	}
-	wantSender := senderBefore - 123_000 - res.Fee - wantDiff
+	wantSender := senderBefore - 1_234 - res.Fee - wantDiff
 	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != wantSender {
 		t.Fatalf("sender balance: want %d, got %d", wantSender, got)
 	}
@@ -59,12 +59,12 @@ func TestRoundUp_AppliesDifference(t *testing.T) {
 
 func TestRoundUp_ExactAmount_Skipped(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	userID, _, _ := e.UserWithMoney(t, 2_000_000)
+	userID, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	vaultID := newVault(t, e, userID, "Round-up")
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
-	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 120_000, "exact", uuid.NewString())
+	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 1_200, "exact", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer: %v", err)
 	}
@@ -79,11 +79,11 @@ func TestRoundUp_ExactAmount_Skipped(t *testing.T) {
 
 func TestRoundUp_NoTarget_Skipped(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	userID, senderWallet, _ := e.UserWithMoney(t, 2_000_000)
+	userID, senderWallet, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	senderBefore := testutil.WalletBalance(t, e.Pool, senderWallet)
 
-	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 123_000, "no target", uuid.NewString())
+	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 1_234, "no target", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestRoundUp_NoTarget_Skipped(t *testing.T) {
 	if got := e.TxnStatus(t, res.RefCode); got != "completed" {
 		t.Fatalf("txn status: want completed, got %s", got)
 	}
-	wantSender := senderBefore - 123_000 - res.Fee
+	wantSender := senderBefore - 1_234 - res.Fee
 	if got := testutil.WalletBalance(t, e.Pool, senderWallet); got != wantSender {
 		t.Fatalf("sender balance: want %d, got %d (round-up must not fire without a target)", wantSender, got)
 	}
@@ -105,13 +105,13 @@ func TestRoundUp_InsufficientBalance_SkippedNotFailed(t *testing.T) {
 	setRoundUpTarget(t, e, userID, vaultID, true)
 
 	// Fund exactly amount+fee so nothing is left over for the round-up leg.
-	_, total, err := e.Svc.FeePreview(context.Background(), userID, 123_000)
+	_, total, err := e.Svc.FeePreview(context.Background(), userID, 1_234)
 	if err != nil {
 		t.Fatalf("fee preview: %v", err)
 	}
 	testkit.Fund(t, e.Pool, userID, senderWallet, total)
 
-	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 123_000, "tight", uuid.NewString())
+	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 1_234, "tight", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestRoundUp_InsufficientBalance_SkippedNotFailed(t *testing.T) {
 
 func TestRoundUp_ChangingTarget_UnsetsOld(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	userID, _, _ := e.UserWithMoney(t, 2_000_000)
+	userID, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	vaultA := newVault(t, e, userID, "Vault A")
 	vaultB := newVault(t, e, userID, "Vault B")
@@ -154,7 +154,7 @@ func TestRoundUp_ChangingTarget_UnsetsOld(t *testing.T) {
 		t.Fatalf("vault B must be the active round-up target")
 	}
 
-	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 123_000, "retarget", uuid.NewString())
+	res, err := e.Svc.Transfer(context.Background(), userID, receiverPhone, 1_234, "retarget", uuid.NewString())
 	if err != nil {
 		t.Fatalf("transfer: %v", err)
 	}
@@ -165,8 +165,8 @@ func TestRoundUp_ChangingTarget_UnsetsOld(t *testing.T) {
 	if got := testutil.WalletBalance(t, e.Pool, vaultA); got != 0 {
 		t.Fatalf("vault A: want 0, got %d", got)
 	}
-	if got := testutil.WalletBalance(t, e.Pool, vaultB); got != 7_000 {
-		t.Fatalf("vault B: want 7000, got %d", got)
+	if got := testutil.WalletBalance(t, e.Pool, vaultB); got != 66 {
+		t.Fatalf("vault B: want 66, got %d", got)
 	}
 }
 

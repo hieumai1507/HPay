@@ -48,14 +48,14 @@ func TestTransactionRequestHTTP_IdempotencyKeyHeaderDedupes(t *testing.T) {
 	// Topup (not a P2P-type fund helper) so this setup doesn't itself trip
 	// the P2P_TRANSFER interval throttle for the sender right before the
 	// real transfer under test.
-	senderID, _, _ := e.UserWithMoney(t, 1_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 4_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	r := transactionRequestRouter(t, e, senderID)
 	idemKey := uuid.NewString()
 	body := map[string]any{
 		"service_code":   "P2P_TRANSFER",
-		"amount":         100_000,
+		"amount":         400,
 		"receiver_phone": receiverPhone,
 	}
 
@@ -100,13 +100,13 @@ func TestTransactionRequestHTTP_IdempotencyKeyHeaderDedupes(t *testing.T) {
 // fix must not accidentally make idempotency optional.
 func TestTransactionRequestHTTP_MissingIdempotencyKeyRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	senderID, _, _ := e.UserWithMoney(t, 1_000_000)
+	senderID, _, _ := e.UserWithMoney(t, 4_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 
 	r := transactionRequestRouter(t, e, senderID)
 	body := map[string]any{
 		"service_code":   "P2P_TRANSFER",
-		"amount":         50_000,
+		"amount":         200,
 		"receiver_phone": receiverPhone,
 	}
 

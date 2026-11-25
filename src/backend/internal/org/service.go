@@ -44,7 +44,7 @@ var (
 )
 
 // Per-transaction cap for org topup/disbursement (no KYC tiers for orgs).
-const orgTxnLimit int64 = 1_000_000_000 // 1 billion VND
+const orgTxnLimit int64 = 4_000_000 // $40,000.00 in cents
 
 const disbursementDefinition = "org_disbursement"
 
@@ -85,7 +85,7 @@ func (s *Service) CreateOrg(ctx context.Context, creatorID uuid.UUID, name strin
 	if err != nil {
 		return CreateOrgResult{}, err
 	}
-	w, err := q.CreateOrgWallet(ctx, store.CreateOrgWalletParams{OwnerID: o.ID, Currency: "VND"})
+	w, err := q.CreateOrgWallet(ctx, store.CreateOrgWalletParams{OwnerID: o.ID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return CreateOrgResult{}, err
 	}
@@ -296,7 +296,7 @@ func (s *Service) Topup(ctx context.Context, actorID, orgID uuid.UUID, amount in
 	} else if old != nil {
 		return replayTopup(old), nil
 	}
-	orgWallet, err := s.q.GetOrgMainWallet(ctx, store.GetOrgMainWalletParams{OwnerID: orgID, Currency: "VND"})
+	orgWallet, err := s.q.GetOrgMainWallet(ctx, store.GetOrgMainWalletParams{OwnerID: orgID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return wallet.TopupResult{}, wallet.ErrWalletNotFound
 	}
@@ -400,11 +400,11 @@ func (s *Service) CreateDisbursement(ctx context.Context, actorID, orgID uuid.UU
 		}
 		return DisbursementResult{}, err
 	}
-	receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiver.ID, Currency: "VND"})
+	receiverWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: receiver.ID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return DisbursementResult{}, ErrReceiverNotFound
 	}
-	orgWallet, err := s.q.GetOrgMainWallet(ctx, store.GetOrgMainWalletParams{OwnerID: orgID, Currency: "VND"})
+	orgWallet, err := s.q.GetOrgMainWallet(ctx, store.GetOrgMainWalletParams{OwnerID: orgID, Currency: wallet.DefaultCurrency})
 	if err != nil {
 		return DisbursementResult{}, wallet.ErrWalletNotFound
 	}

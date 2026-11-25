@@ -17,13 +17,13 @@ import (
 func TestQA_DisbursementZeroOrNegativeAmountRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
 	if _, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 0, "", uuid.NewString()); !testkit.ErrIs(err, wallet.ErrAmountInvalid) {
 		t.Fatalf("amount=0: want ErrAmountInvalid, got %v", err)
 	}
-	if _, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, -100_000, "", uuid.NewString()); !testkit.ErrIs(err, wallet.ErrAmountInvalid) {
-		t.Fatalf("amount=-100000: want ErrAmountInvalid, got %v", err)
+	if _, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, -400, "", uuid.NewString()); !testkit.ErrIs(err, wallet.ErrAmountInvalid) {
+		t.Fatalf("amount=-400: want ErrAmountInvalid, got %v", err)
 	}
 }
 
@@ -32,7 +32,7 @@ func TestQA_DisbursementZeroOrNegativeAmountRejected(t *testing.T) {
 func TestQA_DisbursementUnknownRecipientRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
 	_, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, "0999999999", 100_000, "", uuid.NewString())
 	if !testkit.ErrIs(err, org.ErrReceiverNotFound) {
@@ -45,9 +45,9 @@ func TestQA_DisbursementUnknownRecipientRejected(t *testing.T) {
 func TestQA_DecideWrongOTPDoesNotFinalize(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 500_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 2_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,9 +80,9 @@ func TestQA_DecideWrongOTPDoesNotFinalize(t *testing.T) {
 func TestQA_SecondCheckerAfterFinalizeGetsClearError(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	f := testkit.NewOrgFixture(t, e, 2_000_000, []int{1, 1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
+	f := testkit.NewOrgFixture(t, e, 8_000, []int{1, 1}, []approval.Tier{{Level: 1, RequiredApprovals: 1}})
 
-	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 500_000, "", uuid.NewString())
+	res, err := e.Osvc.CreateDisbursement(ctx, f.MakerID, f.OrgID, f.ReceiverPhone, 2_000, "", uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

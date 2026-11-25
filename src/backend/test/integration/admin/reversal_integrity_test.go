@@ -18,7 +18,7 @@ import (
 func TestReversal_ConcurrentRequestsOnlyOne(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, _, _, _, _ := e.CompletedTransfer(t, 500_000)
+	ref, _, _, _, _ := e.CompletedTransfer(t, 2_000)
 	admin := e.SeedAdminID(t)
 
 	const workers = 8
@@ -56,7 +56,7 @@ func TestReversal_ConcurrentRequestsOnlyOne(t *testing.T) {
 func TestReversal_SecondReversalRowRejectedByDB(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, txnID, sw, rw, _ := e.CompletedTransfer(t, 300_000)
+	ref, txnID, sw, rw, _ := e.CompletedTransfer(t, 1_200)
 	a, b := e.SeedAdminID(t), e.SeedAdmin2ID(t)
 	cr, err := e.Revsvc.CreateRequest(ctx, a, ref, "first")
 	if err != nil {
@@ -79,7 +79,7 @@ func TestReversal_SecondReversalRowRejectedByDB(t *testing.T) {
 func TestReversal_ReversalOfReversalRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, txnID, _, _, _ := e.CompletedTransfer(t, 200_000)
+	ref, txnID, _, _, _ := e.CompletedTransfer(t, 800)
 	a, b := e.SeedAdminID(t), e.SeedAdmin2ID(t)
 	cr, err := e.Revsvc.CreateRequest(ctx, a, ref, "first")
 	if err != nil {
@@ -107,7 +107,7 @@ func TestReversal_ReversalOfReversalRejected(t *testing.T) {
 func TestReversal_ExecutorRequiresCompletedOriginal(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, txnID, sw, rw, _ := e.CompletedTransfer(t, 250_000)
+	ref, txnID, sw, rw, _ := e.CompletedTransfer(t, 1_000)
 	a, b := e.SeedAdminID(t), e.SeedAdmin2ID(t)
 	cr, err := e.Revsvc.CreateRequest(ctx, a, ref, "stale")
 	if err != nil {
@@ -141,7 +141,7 @@ func TestReversal_ExecutorRequiresCompletedOriginal(t *testing.T) {
 func TestAdminDecide_ExpiredRequestRejected(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, txnID, sw, _, _ := e.CompletedTransfer(t, 150_000)
+	ref, txnID, sw, _, _ := e.CompletedTransfer(t, 600)
 	a, b := e.SeedAdminID(t), e.SeedAdmin2ID(t)
 	cr, err := e.Revsvc.CreateRequest(ctx, a, ref, "late")
 	if err != nil {
@@ -169,7 +169,7 @@ func TestAdminDecide_ExpiredRequestRejected(t *testing.T) {
 func TestReversal_ReceiverWithoutFundsGoesToNeedsManual(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	ref, txnID, sw, rw, rUser := e.CompletedTransfer(t, 400_000)
+	ref, txnID, sw, rw, rUser := e.CompletedTransfer(t, 1_600)
 	a, b := e.SeedAdminID(t), e.SeedAdmin2ID(t)
 	cr, err := e.Revsvc.CreateRequest(ctx, a, ref, "receiver spent it")
 	if err != nil {
@@ -179,14 +179,14 @@ func TestReversal_ReceiverWithoutFundsGoesToNeedsManual(t *testing.T) {
 	_, spendWallet, spendPhone := e.UserWithMoney(t, 0)
 	_ = spendWallet
 	if _, err := e.Svc.Transfer(ctx, rUser, spendPhone, testutil.WalletBalance(t, e.Pool, rw)-0, "spend", uuid.NewString()); err != nil {
-		// fee may make the full balance too large; retry with a smaller amount that still empties the wallet below the reversal amount
+		// the flat 25 cent fee makes the full balance too large; spend the balance minus the fee, which empties the wallet
 		bal := testutil.WalletBalance(t, e.Pool, rw)
-		if _, err2 := e.Svc.Transfer(ctx, rUser, spendPhone, bal-bal/100-1, "spend", uuid.NewString()); err2 != nil {
+		if _, err2 := e.Svc.Transfer(ctx, rUser, spendPhone, bal-25, "spend", uuid.NewString()); err2 != nil {
 			t.Fatalf("receiver spend: %v / %v", err, err2)
 		}
 	}
 	e.Drain(t)
-	if testutil.WalletBalance(t, e.Pool, rw) >= 400_000 {
+	if testutil.WalletBalance(t, e.Pool, rw) >= 1_600 {
 		t.Fatal("setup: receiver still holds enough to be reversed")
 	}
 

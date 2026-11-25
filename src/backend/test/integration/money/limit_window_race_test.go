@@ -22,11 +22,11 @@ func confirmPIN(e *testkit.Env, sender uuid.UUID, res transfer.EngineRequestResu
 
 // BUG-0017 / BE-H2: a request waiting for its PIN does not count toward the quota, and nothing
 // re-checked at confirm, so many requests could all pass and all start. The limit must hold when
-// money starts to move: at L0 the daily cap is 2,500,000, so of five held requests of 1,500,000
+// money starts to move: at L0 the daily cap is 10,000 cents, so of five held requests of 6,000
 // exactly one may start.
 func TestLimitWindow_ConcurrentConfirmsRespectDailyLimit(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L0")
 	e.SetPIN(t, sender, testkit.ValidPIN)
@@ -34,7 +34,7 @@ func TestLimitWindow_ConcurrentConfirmsRespectDailyLimit(t *testing.T) {
 	const n = 5
 	held := make([]transfer.EngineRequestResult, 0, n)
 	for i := 0; i < n; i++ {
-		held = append(held, e.RequestP2P(t, sender, receiverPhone, 1_500_000))
+		held = append(held, e.RequestP2P(t, sender, receiverPhone, 6_000))
 	}
 
 	var wg sync.WaitGroup
@@ -64,20 +64,20 @@ func TestLimitWindow_ConcurrentConfirmsRespectDailyLimit(t *testing.T) {
 	}
 }
 
-// The quota counts amount + fee, so the confirm check must too: with the 1,000 VND p2p fee, two
+// The quota counts amount + fee, so the confirm check must too: with the 25 cent p2p fee, two
 // holds of 1,249,500 are 2,501,000 in total. Without the fee the second would be exactly at the
 // cap and pass.
 func TestLimitWindow_ConfirmCountsTheFee(t *testing.T) {
 	e := testkit.NewEnv(t, "")
-	sender, _, _ := e.UserWithMoney(t, 2_000_000)
+	sender, _, _ := e.UserWithMoney(t, 8_000)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L0")
 	e.SetPIN(t, sender, testkit.ValidPIN)
 
-	a := e.RequestP2P(t, sender, receiverPhone, 1_249_500)
-	b := e.RequestP2P(t, sender, receiverPhone, 1_249_500)
-	if a.Fee != 1_000 {
-		t.Fatalf("setup: the p2p fee should be 1000, got %d", a.Fee)
+	a := e.RequestP2P(t, sender, receiverPhone, 4_988)
+	b := e.RequestP2P(t, sender, receiverPhone, 4_988)
+	if a.Fee != 25 {
+		t.Fatalf("setup: the p2p fee should be 25, got %d", a.Fee)
 	}
 	if err := confirmPIN(e, sender, a); err != nil {
 		t.Fatalf("first confirm: %v", err)
@@ -93,12 +93,12 @@ func TestLimitWindow_ConfirmCountsTheFee(t *testing.T) {
 func TestLimitWindow_VolumeIsCountedFromWhenTheTransactionStarted(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 2_400_000)
+	sender, _, _ := e.UserWithMoney(t, 9_600)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	e.SetOffer(t, sender, "OFFER_CUST_L0")
 	e.SetPIN(t, sender, testkit.ValidPIN)
 
-	first := e.RequestP2P(t, sender, receiverPhone, 1_500_000)
+	first := e.RequestP2P(t, sender, receiverPhone, 6_000)
 	if err := confirmPIN(e, sender, first); err != nil {
 		t.Fatalf("first confirm: %v", err)
 	}
@@ -108,10 +108,10 @@ func TestLimitWindow_VolumeIsCountedFromWhenTheTransactionStarted(t *testing.T) 
 	}
 	_, err := e.Svc.ExecuteEngineRequest(ctx, transfer.EngineRequestInput{
 		ServiceCode: "P2P_TRANSFER", SenderUserID: sender, ReceiverPhone: receiverPhone,
-		Amount: 1_100_000, Idempotency: uuid.NewString(),
+		Amount: 4_400, Idempotency: uuid.NewString(),
 	})
 	if !errors.Is(err, offerguard.ErrLimitDaily) {
-		t.Fatalf("1,500,000 started today plus 1,100,000 exceeds the 2,500,000 daily limit, got %v", err)
+		t.Fatalf("6,000 started today plus 4,400 exceeds the 10,000 daily limit, got %v", err)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestLimitWindow_VolumeIsCountedFromWhenTheTransactionStarted(t *testing.T) 
 func TestLimitWindow_IntervalThrottleHoldsAtConfirm(t *testing.T) {
 	e := testkit.NewEnv(t, "")
 	ctx := context.Background()
-	sender, _, _ := e.UserWithMoney(t, 2_400_000)
+	sender, _, _ := e.UserWithMoney(t, 9_600)
 	_, _, receiverPhone := e.UserWithMoney(t, 0)
 	e.SetPIN(t, sender, testkit.ValidPIN)
 
@@ -136,7 +136,7 @@ func TestLimitWindow_IntervalThrottleHoldsAtConfirm(t *testing.T) {
 	const n = 4
 	held := make([]transfer.EngineRequestResult, 0, n)
 	for i := 0; i < n; i++ {
-		held = append(held, e.RequestP2P(t, sender, receiverPhone, 10_000))
+		held = append(held, e.RequestP2P(t, sender, receiverPhone, 40))
 	}
 	var wg sync.WaitGroup
 	errs := make([]error, n)

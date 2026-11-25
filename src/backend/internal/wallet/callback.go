@@ -25,7 +25,7 @@ func (s *Service) CreatePendingTopup(ctx context.Context, userID uuid.UUID, amou
 	if amount <= 0 {
 		return TopupResult{}, ErrAmountInvalid
 	}
-	userWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: "VND"})
+	userWallet, err := s.q.GetUserMainWallet(ctx, store.GetUserMainWalletParams{OwnerID: userID, Currency: DefaultCurrency})
 	if err != nil {
 		return TopupResult{}, ErrWalletNotFound
 	}

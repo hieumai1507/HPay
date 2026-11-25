@@ -11,14 +11,14 @@ import (
 var ErrBadSplit = errors.New("invalid split")
 
 // SplitEven divides total into n positive shares that sum exactly to total,
-// using largest-remainder so the leftover minor units spread across payers
+// using largest-remainder so the leftover cents spread across payers
 // instead of piling onto one. Pure integer math — no float touches money.
 func SplitEven(total int64, n int) ([]int64, error) {
 	if n <= 0 {
 		return nil, errors.New("n must be positive")
 	}
 	if total < int64(n) {
-		// Each share must be a positive minor unit (amount > 0 per schema CHECK).
+		// Each share must be a positive number of cents (amount > 0 per schema CHECK).
 		return nil, ErrBadSplit
 	}
 	base := total / int64(n)
