@@ -70,7 +70,8 @@ for (const line of md.split('\n')) {
   if (/^\d+\.\s/.test(line)) { run++; maxRun = Math.max(maxRun, run); } else if (line.trim() === '' ) { /* blank lines keep the list */ } else if (!/^\s/.test(line)) { run = 0; }
 }
 if (maxRun > 9) fail(`a numbered list has ${maxRun} steps (limit 9)`);
-if (!/^Version: 2026-11-24/m.test(md)) fail('version line missing or not dated 2026-11-24');
+if (!/^Version: 20\d\d-\d\d-\d\d, /m.test(md)) fail('version line missing or has no date (expected "Version: YYYY-MM-DD, ...")');
+if (/₫|\bVND\b/.test(md)) fail('the guide mentions the dong sign or VND; all money is US dollars (ADR-0019)');
 if (!/^## What changed in this version/m.test(md)) fail('section "What changed in this version" is missing');
 
 // 8. Figure numbers run 1..N in order, once each.

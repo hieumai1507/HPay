@@ -11,7 +11,7 @@ Date: 2026-11-26, third revision. **All money is now in US dollars.** Amounts ar
 Earlier in the same release line, 2026-11-24, second revision. Every screenshot was retaken. There are now 36 pictures. Seven are new: the phone menu closed and open, the Ops dashboard, the offer authentication matrix, and the validations list. The policy edit and the Ops view-only pictures were also redone.
 
 - **2.6 How the screen is laid out and new 2.7 Using HPay Admin on a phone:** the menu is a drawer on a phone, opened with a menu button.
-- **Section 3, Your first 10 minutes:** new demo values (flag #efe2, customer Tran Van Ba).
+- **Section 3, Your first 10 minutes:** new demo values (flag #4637, customer Tran Van Ba).
 - **Section 4, Roles:** menus re-derived from the code. Ops now sees "No access" on **KYC Review**, the same as on other pages it may not open. New figure of the Ops dashboard.
 - **5.1 Dashboard:** cards your role may not use say "Not available for your role" and are not links. **Workflows stuck > 5 min** shows a real count.
 - **5.2 KYC Review:** the whole row opens the request. The demo now shows two placeholder pictures labelled **ID card** and **Selfie**.
@@ -121,12 +121,12 @@ To close the menu without choosing a page, tap the grey area outside the menu. O
 
 ## 3. Your first 10 minutes
 
-Do these steps in order. They only read information, so they are safe. Use the practice system with the demo data. The values below are what the demo shows on 2026-11-24. Yours may differ a little, for example the short flag number.
+Do these steps in order. They only read information, so they are safe. Use the practice system with the demo data. The values below are what the demo shows on 2026-11-26. Yours may differ a little, for example the short flag number.
 
 1. Log in (section 2.3) as the demo Superadmin. *You should see: the Dashboard.*
 2. Look at the three cards under **Needs attention**. *You should see: "1" on **Pending KYC**, "1" on **Open Fraud flags** and "0" on **Workflows stuck > 5 min**.* Click **Pending KYC**.
 3. On **KYC Review**, click the row for Tran Van Ba. *You should see: two picture boxes, the registration details and notes from the AI.* Click **← Back**. Do not approve anything yet.
-4. Click **Fraud Monitor** in the left menu. *You should see: one open flag, for example **#efe2**, rule **VELOCITY_5MIN**, status **Open**.* Click the flag number to read its explanation below the table.
+4. Click **Fraud Monitor** in the left menu. *You should see: one open flag, for example **#4637**, rule **VELOCITY_5MIN**, status **Open**.* Click the flag number to read its explanation below the table.
 5. Click **Workflow** in the left menu. *You should see: a list of payments with a **Status** for each, such as **Failed** and **Completed**.* Click **Open →** on any row to see its steps.
 6. Click **My Tasks**. *You should see: one request, a **reversal** of $20.00, with a **Process** button.* Do not press **Approve** or **Reject** while practising.
 7. Click **Needs attention**. *You should see: "Open cases: 0" and "Nothing needs attention." That is the good result.*
@@ -291,7 +291,7 @@ Keyboard shortcuts exist (J and K move up and down, Enter opens, A approves, R r
 **Task A: Read a flag**
 
 1. Click **Fraud Monitor** in the left menu. *You should see: one row per flag.*
-2. Click the flag number, for example **#efe2** (badge 2). *You should see: its explanation below the table. It lists the reasons in plain words, such as "5 transactions in 5 minutes", and an "AI assessment".*
+2. Click the flag number, for example **#4637** (badge 2). *You should see: its explanation below the table. It lists the reasons in plain words, such as "5 transactions in 5 minutes", and an "AI assessment".*
 
 **Task B: Mark a flag as safe**
 
@@ -384,7 +384,7 @@ The button **Force fail + compensate** at the top right does the same as **Compe
 
 **What you see on the detail page**
 
-- **Title:** the transaction code first, then the kind of payment and its version, for example "MP23CB0BF89393 · p2p_transfer v3". Next to it is the status in words, such as "FAILED at CONFIRM" or "WAITING APPROVAL".
+- **Title:** the transaction code first, then the kind of payment and its version, for example "MP0D00FAA276B6 · p2p_transfer v3". Next to it is the status in words, such as "FAILED at CONFIRM" or "WAITING APPROVAL".
 - **Transaction** and **Amount:** the code and the size of the payment.
 - **Timeline:** one line per step. A green tick means it worked. A red cross means it failed. A step that was tried again shows a badge such as "attempt 2". Under a finished step, a line starting **Result:** shows what the step did, in short technical words. You can ignore it.
 - The **DATA** panel on the right is for technical staff. Ignore it.
@@ -502,7 +502,7 @@ The red number in the menu is the total of both kinds. It updates about every 30
 
 **Task A: Look at one day**
 
-1. Click **Reconciliation** in the left menu. *You should see: the page opens on today's date, for example "Reconciliation for 2026-11-24".*
+1. Click **Reconciliation** in the left menu. *You should see: the page opens on today's date, for example "Reconciliation for 2026-11-26".*
 2. Click the date box (badge 1) and choose a date. *You should see: the results for that day. If that day has not been run, the table says "Nothing here yet".*
 
 **Task B: Run a check for a day**
