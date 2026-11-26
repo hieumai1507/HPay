@@ -1377,6 +1377,14 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /v1/admin/orgs/{id}/policies:
+    get:
+      tags: [admin]
+      summary: Approval policies of one organization, all versions (admin console "Organizations & Policy"). Needs the orgs.read permission
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/OrgId" }]
+      responses:
+        "200": { description: "{policies: [...]}" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     put:
       tags: [admin]
       summary: Platform-ops override — create a new approval policy version for an org (admin console "Organizations & Policy"), distinct from POST /v1/org/{id}/policies which requires org membership
