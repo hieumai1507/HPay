@@ -1,7 +1,7 @@
 ---
 title: Plan for US dollars stored as cents
 type: plan
-status: in-progress
+status: done
 last_verified: 2026-11-25
 spec: spec.md
 adr: ../../adr/0019-usd-currency-in-cents.md
@@ -9,7 +9,7 @@ adr: ../../adr/0019-usd-currency-in-cents.md
 
 # Plan: US dollars stored as cents
 
-Approval: the owner chose "follow the recommendation" for the unit, the fee and the limits on 2026-11-25 and has a standing instruction to continue without asking. ADR-0019 stays `proposed` until stage 9.
+Approval: the owner chose "follow the recommendation" for the unit, the fee and the limits on 2026-11-25 and has a standing instruction to continue without asking. ADR-0019 was `proposed` until stage 9 and is `accepted` since 2026-11-26.
 
 ## Tasks
 Three code tasks have disjoint file sets and run in parallel in separate worktrees. Docs, guide and site depend on all three.

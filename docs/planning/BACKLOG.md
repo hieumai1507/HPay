@@ -19,3 +19,19 @@ Keep every load test in `src/backend/test/loadtest/` behind the `loadtest` tag, 
 | L7 | Rewrite or delete `scripts/loadtest/k6-transfer.js` (stale: old endpoints, hits rate limits) | Dead file |
 | L8 | Optional scheduled or manual GitHub workflow (`workflow_dispatch`) that runs the load test and uploads the numbers | Numbers are noisy on a laptop; a fixed runner is better |
 | L9 | Repeat each before/after load run 3 times and report the median | One run per column is not reliable |
+
+## Found by the review of the US-dollar change (2026-11-26, not fixed)
+
+Fixed the same day: the split-bill screen crash on a total below one cent per person (HIGH), the per-transaction limit test at 40,001 cents, the wrong "$400.00/day" copy in the mobile KYC and onboarding screens (now $5,000.00, the seeded L1 daily limit), and the raw cents in the fraud AMOUNT_SPIKE text. These remain:
+
+| # | Item | Why |
+|---|------|-----|
+| R1 | Existing databases: migrations 000002, 000004, 000006 and 000023 were edited in place, so a database that already ran them keeps `VND` wallets and every lookup for `USD` finds nothing (`EnsureMainWallet` would add a second, empty wallet). ADR-0019 says no such database exists | Add a guard or a conversion migration before any real database is created |
+| R2 | Mobile `parseAmountToBigInt` has no maximum on the money-request and transfer-amount screens (`requests/create.tsx`, `requests/split.tsx`, `transfer/amount.tsx`); a huge number is sent and the server refuses it with a generic error | AC-4 says over-maximum is rejected in the app |
+| R3 | `formatAmountWhileTyping` turns a pasted `1.234.567` into `1.23` silently; AC-3 says it is rejected with a message | A user pasting a Vietnamese-formatted number gets $1.23 |
+| R4 | Raw cents without a unit in the recon Excel detail JSON (`recon/xlsx.go`) and in the text sent to the LLM summary (`recon/recon.go:217`) | Reads as dollars |
+| R5 | `fee.Calc` has no overflow check on `amount * percent_bp`, and `FeePreview` has no upper bound on `amount` (latent: the seeded p2p policy has 0 bp) | A huge amount wraps negative |
+| R6 | The load test now sends 40 to 399 cent amounts against a 10,000 cent daily cap, so most requests are refused by the daily limit and the integrity check runs under lighter load than before | Use larger amounts or an L1 sender so the test keeps its pressure |
+| R7 | Stale comments and messages: `offer_limits_test.go` ("2.5M", "3M"), `limit_window_race_test.go` ("2.5M", "1,249,500"), `wallet/currency_test.go` ignores a `WalkDir` error and only finds double-quoted literals | Misleading on failure |
+| R8 | Stale non-code references: `.claude/skills/hpay-backend-recipes/references/seed-demo-data.md` (12,450,000), `hpay-qa-testcases/scripts/generate_test_cases.py` (all dong), onboarding mock balances vs the seed, `openapi.yaml` stays at version 0.10.0 and several amount fields have no "cents" note | Drift |
+| R9 | No component test of mobile `AmountDisplay`; admin e2e has no money assertion | Display is covered only by unit tests |

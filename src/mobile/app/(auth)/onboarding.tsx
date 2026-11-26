@@ -25,7 +25,7 @@ const SLIDES = [
     icon: '🛡️',
     title: 'Smart security\nand safe',
     subtitle: 'Identity verification powered by AI\nand 24/7 monitoring of unusual Transactions',
-    amount: '$400.00',
+    amount: '$5,000.00',
     cardHolder: 'DAILY LIMIT',
   },
 ];

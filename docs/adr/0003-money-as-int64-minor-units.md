@@ -9,7 +9,7 @@ last_verified: 2026-11-21
 
 Status: Accepted (verified in code 2026-11-21)
 
-Note (2026-11-25): the currency named below (VND, no fractional unit) is replaced by US dollars stored as cents in [ADR-0019](0019-usd-currency-in-cents.md) once that ADR is accepted. The rule of this record, integers in minor units, is unchanged.
+Note (2026-11-25): the currency named below (VND, no fractional unit) is replaced by US dollars stored as cents in [ADR-0019](0019-usd-currency-in-cents.md) (accepted 2026-11-26). The rule of this record, integers in minor units, is unchanged.
 
 ## Context
 A ledger-based wallet must never lose or invent value through rounding. Floats and decimal strings invite precision and overflow bugs. The currency is VND, which has no fractional unit in practice.

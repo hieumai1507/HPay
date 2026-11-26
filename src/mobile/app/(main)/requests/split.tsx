@@ -59,7 +59,10 @@ export default function SplitBillScreen() {
 
   const totalAmountVal = parseAmountToBigInt(totalAmountStr) ?? 0n;
 
-  const evenSplitShares = totalAmountVal > 0n && phones.length > 0
+  // Every share must be at least 1 cent (the server rejects less), so a total smaller than the number
+  // of people has no even split: show no shares and say why instead of letting splitEven throw.
+  const totalTooSmallToSplit = totalAmountVal > 0n && phones.length > 0 && totalAmountVal < BigInt(phones.length);
+  const evenSplitShares = totalAmountVal > 0n && phones.length > 0 && !totalTooSmallToSplit
     ? splitEven(totalAmountVal, phones.length)
     : [];
 
@@ -72,6 +75,9 @@ export default function SplitBillScreen() {
 
     if (totalAmountVal <= 0n) {
       newErrors.total = 'Enter a valid total amount';
+      hasErr = true;
+    } else if (totalTooSmallToSplit) {
+      newErrors.total = 'The total must be at least $0.01 for each person';
       hasErr = true;
     }
 

@@ -1,7 +1,7 @@
 ---
 title: US dollars stored as cents (implementation of ADR-0019)
 type: spec
-status: in-progress
+status: done
 last_verified: 2026-11-25
 adr: ../../adr/0019-usd-currency-in-cents.md
 ---

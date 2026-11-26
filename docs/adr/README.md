@@ -33,4 +33,4 @@ Lifecycle: an ADR is written as **Proposed** during `hpay-feature` stage 3 (desi
 | [0016](0016-pin-reset.md) | Reset a forgotten PIN with password plus a one-time code, with an operator fallback | **Accepted** (approved 2026-11-21) |
 | [0017](0017-totp-second-factor.md) | TOTP built in-house as the 2fa band factor, and a pluggable code-delivery provider starting with Twilio (Messaging) | **Accepted** (approved 2026-11-21) |
 | [0018](0018-pin-pepper-and-hash-cost.md) | Protect the PIN hash with a server-side pepper and a lighter argon2 cost | **Accepted** (approved 2026-11-24; implemented 2026-11-25, see the Implemented note in the ADR) |
-| [0019](0019-usd-currency-in-cents.md) | The currency is US dollars, stored as integer cents | **Proposed** (2026-11-25; owner accepted the recommended unit, fee and limits) |
+| [0019](0019-usd-currency-in-cents.md) | The currency is US dollars, stored as integer cents | **Accepted** (2026-11-25; implemented 2026-11-26) |

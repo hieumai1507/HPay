@@ -1,7 +1,7 @@
 ---
 id: ADR-0019
 title: The currency is US dollars, stored as integer cents
-status: proposed
+status: accepted
 date: 2026-11-25
 supersedes: []
 superseded_by: []
@@ -19,6 +19,8 @@ constitution: [C-01]
 ---
 
 # ADR-0019: The currency is US dollars, stored as integer cents
+
+Implemented 2026-11-26 (spec specs/w6-usd/spec.md, verification handoff/w6-usd-verify.md). One consequence found in review: the migrations were edited in place, so a database that already ran them is not converted and nothing guards against it (backlog R1).
 
 An accepted ADR is immutable. This one amends a sentence of ADR-0003 (the currency and its unit) without changing its rule (integers in minor units); ADR-0003 keeps its status and gains a pointer to this record.
 

@@ -47,8 +47,8 @@ func Evaluate(in Input) ([]Signal, int) {
 	if in.Avg30dAmount > 0 && in.Amount >= in.Avg30dAmount*5 {
 		signals = append(signals, Signal{
 			Code: "AMOUNT_SPIKE", Points: 35,
-			Evidence: fmt.Sprintf("amount %d is %d times the 30-day average (%d)",
-				in.Amount, in.Amount/max64(in.Avg30dAmount, 1), in.Avg30dAmount),
+			Evidence: fmt.Sprintf("amount %s is %d times the 30-day average (%s)",
+				usd(in.Amount), in.Amount/max64(in.Avg30dAmount, 1), usd(in.Avg30dAmount)),
 		})
 	}
 
@@ -103,4 +103,14 @@ func max64(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// usd writes an amount in cents as dollars for evidence text that people and the AI advisor read
+// ("$200.00", never a bare 20000 that reads as twenty thousand dollars). Integer math only.
+func usd(cents int64) string {
+	sign := ""
+	if cents < 0 {
+		sign, cents = "-", -cents
+	}
+	return fmt.Sprintf("%s$%d.%02d", sign, cents/100, cents%100)
 }

@@ -122,8 +122,12 @@ func TestOfferGuard_LimitPerTxn(t *testing.T) {
 	userID := setupOffer(t, pool, "P2P_TRANSFER", defaultLimits())
 	g := offerguard.New(pool)
 
-	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 10_000_001); !errors.Is(err, offerguard.ErrLimitPerTxn) {
-		t.Fatalf("over per-txn limit: err = %v, want ErrLimitPerTxn", err)
+	// One cent above the 40,000 cent ceiling must be refused (a loose check here would let a
+	// boundary bug such as "amount > cap+1000" pass), and far above it too.
+	for _, over := range []int64{40_001, 10_000_001} {
+		if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, over); !errors.Is(err, offerguard.ErrLimitPerTxn) {
+			t.Fatalf("amount %d over per-txn limit: err = %v, want ErrLimitPerTxn", over, err)
+		}
 	}
 	if _, err := g.Check(context.Background(), userID, "P2P_TRANSFER", store.TxnTypeP2p, 40_000); err != nil {
 		t.Fatalf("at per-txn limit should pass, got %v", err)
