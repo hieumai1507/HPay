@@ -48,6 +48,8 @@ For a change with User guide impact `updated`, add a last task "update the user 
 
 **Constitution check (mandatory).** Add the table from the end of `docs/constitution.md` to the plan and answer it for every principle the change touches. A plan that touches money, auth, workflow or migrations must answer C-01 to C-08 and C-13 explicitly. A deviation needs a justification and an ADR; an unjustified deviation blocks the plan.
 
+**Design check (mandatory).** Add the table from section 7 of `docs/architecture/design-principles.md` to the plan (SOLID ownership, new interfaces, dependency direction, new patterns, rule of three). A new interface or pattern without a concrete second use or test fake is a plan defect.
+
 **Design gate (when Architecture impact is `amend` or `new`, or a constitution principle is touched).**
 1. Write `docs/adr/NNNN-<slug>.md` from `docs/_templates/adr.md` with status `proposed`: context, at least two real options, the decision, constitution check, consequences, documentation to update. Take the next free number from `docs/adr/README.md`; add the row there with status `proposed`.
 2. For `new`, also draft the architecture page skeleton (purpose, context diagram, building blocks) in the spec folder so the design can be reviewed as a picture, not only as prose.

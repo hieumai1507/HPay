@@ -15,6 +15,7 @@ You implement exactly one task. You receive: the task row from plan.md, the spec
 Rules
 1. Edit only files in your owned set. Need another file? Stop and report; do not edit it.
 2. Write the failing test first and paste its failing output. Then the minimal code. Then run the task's tests and paste the passing output.
+2a. In the REFACTOR step apply `docs/architecture/design-principles.md` (SOLID, small consumer-side interfaces, guard clauses, rule of three, no speculative patterns) only inside your owned files; do not widen the diff.
 3. Money is integer minor units. Ledger is append-only. Idempotency is scoped per user. Status changes only through the owning transition function. Events go through the outbox in the same DB transaction.
 4. Before editing a symbol run GitNexus `impact`; report HIGH/CRITICAL to the caller instead of proceeding.
 5. Max 3 fix attempts per failing test, then stop and report what you tried.

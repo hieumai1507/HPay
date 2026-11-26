@@ -25,6 +25,7 @@ code: [src/backend/cmd/server/main.go, src/backend/internal/api/router.go, src/b
 | [runtime-views.md](runtime-views.md) | Five key scenarios as sequence diagrams |
 | [deployment.md](deployment.md) | Docker, compose, CI, config, migrations, dev machine |
 | [crosscutting-concepts.md](crosscutting-concepts.md) | Money, idempotency, locking, outbox, errors, auth, logging, rate limit, audit, timezone |
+| [design-principles.md](design-principles.md) | SOLID, design patterns and code smells for HPay (guidance for implementers and reviewers) |
 | [admin-app.md](admin-app.md) | `src/admin` in detail |
 | [mobile-app.md](mobile-app.md) | `src/mobile` in detail |
 
