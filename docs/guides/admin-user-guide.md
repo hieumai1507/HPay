@@ -1,12 +1,14 @@
 # HPay Admin: User Guide for Staff
 
-Version: 2026-11-24, second revision (matches the admin app after the display, role-guard, policy and phone-layout fixes). English only.
+Version: 2026-11-26, third revision (matches the admin app after the switch to US dollars). English only.
 
 ---
 
 ## What changed in this version
 
-Date: 2026-11-24, second revision. Every screenshot was retaken. There are now 36 pictures. Seven are new: the phone menu closed and open, the Ops dashboard, the offer authentication matrix, and the validations list. The policy edit and the Ops view-only pictures were also redone.
+Date: 2026-11-26, third revision. **All money is now in US dollars.** Amounts are written like **$1,234.56**, with two decimals, and the screenshots were retaken on the new demo data. Limit boxes in **Offer Factory** take dollars (for example 100 or 100.50), not whole units. Nothing else about the screens changed.
+
+Earlier in the same release line, 2026-11-24, second revision. Every screenshot was retaken. There are now 36 pictures. Seven are new: the phone menu closed and open, the Ops dashboard, the offer authentication matrix, and the validations list. The policy edit and the Ops view-only pictures were also redone.
 
 - **2.6 How the screen is laid out and new 2.7 Using HPay Admin on a phone:** the menu is a drawer on a phone, opened with a menu button.
 - **Section 3, Your first 10 minutes:** new demo values (flag #efe2, customer Tran Van Ba).
@@ -95,7 +97,7 @@ Log out when you leave your desk. Your session also ends when you close the brow
 - **Main area:** the page itself.
 - A **red number** next to **Needs attention** in the menu means cases are waiting for a person. The demo has none, so Figure 2 shows no number.
 
-Money is written with commas and the currency sign after the number, for example 1,000,000 ₫. Dates are written day/month/year, for example 24/11/2026. The date box on **Reconciliation** follows the language of your browser.
+Money is written in US dollars with the dollar sign before the number, commas for thousands and two decimals, for example $1,234.56. Dates are written day/month/year, for example 24/11/2026. The date box on **Reconciliation** follows the language of your browser.
 
 ### 2.7 Using HPay Admin on a phone
 
@@ -126,7 +128,7 @@ Do these steps in order. They only read information, so they are safe. Use the p
 3. On **KYC Review**, click the row for Tran Van Ba. *You should see: two picture boxes, the registration details and notes from the AI.* Click **← Back**. Do not approve anything yet.
 4. Click **Fraud Monitor** in the left menu. *You should see: one open flag, for example **#efe2**, rule **VELOCITY_5MIN**, status **Open**.* Click the flag number to read its explanation below the table.
 5. Click **Workflow** in the left menu. *You should see: a list of payments with a **Status** for each, such as **Failed** and **Completed**.* Click **Open →** on any row to see its steps.
-6. Click **My Tasks**. *You should see: one request, a **reversal** of 500,000 ₫, with a **Process** button.* Do not press **Approve** or **Reject** while practising.
+6. Click **My Tasks**. *You should see: one request, a **reversal** of $20.00, with a **Process** button.* Do not press **Approve** or **Reject** while practising.
 7. Click **Needs attention**. *You should see: "Open cases: 0" and "Nothing needs attention." That is the good result.*
 8. Click **Audit Log**. *You should see: a table with columns Time, Actor, Action. In the demo it says "Nothing here yet".*
 9. Click **Log out** (top right).
@@ -435,7 +437,7 @@ To stop, click **Cancel**.
 |---|---|
 | **Order type** | The kind of request: **reversal** (give money back), **account_lock** (lock a customer), or a policy change. |
 | **Transaction code** | The payment the request is about. |
-| **Amount** | The size of the payment, for example 500,000 ₫. |
+| **Amount** | The size of the payment, for example $20.00. |
 | **Request reason** | Why the maker asked for it. |
 | **Approval level** | **L1**, **L2** and so on. Bigger requests need more levels of approval. |
 | **Expires** | After this time the request is closed without a decision. |
@@ -646,7 +648,7 @@ The window shows only what the system knows about the service. It opens on **Ove
 | **Status** | **Active** or **Draft**. |
 | **Updated by** | Who last changed the plan. |
 
-Below each limit box the amount is also written with commas, for example 100,000,000 ₫. The boxes themselves show the number without commas.
+Type limits in dollars: **100**, **100.50** and **1,000** are all accepted, but three decimals (**100.505**) and a dot used as a thousands mark (**1.000.000**) are not. Below each limit box the amount is also written as dollars, for example $100.00.
 
 The **Authentication matrix** says what proof a customer must give, by payment size. There are three bands: **Small Amount**, **Medium Amount** and **Large Amount**. Each band names the proof it needs: **PIN**, **OTP** (a code by text message) or **2FA** (PIN and code). Bigger payments need stronger proof.
 
@@ -673,7 +675,7 @@ The **Authentication matrix** says what proof a customer must give, by payment s
 
 - **Policy.** A rule that says who must approve a payment of a given size. The demo policy is "Large spend" for Acme Corp.
 - **Version.** A policy is never overwritten. A change makes a new numbered version, for example "Large spend (version 3)". The newest one in use is marked **Active**.
-- **Amount range.** The sizes the policy covers, for example "From 10,000,000 ₫ with no upper limit".
+- **Amount range.** The sizes the policy covers, for example "From $40,000.00 with no upper limit".
 - **Level.** One round of approval. "Level 1" approves first. Then "Level 2".
 - **Signature.** One approval from a checker. "Needs 1 signature from a level 1 checker" means one checker at that level must approve.
 
